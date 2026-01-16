@@ -1,0 +1,1758 @@
+---
+title: "Hybridization_project"
+author: "Camilla Stefanini"
+format: html
+editor: visual
+execute:
+    echo: false
+    warning: false
+    message: false
+    freeze: false
+---
+
+## Introduction
+
+We want to simulate different hypothetical scenarios of hybridization between European beech (*Fagus sylvatica)* and Oriental beech *(Fagus orientalis*) starting from different configurations. Oriental beech has already been introduced 100 years ago in Europe (see kurz et al, 2023), and today there is increasing attention to this species, which could improve genetic diversity to European beech. (more about E. beech and drought stress to add here).
+
+These configurations come from a questionnaire which was given to foresters and researchers during the workshop about the introduction of Oriental beech species in Europe. They were asked to imagine that they own a land, and to indicate how they would plant (or cut) European beech or Oriental beech trees in 3 types of lands of 100 x 100 m each (each patch is 4x4 m), if their goal is to **maximise the hybridization between the two species**. In practice, they needed to draw the planting scheme they considered appropriate to achieve this goal, and indicate the planting method and the harvesting scheme.
+
+**Goal of the project: reproduce what foresters and researchers indicated as optimal strategy, using simulations, and see what is the outcome.**
+
+**Research question: which planting design maximizes hybridization and its persistence through time?**
+
+Which planting scheme is giving more hybrids, and how this is influenced by the initial number of Orientalis introduced?
+
+## Pipeline
+
+The starting configurations are collected in an excel file, inside the questionnaires folder (questionnaires_all-xlsx contains all the information, including the participants names and comments, while configurations_sheet.xlsx is just the collection of all the configurations - one sheet per configuration, and is used for processing).
+
+Main Steps:
+
+1.  Find common patterns in the simulation scenarios and cluster the designs: translate each questionnaires into a small set of quantitative descriptors, for instance:
+
+    1.  \% orientalis
+
+    2.  number of clusters
+
+    3.  cluster size
+
+    4.  level of aggregation
+
+    5.  ....
+
+2.  Perform a Sensitivity analysis on the influence of the following parameters on the simulation, using one simulation per set (empty / beech / mixed) and few replicates (5) and few generations (like 50 or 100) to speed up:
+
+    -   carrying capacity
+    -   competition coefficient
+    -   selection ?
+
+    If there is no or negligible difference in the hybridization patterns, just choose one value.
+
+3.  Perform all the simulations with the chosen values.
+
+Pipeline for each step:
+
+1.  for each simulation, create the input files (matrices, etc)
+2.  define parameters
+3.  create the Nemoage ini files (the simulation script) for each simulation
+4.  run the simulations (burnin: 30 replicates, 20 generations - simulations: 30 replicates, 300 generations = years)
+5.  analyse the results.
+
+Conversion from questionnaire to simulation:
+
+| Questionnaire    |                                  NEMO |
+|------------------|--------------------------------------:|
+| 4x4m cell        |                                 patch |
+| Tree presence    | patch carrying capacity (patch_nbfem) |
+| Species identity |           quantitative trait (quanti) |
+| Planting scheme  |                 patch_init_stage_size |
+| Harvesting       |                                     ? |
+
+The simulation should be defined at patch-level. In general: *patch_nbfem* = 1 for adults females = for a patch 4x4 there is only one adult.
+
+## Simulation sets
+
+### 1. Starting from empty land
+
+**Goal**\
+Introduce *Fagus sylvatica* and *Fagus orientalis* seedlings into empty habitat in a single-step simulation.
+
+**Simulation structure** - Single simulation (no burn-in) - Seedlings are planted directly according to carrying capacity and species frequency
+
+**Key parameters**
+
+-   **Patch availability**
+    -   `patch_nbfem = X` everywhere\
+        → seedlings can establish in all patches
+-   **Initial stage structure**
+    -   `patch_init_stage_size {{0, 20, 0, 0}}`\
+        → \~20 seedlings planted per patch\
+        → build corresponding matrix
+-   **Species frequency**
+    -   `quanti_init_freq = 0 or 1` depending on the species\
+        → build matrix
+
+------------------------------------------------------------------------
+
+### 2. Starting from mature European beech forest (40 years)
+
+This scenario uses **two simulations**: a burn-in to create the forest, followed by the actual simulation. Both can be run with the following bash code
+
+``` bash
+./nemoage ./ini_files/mixed1_burnin.ini ./ini_files/mixed1.ini
+```
+
+#### 2.1 Burn-in simulation: European beech forest
+
+**Goal**\
+Create a mature *F. sylvatica* forest and clear selected patches for later *F. orientalis* introduction.
+
+**Duration**
+
+-   20 years
+
+**Key parameters**
+
+-   **Initial stage structure**
+
+    -   `patch_init_stage_size {{0, 0, 0, 1}}`\
+        → single adult *sylvatica* per patch as in beech0 configuration\
+        → beech0 matrix
+
+-   **Species frequency**
+
+    -   `quanti_init_freq = 0` everywhere
+
+-   **Patch availability**
+
+```         
+-   `patch_nbfem` homogeneous\
+        → seedlings can grow everywhere
+```
+
+-   **Harvesting / clearing**
+
+    -   `extinction_rate {{0, 0, 0, 1 ...}}`\
+        → value = 1 in patches that are cut or reserved for *Orientalis*
+
+-   **Output**
+
+    -   Population stored using `STORE`\
+        → see Nemoage manual (e.g. p. 106)
+
+#### 2.2 Actual simulation: replacement with *Fagus orientalis*
+
+**Goal**\
+Introduce *F. orientalis* into selected patches and simulate replacement dynamics.
+
+**Steps**
+
+1.  **Load burn-in population**
+
+    -   `source_pop = burnin binary file`
+
+2.  **Plant *F. orientalis***
+
+    -   `patch_init_stage_size {{0, X, 0, 1}}`
+    -   `quanti_init_freq = 1` in planted patches\
+        → planting pattern as defined in `config.txt`
+
+3.  **Patch availability**
+
+    -   `patch_nbfem` homogeneous\
+        → no restriction on seedling establishment or dispersal
+
+4.  **Post-establishment dynamics**
+
+    -   Seedlings spread via dispersal\
+        → fill available slots below `patch_nbfem`
+
+    -   Adult mortality increased\
+        → remove approximately 20% of adults\
+        → exact value depends on the scenario?
+
+------------------------------------------------------------------------
+
+### 3. Starting from mature European beech forest (40 years)
+
+Same structure as Scenario 2, but with a mixed-species background forest.
+
+``` bash
+./nemoage ./ini_files/mixed1_burnin.ini ./ini_files/mixed1.ini
+```
+
+#### 3.1 Burn-in simulation: mixed forest
+
+**Goal**\
+Create a mature mixed forest and clear selected patches for *Fagus orientalis* introduction.
+
+**Duration**
+
+-   20 years
+
+**Key parameters**
+
+-   **Initial stage structure**
+    -   `patch_init_stage_size {{0, 0, 0, 1}}`\
+        → single adult *F. sylvatica* per patch\
+        → beech0 matrix
+-   **Species frequency**
+    -   `quanti_init_freq = 0` everywhere
+-   **Patch availability**
+    -   `patch_nbfem {{X, 0, ...}}`
+        -   `X` = available patches\
+        -   `0` = *Abies* patches only\
+            → build corresponding matrix
+
+::: callout-note
+**TODO**\
+Clarify whether the competition coefficient **b** should be higher in mixed stands.
+:::
+
+-   **Output**
+    -   Population stored using `STORE`
+
+#### 3.2 Actual simulation: *Fagus orientalis* introduction
+
+**Goal**\
+Introduce *F. orientalis* into selected patches within a mixed-stand background and simulate replacement dynamics.
+
+**Steps**
+
+1.  **Load burn-in population**
+
+    -   `source_pop = burnin binary file`
+
+2.  **Plant *F. orientalis***
+
+    -   `patch_init_stage_size {{0, X, 0, 1}}`
+    -   `quanti_init_freq = 1` in planted patches\
+        → planting pattern as defined in `config.txt`
+
+3.  **Patch availability**
+
+    -   `patch_nbfem {{X, 0, ...}}`\
+        → *Abies* patches remain unavailable for beech establishment
+
+4.  **Post-establishment dynamics**
+
+    -   *Abies* continues occupying its patches
+    -   Seedlings spread via dispersal\
+        → fill available slots below `patch_nbfem`
+    -   Adult mortality increased\
+        → remove approximately 20% of adults\
+        → exact value depends on the scenario
+
+------------------------------------------------------------------------
+
+### Simulation workflow
+
+1.  sensitivity analysis:
+
+-   carrying capacity
+-   competition coefficient
+-   selection? fitness parameters?
+
+2.  Full simulations:
+
+-   one value per parameter if possible
+
+------------------------------------------------------------------------
+
+## Create input files
+
+Fixed parameters:
+
+1.  population structure, age of reproduction and stage survival (from COMPADRE):
+
+    pop_age_structure {{0,1,4,40}}
+
+    Stage 0: offspring of year 1
+
+    Stage 1: offspring from year 1 to 4
+
+    Stage 2: offspring from year 4 to 40
+
+    Stage 3: adults\
+    pop_transition_by_age —-\> transition happens at max age for each stage (useful when juveniles require decades before transitioning to a reproductive stage
+
+    pop_transition_matrix {{0, 0, 0, 1000}\
+    {0.3, 0, 0, 0}\
+    {0, 0.7, 0, 0}\
+    {0, 0, 1, 0.97}}
+
+    Survival from COMPADRE + cit. previous paper, with adults producing 1000 seedlings per generation.
+
+2.  patch number and grid: 25 x 25 grid, each patch is 16\^2 m.
+
+3.  carrying capacity –-\> *patch_nbfem* (max number of adult females per patch, can encode planting, thinning, harvesting or unsuitable habitat)
+
+4.  seed and pollen dispersal matrix (average from literature) —\>*seed_disperse_connectivity_matrix etc*
+
+5.  selfing (from literature) —\> *mating_system 4, mating_proportion*
+
+6.  competition model and competition coefficient??? —-\> b
+
+Testing parameters:
+
+1.  number of trees of relative species –\> *quanti_init_freq*
+2.  position of trees of relative species –\> *quanti_init_freq*
+3.  carrying capacity? –-\> *patch_nbfem*
+4.  competition coefficient —\> three b parameters?
+5.  fitness reduction / selection (DMI trait) —\> three DMI parameters?
+
+### Spatial architecture (simulation grid)
+
+First we need to define the starting grid:
+
+```{r}
+#| label: creating grid
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+dir.create("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Input_files")
+setwd("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Input_files")
+
+library(terra)
+
+ext <- ext(0, 100, 0, 100)
+r <- rast(
+  extent = ext,
+  resolution = 4,   # patch size: 4 x 4 meters
+  crs = "EPSG:3035" 
+)
+ncol(r)
+nrow(r)
+grid_poly <- as.polygons(r)
+grid_poly$patch_id <- 1:nrow(grid_poly) ## add patch ID
+
+## number of patchs
+length(grid_poly$patch_id)
+
+writeVector(grid_poly, "Input_files/Grid_4x4m_100x100m.shp", filetype = "ESRI Shapefile",overwrite = TRUE)
+
+```
+
+### configuration files and source_pop
+
+For each spatial configuration, I translated the excel grid into a master file organized as in the table below:
+
+| simulation | patchID | patch_value |
+|------------|:--------|------------:|
+| beech0     | 1       |          NA |
+| beech0     | 2       |           S |
+| beech0     | 3       |           O |
+| beech0     | 4       |           X |
+
+Each patch can have the following state:
+
+S European beech ---\> quanti = 0, patch_nbfem \> 0
+
+O Oriental beech ---\> quanti = 1, patch_nbfem \> 0
+
+A Abies ---\> quanti = 0, patch_nbfem = 0
+
+X Cut / unavailable ---\> quanti = 0, patch_nbfem = 0
+
+NA Empty land ---\> quanti = 0, patch_nbfem = 0
+
+**NB: in Nemo, patches are arranged row-wise on the grid (see the manual)**
+
+```         
+  source_pop          path of the file containing the population loaded to set the starting generation of a replicate, which contain the age class (offspring and/or adults). 
+  source_file_type    .txt  =  extension of the source_pop file
+  source_preserve     1    = individuals are sequentially imported, and kept (i.e. adults)
+  source_fill_stage   [offspring, adults]  for the simulations starting with offspring (empty), or the ones starting with adults.. ?
+  source_generation   1   = generaiton to load from the **binary** source file (maybe not needed)
+  
+  If the source population does not contain enough individuals within patches to fill the receiving patches to the carrying capacity, the landscape is not filled (== maybe I dont need to set carrying capacity 0 for non-beech starting patches??)
+  
+```
+
+```{r}
+#| label: configurations
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+### read excel file with all configurations (one per sheet)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(terra)
+
+# read 25 x 25 grid - file with one configuration per sheet and convert to matrix
+read_config <- function(path, sheet, n = 25) {
+
+  mat <- readxl::read_excel(
+    path,
+    sheet = sheet,
+    range = cell_limits( c(1, 1),c(n, n)),
+    col_names = FALSE
+  )
+  mat <- as.matrix(mat)
+  mat <- apply(mat, 2, as.character)
+  mat
+}
+
+# convert matrix to long table
+config_to_table <- function(mat) {
+
+  nr <- nrow(mat)
+  nc <- ncol(mat)
+
+  expand.grid(
+    row = 1:nr,
+    col = 1:nc
+  ) |>
+    dplyr::mutate(
+      patchID = (row - 1) * nc + col,
+      value   = mat[cbind(row, col)]
+    ) |>
+    mutate(
+      value = ifelse(is.na(value), "NA", value),
+      value = trimws(value),              # removes hidden spaces
+      value = recode(value,
+                     E = "S",
+                     S = "S",
+                     O = "O",
+                     A = "A",
+                     X = "X",
+                     .default = "NA")
+    ) |>
+       arrange(patchID) |>
+    dplyr::select(patchID, value)
+}
+
+## combine functions
+process_configuration <- function(path, sheet, outdir, n = 25) {
+
+  if (!dir.exists(outdir)) {
+    dir.create(outdir, recursive = TRUE)
+  }
+
+  mat <- read_config(path, sheet, n)
+  tab <- config_to_table(mat)
+  master <- tab |>
+    mutate(simulation = sheet) |>
+    dplyr::select(simulation, patchID, patch_value = value)
+  
+  write.table(
+    master,
+    file.path(outdir, paste0( sheet, ".txt")),
+    row.names = FALSE,
+    sep = "\t",
+    quote = FALSE
+  )
+
+  invisible(master)
+}
+
+### apply
+path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/questionnaires/configurations_sheets.xlsx"
+sheets <- excel_sheets(path)
+dir.create("Input_files/configs_txt", showWarnings = TRUE)
+
+lapply(
+  sheets,
+  process_configuration,
+  path   = path,
+  outdir = "Input_files/configs_txt",
+  n      = 25
+)
+
+```
+
+### Quanti trait (species identity)
+
+The species identity is encoded as quantitative trait (quanti) based on loci with 2 possible "alleles":
+
+-   European beech allele = 0
+-   Oriental beech allele = 1
+-   Hybrids = intermediate values
+
+The input *quanti_init_freq* controls the starting species composition. It consists of a matrix with one value per patch where sylvatica = 0 as default value (empty patches are defined later by the starting carrying capacity matrix, and they will be ignored automatically, but they need to appear in the matrix).
+
+The script uses the write.nemo.matrix to convert the quanti_init_freq matrix into the format which is ready for Nemo. The whole script is looped over all the configurations file inside the *configs_txt* folder: the restult is one quanti_init_file for each configuration file.
+
+```{r}
+#| label: quanti_init_file
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+library(data.table)
+library(terra)
+dir.create("Input_files/quanti_init_freq")
+files <- list.files("Input_files/configs_txt")
+grid <-  vect("Input_files/Grid_4x4m_100x100m.shp")
+
+# function to write matrix in NEMO format 
+write.matrix.nemo <- function(mat, outfile) {
+  rows <- dim(mat)[1]
+  cols <- dim(mat)[2]
+  cat("{", file = outfile)
+  
+  for(i in 1:rows) {
+    cat("{", file = outfile, append = TRUE)
+    cat(mat[i,], sep = ",", file = outfile, append = TRUE)
+    cat("}\n", file = outfile, append = TRUE)
+  }
+  
+  cat("}\n", file = outfile, append = TRUE)
+}
+
+### create a quanti_ini file according to the configuration file with 0 = sylvatica patches and 1 = orientalis patches
+for (file in files) {
+      
+    # importing simulated population with species information and patch ID (check the path)
+    sim_name <-  sub("^(.*)\\.txt$", "\\1", file)
+    indiv <- fread(paste0("Input_files/configs_txt/", file))
+    # creating matrix with 0 as default value (empty patches will be ignored automatically, but they need to appear in the matrix)
+    quanti_init_freq = matrix(0, ncol = 1, nrow = ncell(grid))
+    # assign patch value based on patch id in individuals file
+    indiv$quanti_code = ifelse(indiv$patch_value=="O",1,0)
+    indiv[is.na(indiv$quanti_code), "quanti_code"] <- 0
+    quanti_init_freq[ c(indiv$patchID), ] = indiv$quanti_code
+    # write quanti_init matrix to file (or whether you want to store them) and copy to the nemo folder 
+    write.matrix.nemo(quanti_init_freq, paste0("Input_files/quanti_init_freq/quanti_init_file_",sim_name,".txt"))
+
+}
+
+## creating the initial empty matrix for empty simulations: 
+sim_name <- "empty0"
+quanti_init_freq = matrix(0, ncol = 1, nrow = ncell(grid))
+write.matrix.nemo(quanti_init_freq, paste0("Input_files/quanti_init_freq/quanti_init_file_",sim_name,".txt"))
+
+```
+
+### patch_init_stage_size
+
+To set the introduction of individuals in a specific stage (seedlings of 2/3 years old instead of sawing) Matrix where each row = patch, each value = number of individuals in that stage.
+
+E.g. patch_init_stage_size {{0, 20, 0,0}} = 0 Stage 0 , 20 stage1, 0 stage 2, 0 stage 3.
+
+This depends on **how many** seedlings the forester/researcher would set and **at which age** for each configuration. This information is in the questionnaires_all.xlsx file (as the harvesting scheme). Most of the questionnaires suggest planting via direct seeding, or planting seedlings of 2/3 years old. Some questionnaires do not suggest any planting age - in this case we assume direct seeding.
+
+| Direct seeding | 1 yo seedlings | 2-3 yo seedlings | 10 yo seedlings |
+|----------------|----------------|------------------|-----------------|
+| empty3,7       | beech7         | empty1,4,5,6,8,9 | beech6          |
+| mixed6         |                | beech1,2,3,5,8   | mixed3          |
+|                |                | mixed1,2,5       |                 |
+
+: Suggested planted methods
+
+NB: this differs for the three sets of simulations
+
+1.  empty land scenario: planting both where patch = S (syl) and O (ori), because nothing is present.
+2.  beech and mixed scenario: planting only where patch = O (ori), because S is already present.
+
+NB: for the initial scenario (empty0, beech0, mixed0) there is no need for this
+
+```{r}
+#| label: patch_init_stage_size
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+library(data.table)
+library(terra)
+dir.create("Input_files/patch_init_stage_size")
+files <- list.files("Input_files/configs_txt")
+grid <-  vect("Input_files/Grid_4x4m_100x100m.shp")
+
+### for each configuration, set the number of planted seedlings and the stage from the table above
+planting_scheme <- list(
+  direct = c(50, 0, 0, 0),   # direct seeding 20-25 seeds
+  age14   = c(0, 20, 0, 0),  # planting 20-25 young seedlings per patch
+  age440  = c(0, 0, 1, 0),  # planting one juvenile tree between 4 and 40 yo
+  age40  = c(0, 0, 0, 1)   # planting of 1 adult per patch
+)
+
+## define which populations have which starting age
+# burnin simulations start with adults
+planting_method <- list(
+  direct = c("empty3","empty7","mixed6"),
+  age14  = c("empty1","empty4","empty5","empty6","empty8","empty9",
+             "beech1","beech2","beech3","beech5","beech7","beech8",
+             "mixed1","mixed2","mixed5"),
+  age440  = c("beech6","mixed3"), 
+  age40 = c("beech0", "mixed0")
+)
+
+# which patch types allow planting for each simulation
+planting_patches <- list(
+  empty  = c("S", "O"),
+  beech  = c("O"),
+  mixed  = c("O"),
+
+  # burn-in patches to be read
+  beech0 = c("S", "A"),
+  mixed0 = c("S", "A")
+)
+
+## helper function
+get_sim_set <- function(sim_name) {
+  if (grepl("^empty", sim_name)) return("empty")
+  if (grepl("^beech", sim_name)) return("beech")
+  if (grepl("^mixed", sim_name)) return("mixed")
+  stop("Unknown simulation set")
+}
+
+## function to get patches to plant
+get_plantable_patches <- function(sim_name) {
+  # exact match first (for beech0 / mixed0)
+  if (sim_name %in% names(planting_patches)) {
+    return(planting_patches[[sim_name]])
+  }
+
+  # otherwise fall back to sim set
+  sim_set <- get_sim_set(sim_name)
+  planting_patches[[sim_set]]
+}
+
+## assign planting mthod to sim name
+assign_planting <- function(sim_name) {
+  for (m in names(planting_method)) {
+    if (sim_name %in% planting_method[[m]]) {
+      return(planting_scheme[[m]])
+    }
+  }
+  return(planting_scheme$direct)
+}
+  
+make_patch_init_stage_size <- function(conf, sim_name) {
+
+  n_patches <- nrow(grid)
+  mat <- matrix(0, nrow = n_patches, ncol = 4)
+  colnames(mat) <- c("stage0","stage1","stage2","stage3")
+
+  scheme <- assign_planting(sim_name)
+  plantable_patches <- get_plantable_patches(sim_name)
+
+  for (i in seq_len(n_patches)) {
+    ptype <- conf$patch_value[i]
+
+    if (!is.na(ptype) && ptype %in% plantable_patches) {
+      mat[i, ] <- scheme
+    }
+  }
+
+  mat
+}
+
+## write in NEMO format
+write.matrix.nemo <- function(mat, outfile) {
+  rows <- dim(mat)[1]
+  cols <- dim(mat)[2]
+  cat("{", file = outfile)
+  
+  for(i in 1:rows) {
+    cat("{", file = outfile, append = TRUE)
+    cat(mat[i,], sep = ",", file = outfile, append = TRUE)
+    cat("}\n", file = outfile, append = TRUE)
+  }
+  
+  cat("}\n", file = outfile, append = TRUE)
+}
+
+
+for (conf_file in files) {
+
+  # derive simulation name correctly
+  sim_name <- tools::file_path_sans_ext(conf_file)
+
+  # read the configuration file
+  conf <- fread(file.path("Input_files/configs_txt", conf_file))
+
+  # build patch_init_stage_size from the *config*, not the grid
+  mat <- make_patch_init_stage_size(conf, sim_name)
+
+  # output file
+  out_file <- file.path(
+    "Input_files/patch_init_stage_size",
+    paste0("patch_init_stage_size_", sim_name, ".txt")
+  )
+
+  write.matrix.nemo(mat, out_file)
+}
+
+```
+
+### extinction_rate (mabye not possible)
+
+This script is to create aan an **extinction‐rate matrix** that:
+
+-   is **1** in patches labeled **`X`** (→ patch emptied at generation 1)
+
+-   is **0** everywhere else
+
+    is generated automatically from the config files.
+
+    The extinction rate is used at the end of the burnin simulation, to clear the patches where orientalis should be planted (according to the configurations defined on the questionnaires).
+
+```{r}
+#| label: extinction rate matrix
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+library(data.table)
+library(terra)
+
+dir.create("Input_files/patch_extinction_rate", showWarnings = FALSE)
+
+files <- list.files("Input_files/configs_txt")
+grid  <- vect("Input_files/Grid_4x4m_100x100m.shp")
+
+# function to write matrix in NEMO format 
+write.matrix.nemo <- function(mat, outfile) {
+  rows <- dim(mat)[1]
+  cols <- dim(mat)[2]
+  cat("{", file = outfile)
+  
+  for (i in seq_len(rows)) {
+    cat("{", file = outfile, append = TRUE)
+    cat(mat[i, ], sep = ",", file = outfile, append = TRUE)
+    cat("}\n", file = outfile, append = TRUE)
+  }
+  
+  cat("}\n", file = outfile, append = TRUE)
+}
+
+#### create extinction_rate matrices
+for (file in files) {
+
+  sim_name <- sub("\\.txt$", "", file)
+  indiv <- fread(file.path("Input_files/configs_txt", file))
+
+  # initialize extinction matrix (0 = no extinction)
+  patch_extinction_rate <- matrix(0, ncol = 1, nrow = ncell(grid))
+
+  # identify patches with BOTH X and O
+  patch_ext <- indiv[
+    ,
+    .(
+      extinction_rate = as.integer(
+        any(patch_value == "X") & any(patch_value == "O")
+      )
+    ),
+    by = patchID
+  ]
+
+  # fill extinction matrix
+  patch_extinction_rate[patch_ext$patchID, 1] <- patch_ext$extinction_rate
+
+  # write file
+  write.matrix.nemo(
+    patch_extinction_rate,
+    paste0(
+      "Input_files/patch_extinction_rate/patch_extinction_rate_",
+      sim_name, ".txt"
+    )
+  )
+}
+```
+
+### patch_nbfem (carrying capacity)
+
+The carrying capacity of each simulation can be specified using **patch_nbfem**, which is the maximum number of females that can occupy a patch, but it does not track whether females are currently present (if 0, it means no recruitment in that patch). In other words, it defines where trees can exist, not where they currently exist.
+
+1.  as a single number valid for all the patches: individuals grow homogeneously across the landscape
+
+patch_number 625
+
+patch_nbfem 80 100 300 (3 sequential parameters to test)
+
+patch_nbmal 0
+
+2.  as a nemo-matrix, with the carrying capacity value for each patch: individuals can grow heterogeneously across the landscape. Some patches can have carrying capacity = 0, for instance if they are occupied by other tree species.
+
+patch_number 625\
+patch_nbfem &patch_nbfem_80.txt &patch_nbfem_100.txt &patch_nbfem_300.txt (3 sequential parameters to test)
+
+patch_nbmal 0
+
+**NB: patch capacity can vary across time, if set as sequential parameter:**
+
+patch_capacity (\@g0 10, \@g50 100, \@g100 500)
+
+= capacity is 10 at generation 0, increases to 100 at generation 50 and to 500 at generation 100
+
+For the simulations sets *empty* and *beech*, the carrying capacity can be set as homogenous, as the whole grid is available for colonization.
+
+For the *mixed* configurations, a matrix *patch_nbfem* has to be created to set the carrying capacity = 0 where other species are present. We need only one matrix (mixed0) since we assume that the other species composition is the forest will not change over time. However, for the same configuration we can test different values of carrying capacity (the same tested in the previous sets of simulations).
+
+```{r}
+#| label: patch_nbfem
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+library(data.table)
+library(terra)
+dir.create("Input_files/patch_nbfem")
+
+files <- list.files("Input_files/configs_txt")
+grid <-  vect("Input_files/Grid_4x4m_100x100m.shp")
+
+# function to write matrix in NEMO format 
+write.matrix.nemo <- function(mat, outfile) {
+  rows <- dim(mat)[1]
+  cols <- dim(mat)[2]
+  cat("{", file = outfile)
+  
+  for(i in 1:rows) {
+    cat("{", file = outfile, append = TRUE)
+    cat(mat[i,], sep = ",", file = outfile, append = TRUE)
+    cat("}\n", file = outfile, append = TRUE)
+  }
+  
+  cat("}\n", file = outfile, append = TRUE)
+}
+
+### ONLY FOR ABIES MIXED FOREST: 
+# test different values
+values <- c(200,500,800)
+files_mixed <- files[grep("^mixed0", files)]
+
+for (file in files_mixed) {
+  for (value in values) {  
+    # importing simulated population with species information and patch ID (check the path)
+    sim_name <-  sub("^(.*)\\.txt$", "\\1", file)
+    indiv <- fread(paste0("Input_files/configs_txt/", file))
+    # creating matrix with 0 as default value (empty patches will be ignored automatically, but they need to appear in the matrix)
+    patch_nbfem = matrix(0, ncol = 1, nrow = ncell(grid))
+    # assign patch value based on patch id in individual files (0 only where abies, otherwise carrying capacity)
+    indiv$patch_nbfem = ifelse(indiv$patch_value=="A",0,value)
+    indiv[is.na(indiv$patch_nbfem), "patch_nbfem"] <- value
+    patch_nbfem[ c(indiv$patchID), ] = indiv$patch_nbfem
+    # write quanti_init matrix to file (or whether you want to store them) and copy to the nemo folder 
+    write.matrix.nemo(patch_nbfem, paste0("Input_files/patch_nbfem/patch_nbfem_",sim_name,"_", value, ".txt"))
+
+  }
+}
+
+```
+
+### dispersal (fixed param)
+
+Building Nemo-age seed and pollen dispersal matrices given different
+
+-   mean dispersal distance
+
+-   dispersal kernel shape
+
+-   exponential power function
+
+NB: connectivity / dispersal measure used is accounting also for survival (measure comes from seedlings which were able to germinate and being able to grow)
+
+```{r}
+#| label: dispersal input files
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+library(data.table)
+library(terra)
+library(ggplot2)
+dir.create("Input_files/disperse")
+
+# dispersal function (implement such that can be customized)
+exp_power_kernel <- function(d, b, x) {
+  #  scale parameter a
+  a <- d * exp(lgamma(2 / b) - lgamma(3 / b))
+  
+  #  kernel function K_jk
+  return(b * exp(-(x^b / a^b))  / (2* pi * a^2 * exp(lgamma(2/b))))
+}
+
+# function to build both reduced dispersal matrices and connectivity matrix
+# num_patch = number of patch of the simulation grid
+# distance_matrix = pairwise distance matrix between the patches
+# d = mean dispersal distance for the kernel
+# b = shape of the kernel
+# d_thresh = minimum dispersal rate under which dispersal rate is set to 0
+
+build.reduced.dispersal.matrices <- function(num_patch, distance_matrix,  d, b, d_thresh = threshold) {
+  stopifnot(dim(distance_matrix)[1] == num_patch)
+  
+  dispersal_matrix <- matrix(0, nrow = num_patch, ncol = num_patch)
+  rate_matrix <- matrix(0, nrow = num_patch, ncol = num_patch)
+  connectivity_matrix <- matrix(NA, nrow = num_patch, ncol = num_patch)
+  
+  for (i in 1:num_patch) {
+    for (j in 1:num_patch) {
+      # calculate dispersal probability from patch i to patch j
+      rate_matrix[i, j] <- exp_power_kernel(d, b, distance_matrix[i, j])
+    }
+  }
+  # define full disp matrix 
+  dispersal_matrix <- rate_matrix
+  
+  for (i in 1:num_patch) {
+    # Get indices of the patches sorted by dispersal probability in descending order
+    ord <- order(rate_matrix[i, ], decreasing = TRUE)
+    
+    # re-order the values in row i of reduced rate matrix, connectivity matrix
+    rate_matrix[i, ] <- rate_matrix[i, ord]
+    connectivity_matrix[i, ] <- ord
+
+    # remove elements below the threshold by setting them equal to NA 
+    to_remove <- which(rate_matrix[i, ] < d_thresh)
+    rate_matrix[i, to_remove] <- NA
+    connectivity_matrix[i, to_remove] <- NA
+    
+    # normalize dispersal rates to sum to 1 ---> DENSITY KERNEL
+    # =each row is a multinomial probability vector
+    # rate_matrix[i,j] = probability that one seed from patch i lands in patch j
+    sum_d <- sum(rate_matrix[i, ], na.rm = TRUE)
+    rate_matrix[i, !is.na(rate_matrix[i, ])] <- rate_matrix[i, !is.na(rate_matrix[i, ])] / sum_d
+  }
+  
+  return(list(dispersal_matrix = dispersal_matrix, connectivity_matrix = connectivity_matrix, rate_matrix = rate_matrix))
+}
+
+# function to write (general) matrix in NEMO format 
+write.matrix.nemo <- function(mat, outfile) {
+  rows <- dim(mat)[1]
+  cols <- dim(mat)[2]
+  cat("{", file = outfile)
+  
+  for (i in 1:rows) {
+    cat("{", file = outfile, append = TRUE)
+    cat(mat[i, ], sep = ",", file = outfile, append = TRUE)
+    cat("}\n", file = outfile, append = TRUE)
+  }
+  
+  cat("}\n", file = outfile, append = TRUE)
+}
+
+## original function for the dipersal matrix 
+# write a reduced dispersal matrix, removing elements flagged with NA
+# works for both the connectivity and dispersal rate matrices
+# mat        : the input matrix (connectivity or rate)
+# outfile    : name of the output text file
+# discard.NA : if NA values are discarded or not, if not, calls 'write.matrix.nemo'
+
+write.dispersal.matrix = function(mat, outfile, discard.NA=TRUE) {
+  
+  if(discard.NA) {
+    
+    cat("{",file=outfile)
+    
+    # write every row at once, removing NA elements
+    for(i in 1:dim(mat)[1]) {
+      cat("{",file=outfile, append=TRUE)
+      cat(mat[i,which(!is.na(mat[i,]))],sep=",", file=outfile, append=TRUE)
+      cat("}\n",file=outfile, append=TRUE)
+    }
+    cat("}\n",file=outfile, append=TRUE)
+    
+  } else {
+    write.matrix.nemo(mat, file)
+  }
+  
+}
+
+# modified function with connectivity matrix starting always with focal patch, and rate matrix starting with 1 when the row is empty
+# to ensure no empty rows
+write.red.dispersal.matrix <- function(connectivity_matrix, rate_matrix, conn_file, rate_file) {
+  # Write connectivity matrix
+  cat("{", file = conn_file)
+  for (i in 1:dim(connectivity_matrix)[1]) {
+    cat("{", file = conn_file, append = TRUE)
+    # Start with the focal patch number
+    cat(i, file = conn_file, append = TRUE)
+    if (!all(is.na(connectivity_matrix[i, ]))) {
+      cat(",", file = conn_file, append = TRUE)
+      # Write the non-NA elements of the row, excluding the focal patch number itself
+      non_na_elements <- connectivity_matrix[i, which(!is.na(connectivity_matrix[i, ]))]
+      non_na_elements <- non_na_elements[non_na_elements != i]
+      cat(non_na_elements, sep = ",", file = conn_file, append = TRUE)
+    }
+    cat("}\n", file = conn_file, append = TRUE)
+  }
+  cat("}\n", file = conn_file, append = TRUE)
+  
+  # Write rate matrix
+  cat("{", file = rate_file)
+  for (i in 1:dim(rate_matrix)[1]) {
+    cat("{", file = rate_file, append = TRUE)
+    if (all(is.na(rate_matrix[i, ]))) {
+      # If the entire row is NA, write 1
+      cat(1, file = rate_file, append = TRUE)
+    } else {
+      # Write only the non-NA elements of the row
+      cat(rate_matrix[i, which(!is.na(rate_matrix[i, ]))], sep = ",", file = rate_file, append = TRUE)
+    }
+    cat("}\n", file = rate_file, append = TRUE)
+  }
+  cat("}\n", file = rate_file, append = TRUE)
+}
+
+#### SEED DISPERSAL MATRIX ####
+# importing grid 
+grid <- vect("Input_files/Grid_4x4m_100x100m.shp")
+
+# build distance matrix between each patch (using centroid of the patch)
+centroids = centroids(grid)
+plot(centroids)
+patch_coords = crds(centroids)
+colnames(patch_coords) = c("X", "Y")
+patch_coords = as.data.frame(patch_coords)  
+patch_coords$patch_ID = grid$patch.ID # attach patch ID
+distance_matrix = as.matrix(distance(centroids))
+
+# define number of patches
+num_patch = ncell(grid)
+
+# ----- SEED dispersal parameters 
+
+## plot kernel 
+b <- c(0.5,0.5) # shape parameter from NMpi2 
+d <- c(20, 10)  # mean dispersal distance from NMpi2 and reduced dispersal 
+
+## check the curves
+x <- 1:100 
+results <- data.frame()
+for (i in 1:length(d)) {
+  d_i <- d[i]
+  b_i <- b[i]
+  y_values <- exp_power_kernel(d_i, b_i, x)
+  temp <- data.frame(x = x, K = y_values, 
+                     d = as.factor(d_i), 
+                     b = as.factor(b_i))
+  results <- rbind(results, temp)
+}
+
+ggplot(results, aes(x = x, y = K, group =d, color = d))+
+  geom_line(size = 1) +
+  labs(x = "Euclidean Distance",y = "Probability of dispersal")
+
+# final parameters
+# define threshold for rate going to 0 at tot meters from focal tree
+d_t <- 50
+d <- 10
+b <- 0.5
+threshold = exp_power_kernel(d,b, d_t) ## otherwise, just keep d
+threshold
+
+# building matrices and plot
+dispersal_matrices = build.reduced.dispersal.matrices(num_patch, distance_matrix, d, b, threshold)
+
+dispersal_matrix <- dispersal_matrices$dispersal_matrix
+connectivity_matrix <- dispersal_matrices$connectivity_matrix
+rate_matrix <- dispersal_matrices$rate_matrix
+
+## check dimensions
+dim(dispersal_matrix)
+dim(connectivity_matrix)
+dim(rate_matrix)
+
+# check that rate for each row sums to 1
+rowSums(rate_matrix, na.rm = TRUE)
+
+# plot dispresal of one random focal patch
+# grid dimensions 
+grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
+n_rows = dim(grid_r)[1]
+n_cols = dim(grid_r)[2]
+    
+## plot how many seeds fall in each patch if a tree is dispersing 1000 seeds
+mati=matrix(dispersal_matrix[,num_patch],ncol=n_cols,byrow= T)
+mati=mati/sum(mati) # normalization
+par(mar = c(4, 4, 4, 10))
+plot(mati)
+b=reshape2::melt(mati,id.vars="rows")
+b$value[b$value*1000<1]=NA ## set <1 seeds as NA
+ggplot(data=b,aes(x=Var1,y=Var2,fill=value*1000))+geom_raster()+scale_fill_gradientn(colours = terrain.colors(20),trans = "log")
+
+# write connectivity and rate matrix to files 
+# save d = mean dispersal distance of the kernel
+write.red.dispersal.matrix(connectivity_matrix, rate_matrix, 
+                           paste0("Input_files/disperse/Seed_connectivity_matrix_d", d, ".txt"), 
+                           paste0("Input_files/disperse/Seed_rate_matrix_d", d, ".txt"))
+
+# ----------POLLEN dispersal parameters (here we use Waldi dispersal parameters)
+b <- c(0.5,0.5,0.5) # shape parameter from NMpi2 
+d <- c(200, 400, 800)  # mean dispersal distance from NMpi2 and reduced dispersal 
+## check the curves
+x <- 1:1000 
+results <- data.frame()
+for (i in 1:length(d)) {
+  d_i <- d[i]
+  b_i <- b[i]
+  y_values <- exp_power_kernel(d_i, b_i, x)
+  temp <- data.frame(x = x, K = y_values, 
+                     d = as.factor(d_i), 
+                     b = as.factor(b_i))
+  results <- rbind(results, temp)
+}
+
+ggplot(results, aes(x = x, y = K, group =d, color = d))+
+  geom_line(size = 1) +
+  labs(x = "Euclidean Distance",y = "Probability of dispersal")
+
+
+# final parameters
+# define threshold for rate going to 0 at tot meters from focal tree
+d_t <- 1000
+d <- 800
+b <- 0.5
+threshold = exp_power_kernel(d,b, d_t) ## otherwise, just keep d
+threshold
+
+# building matrices and plot
+dispersal_matrices = build.reduced.dispersal.matrices(num_patch, distance_matrix, d, b, threshold)
+
+dispersal_matrix <- dispersal_matrices$dispersal_matrix
+connectivity_matrix <- dispersal_matrices$connectivity_matrix
+rate_matrix <- dispersal_matrices$rate_matrix
+
+## check dimensions
+dim(dispersal_matrix)
+dim(connectivity_matrix)
+dim(rate_matrix)
+
+# check that rate for each row sums to 1
+rowSums(rate_matrix, na.rm = TRUE)
+
+# plot dispresal of one random focal patch
+grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
+# grid dimensions 
+n_rows = dim(grid_r)[1]
+n_cols = dim(grid_r)[2]
+    
+## plot how many seeds fall in each patch if a tree is releasing 10000 pollens
+mati=matrix(dispersal_matrix[,num_patch],ncol=n_cols,byrow= T)
+mati=mati/sum(mati) # normalization
+par(mar = c(4, 4, 4, 10))
+plot(mati)
+b=reshape2::melt(mati,id.vars="rows")
+b$value[b$value*10000<1]=NA ## set <1 seeds as NA
+ggplot(data=b,aes(x=Var1,y=Var2,fill=value*10000))+geom_raster()+scale_fill_gradientn(colours = terrain.colors(20),trans = "log")
+
+
+# double check distance against dispersal
+distance_v <- distance_matrix[lower.tri(distance_matrix, diag = T)][order(row(distance_matrix)[lower.tri(row(distance_matrix), diag = T)])]
+dispersal_v <- dispersal_matrix[lower.tri(dispersal_matrix, diag = T)][order(row(dispersal_matrix)[lower.tri(row(dispersal_matrix), diag = T)])]
+plot(distance_v, dispersal_v)
+
+# write connectivity and rate matrix to files 
+# save d = mean dispersal distance of the kernel
+write.red.dispersal.matrix(connectivity_matrix, rate_matrix, 
+                           paste0("Input_files/disperse/Pollen_connectivity_matrix_d", d, ".txt"), 
+                           paste0("Input_files/disperse/Pollen_rate_matrix_d", d, ".txt"))
+```
+
+## Running Nemo on the cluster
+
+Example of a Cluster slurm file to run one Nemo simulation
+
+This should be changed to run in an array all the .ini simulations
+
+sim_name \<- a,b,c,d ....
+
+./nemoage ./sim_name_burnin.ini ./sim_name.ini
+
+1.  create simulations_list.txt:
+
+beech1 beech2 beech3 mixed1 mixed2 etc.
+
+2.  in the cluster, run the script (for beech and mixed simulations)
+
+```{bash}
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+#!/bin/bash
+
+#SBATCH --job-name=nemo_array
+#SBATCH --output=nemo_%A_%a.out
+#SBATCH --error=nemo_%A_%a.err
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=camilla.stefanini@wsl.ch
+
+#SBATCH --qos=normal
+#SBATCH --time=90:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem-per-cpu=16000
+
+#SBATCH --array=1-5%5    ## 1-(n simulations)%(max parallel jobs)
+
+export LD_LIBRARY_PATH=/home/stefanin/miniforge3/lib:$LD_LIBRARY_PATH
+source /home/stefanin/miniforge3/bin/activate nemo_environment
+
+NEMO="/home/stefanin/nemo/nemo_files/nemoage0.32.6b/nemoage"
+INI_DIR="/home/stefanin/nemo/ini_files"
+
+# get simulation name
+
+SIM_NAME=$(sed -n "${SLURM_ARRAY_TASK_ID}p" sim_list.txt)
+BURNIN_INI="${INI_DIR}/${SIM_NAME}_burnin.ini"
+RUN_INI="${INI_DIR}/${SIM_NAME}.ini"
+
+echo "Running simulation ${SIM_NAME}"
+echo "Burnin file ${BURNIN_INI}"
+echo "Run file ${RUN_INI}"
+
+# burn-in
+
+${NEMO} ${BURNIN_INI}
+if [ $? -ne 0 ]; then
+  echo "Burnin failed for ${SIM_NAME}"
+  exit 1
+fi
+
+# main simulation
+
+${NEMO} ${RUN_INI}
+if [ $? -ne 0 ]; then
+  echo "Simulation failed for ${SIM_NAME}"
+  exit 1
+fi
+
+echo "Finished with ${SIM_NAME}"
+
+```
+
+## Analyse results (sensitivity analysis)
+
+Main questions to answer:
+
+1.  which simulation configuration predicts more hybrids? which predict less hybrids? NB we will focus only on reproductive individuals (adults)
+2.  how are hybrids distributed across the landscape in the different simulations?
+3.  are these results consistent across different values of carrying capacity, competition coefficient and (selection)?
+
+For each simulation scenario we want to report:
+
+For each scenario:
+
+1.  **Hybrid proportions** at generation X
+
+2.  **Hybrid patterns across the grid/spatial extent of introgression**
+
+3.  **Hybrid class distribution**
+
+4.  **Hybridization trajectories through time (persistence of orientalis ancestry)**
+
+### Demographic patterns
+
+First checking the demographic trends across the years for the different parameter combinations.
+
+```{r}
+#| label: demographic results
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(raster)
+library(terra)
+library(data.table)
+library(viridis)
+library(readr)
+library(stringr)
+library(ggh4x)
+library(sf)
+library(xlsx)
+library(tidyverse)
+library(ggpubr)
+
+### NB FIRST REMOVE THE EXISTING RESULTS
+
+## move the files on Windows to analyse
+res_path  <- "//wsl.localhost/Ubuntu/home/camilla/nemoage0.32.6b_2/exe/results/"
+res_path2 <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Results/"
+dir.create(res_path2, recursive = TRUE, showWarnings = FALSE)
+file.copy(from = list.files(res_path, full.names = TRUE), to=res_path2, recursive = TRUE)
+
+####---------- demographic trend per simulation
+
+# files with demographic data
+file_pattern <- ".*_results\\.txt$" 
+file_list <- list.files(path = res_path2, recursive = TRUE, full.names = TRUE, include.dirs = TRUE, pattern = file_pattern)
+file_list
+
+# define which columns you want to read from the files
+cols_to_read = c("replicate", "generation", "pop.tot", "a0.tot", "a1.tot","a2.tot", "a3.tot")
+
+# read each file only the selected columns and label with name and create dataframe for plot 
+library(data.table)
+
+data_list <- vector("list", length(file_list))
+names(data_list) <- basename(file_list)
+
+for (i in seq_along(file_list)) {
+  file <- file_list[i]
+  data <- fread(file, select = cols_to_read)
+  
+  # extract file name
+  file_name <- gsub(".txt", "", basename(file))
+  # extract the type of simulation
+  sim_name <- sub("_.*$", "", file_name)
+  
+  k = as.numeric(sub(".*_k([0-9.]+).*", "\\1", file_name))
+  b = as.numeric(sub(".*_b([0-9.]+).*", "\\1", file_name))
+ 
+  data$sim_name <- sim_name
+  data$k <- k 
+  data$b <- b
+  
+  pop_data = melt(data, id.vars = c("replicate", "generation", "sim_name", "k", "b"), 
+                  measure.vars = patterns(".tot"), 
+                  variable.name = "stage", value.name = "N_stage")
+  
+ data_list[[i]] <- pop_data
+}
+
+# cobine all simulations
+combined_pop_data <- rbindlist(data_list, use.names = TRUE)
+
+# save
+saveRDS(combined_pop_data,file = file.path(res_path2, "Demographic_data_per_simulation.RDS"))
+rm(data_list, data, pop_data)
+
+##----- summarize data per patch
+# importing grid 
+grid <- vect("Input_files/Grid_4x4m_100x100m.shp")
+grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
+# grid dimensions 
+n_rows = dim(grid_r)[1]
+n_cols = dim(grid_r)[2]
+
+# Stages (NB: some old versions files a0 columns are instead called "off")
+stages <- c("a0", "a1", "a2", "a3")
+
+# get the patch data from the filelist
+data_list2 = list()
+
+for (i in seq_along(file_list)) {
+  file <- file_list[i]
+  
+  tryCatch({
+    data <- fread(file)
+    
+    # extract file name
+    file_name <- gsub(".txt", "", basename(file))
+    # extract the type of simulation
+    sim_name <- sub("_.*$", "", file_name)
+    
+    k = as.numeric(sub(".*_k([0-9.]+).*", "\\1", file_name))
+    b = as.numeric(sub(".*_b([0-9.]+).*", "\\1", file_name))
+
+    
+    #rename `off.` columns to `a0.`
+    colnames(data) <- gsub("^off\\.", "a0.", colnames(data))
+
+    data$sim_name <- sim_name
+    data$k <- k 
+    data$b <- b
+
+    # melt data for each stage 
+    stages_data_list <- lapply(stages, function(stage) {
+      # Process females
+      fem_data <- melt(data, 
+                       id.vars = c("replicate", "generation", "sim_name", "k", "b"), 
+                       measure.vars = grep(paste0("^", stage, "\\.fem\\.p\\d+$"), colnames(data), value = TRUE), 
+                       variable.name = "patch", 
+                       value.name = "N_ind")
+      
+      # patch number from column name
+      fem_data[, patch := as.numeric(gsub(paste0(stage, ".fem.p"), "", patch, fixed = TRUE))]
+      
+      # stage column
+      fem_data$stage <- stage
+      
+      # grid information
+      fem_data$n_rows <- n_rows
+      fem_data$n_cols <- n_cols
+      
+      return(fem_data)
+    })
+    
+    # combine stage data
+    file_data <- rbindlist(stages_data_list)
+    
+    # store the processed file with a unique identifier (avoid overwriting)
+    # extract file name
+    file_name <- gsub(".txt", "", basename(file))
+    data_list2[[paste0(file_name, "_", i)]] <- file_data
+    
+  }, error = function(e) {
+    # Catch and print any errors during file processing
+    cat("Error processing file:", file, "\n")
+    print(e)
+  })
+}
+
+# combine in 1 df
+combined_patch_data = do.call(rbind, data_list2)
+saveRDS(combined_patch_data,file = file.path(res_path2, "Demographic_data_per_patch.RDS"))
+rm(data, file_data, data_list2, stages_data_list)
+
+```
+
+```{r}
+#| label: demographic results plot2
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(raster)
+library(terra)
+library(data.table)
+library(viridis)
+library(readr)
+library(stringr)
+library(ggh4x)
+library(sf)
+library(xlsx)
+library(tidyverse)
+library(ggpubr)
+
+res_path2 <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Results/"
+# load df
+combined_pop_data <- readRDS(file.path(res_path2, "Demographic_data_per_simulation.RDS"))
+combined_patch_data <- readRDS(file.path(res_path2, "Demographic_data_per_patch.RDS"))
+
+# importing grid 
+grid <- vect("Input_files/Grid_4x4m_100x100m.shp")
+grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
+# grid dimensions 
+n_rows = dim(grid_r)[1]
+n_cols = dim(grid_r)[2]
+
+# add label for stage
+nemo_stage <- c("pop.tot" = "Total Population","a0.tot" = "Stage 0", "a1.tot" = "Stage 1", "a2.tot" = "Stage 2", "a3.tot" = "Stage 3")
+combined_pop_data$nemo_stage <- nemo_stage[combined_pop_data$stage]
+# check n replicates
+combined_pop_data %>%group_by(sim_name,generation,k,b, stage) %>% count()
+
+# ----- demographic trends average simulation
+ggplot(combined_pop_data, aes(x = generation, y = N_stage, group = interaction(nemo_stage, replicate), col = nemo_stage)) +
+      geom_line(linewidth = 0.2) +
+      facet_grid(k ~ sim_name+b, scales="free_y") +
+      labs( x = "Generations", y = "Number of individuals",
+        color = "Nemo Stage"
+      ) +
+      scale_y_continuous(labels = scales::comma) +
+      theme_bw()
+
+
+## -- demographic trends across the grid
+# add label for stage
+nemo_stage <- c("a0" = "Stage 0", "a1" = "Stage 1", "a2" = "Stage 2","a3" = "Stage 3")
+combined_patch_data$nemo_stage <- nemo_stage[combined_patch_data$stage]
+
+# subset only generations that are multiples of 20 and remove after 200 (population is stable)
+subset_data <- combined_patch_data[combined_patch_data$generation == 1 | combined_patch_data$generation %% 200 == 0, ]
+
+# mean number of individuals per patch across replicates
+mean_patch_data = subset_data %>%
+  group_by(nemo_stage, sim_name, generation, patch, n_rows, n_cols, k,b) %>%
+  summarize(mean_N_ind = mean(as.numeric(N_ind), na.rm = TRUE)) %>%
+  ungroup()
+
+##---> subset for the nemostage
+stage = "Stage 3"
+
+ggplot(subset(mean_patch_data, nemo_stage == stage), aes(x = (patch - 1) %% n_rows + 1,   y = n_cols - ((patch - 1) %/% n_cols + 1),  fill = mean_N_ind)) +
+  geom_tile() +
+  # scale_fill_viridis(trans = "log") +
+  scale_fill_gradientn(colors = c("grey","blue", "purple","red", "orange","gold", "yellow", "green"), limits = c(0, 20),
+                       breaks = seq(0, 20, by = 5)) +
+  facet_grid( k + b  ~  sim_name+ generation ) +
+  labs(title = stage,x = "", y = "", fill = "Number of individuals / patch") +
+  theme_void()+
+  theme(aspect.ratio = 1, legend.position = "bottom")
+```
+
+### quanti patterns (species identity)
+
+First check to the distribution of the quanti trait, i.e. the species identity. It is based on the quantitative trait P1, where
+
+1 = pure *orientalis*
+
+-1 = pure *sylvatica*
+
+0 = F1 hybrid
+
+intermediate = advanced generation hybrids
+
+**NB: check the variability between the replicates! Do not average.**
+
+```{r}
+#| label: processing quanti results
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+# the output is a unique file : Quanti_data_Allenwiller_year2020.RDS
+res_path2 <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Results/"
+# to select all the replicates
+file_pattern <- ".*_results_([0-9]+)_([0-9]+)\\.quanti$"
+# to select 30 replicates
+#file_pattern <- ".*_results_([0-9]{2,3})_((0[1-9])|(1[0-9])|(2[0-9])|(30))\\.quanti$"
+quanti_files <- list.files(path = res_path2, recursive = TRUE,full.names = TRUE,include.dirs = TRUE,pattern = file_pattern)
+
+quanti_list <- vector("list", length(quanti_files))
+
+for (i in seq_along(quanti_files)) {
+
+  file <- quanti_files[i]
+  data <- fread(file)
+
+  file_name <- sub("\\.quanti$", "", basename(file))
+
+  sim_name <- sub("_.*$", "", file_name)
+
+  k <- as.numeric(sub(".*_k([0-9.]+).*", "\\1", file_name))
+  b <- as.numeric(sub(".*_b([0-9.]+).*", "\\1", file_name))
+
+  generation <- as.numeric(str_extract(file_name, "(?<=results_)\\d+"))
+  replicate  <- as.numeric(sub("^.*_(\\d+)\\.quanti$", "\\1", basename(file)))
+
+  data[, `:=`(
+    sim_name  = sim_name,
+    k         = k,
+    b         = b,
+    generation = generation,
+    replicate  = replicate
+  )]
+
+  quanti_list[[i]] <- data
+}
+
+# Combine all files into one data.table ad save
+quanti_data_all <- rbindlist(quanti_list, fill = TRUE)
+saveRDS(quanti_data_all,file = file.path(res_path2, "Quanti_data.RDS")
+)
+rm(quanti_files, quanti_list)
+
+```
+
+First look at the patterns across the landscape: there are quite some variables:
+
+k = carrying capacity of each patch,
+
+b = competition coefficient,
+
+type of simulation and replicate simulation
+
+stage (stage 1, 2 or 3),
+
+and everything is plot across multiple generations (from 0 to 1000, every 100 generations).
+
+**Question: are the patterns different for different values of k and b? If yes —\> choose one. If no —-\> how is changing the pattern?**
+
+**Question: ? how to summarize results across simulations?**
+
+### Hybrid distribution
+
+```{r}
+#| label: plot P1 across landscape
+
+quanti_data_all <- readRDS(file.path(res_path2, "Quanti_data.RDS"))
+
+## summarise data per patch = each patch has the average P1 value
+quanti_patch <- quanti_data_all %>%
+  group_by(sim_name, replicate, generation,stage,pop, k,b) %>%
+  summarize(P1 = mean(P1, na.rm = T), .groups = "drop")
+
+### SUBSET FOR STAGE REPLICATE OR OTHER PARAM TO VISUALISE BETTER
+
+## plot the average P1 for one stage and one replicate
+  ggplot(subset(quanti_patch,stage ==2& replicate ==1),
+         aes(x = (pop - 1) %% n_rows + 1, 
+             y = n_cols - ((pop - 1) %/% n_cols + 1), 
+             fill = as.numeric(P1))) +
+    geom_raster() +
+    scale_fill_viridis_c(option = "viridis", direction = -1) +
+    facet_grid(sim_name+ k +b ~ generation) + 
+    labs(x = "", y = "", fill = "Quantitative trait") +
+    theme_void() +
+    theme(
+      aspect.ratio = 1,
+      legend.position = "bottom",
+      panel.spacing.x = unit(1, "lines"),
+      panel.spacing.y = unit(0.1, "lines"),
+      strip.text = element_text(size = 10))
+
+
+```
+
+Plotting the trend of average P1 for the whole landscape, for each simulation, and stage, across the generations:
+
+*each line is a replicate*
+
+```{r}
+#| label: plot P1 across time
+
+quanti_data_all <- readRDS(file.path(res_path2, "Quanti_data.RDS"))
+
+## summarise data per patch = each patch has the average P1 value
+quanti_average <- quanti_data_all %>%
+  group_by(sim_name, replicate, generation,stage, k,b) %>%
+  summarize(P1 = mean(P1, na.rm = T), .groups = "drop")
+
+ggplot(quanti_average,
+         aes(x = as.numeric(generation), y = as.numeric(P1),group = interaction(replicate, factor(stage)),  color = factor(stage))) +
+    geom_line() +
+    #scale_fill_viridis_c(option = "viridis", direction = -1) +
+    facet_grid(sim_name+b~ k) + 
+    labs(x = "Generations", y = "Average P1") +
+  theme_bw()+
+    theme(
+      aspect.ratio = 1,
+      legend.position = "right",
+      panel.spacing.x = unit(1, "lines"),
+      panel.spacing.y = unit(0.1, "lines"),
+      strip.text = element_text(size = 10))
+```
+
+it looks like that
+
+-   for higher k (carrying capacity) and higher b (competition coefficient), the simulations point more toward 0.5 or -0.5 (more BC sylvatica, or more BC orientalis, or pure individuals);
+
+-   for lower k and lower b, simulations are more stable to 0 (F1 hybrids?)
+
+### Hybrid proportions
+
+To quantify the results, for each simulation and age class (stage) we calculate the hybrid proportions at generation X (100? 200?)
+
+```{r}
+#| label: hybrid rate
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+# caluclate the proportion of hybrids for each simulation 
+library(data.table)
+
+dt <- copy(quanti_data_all)
+generation <- 400
+
+hyb_prop_1000 <- dt[generation == generation,
+  .(
+    N = .N,
+    N_hybrid = sum(P1 > -1 & P1 < 1),
+    prop_hybrid = mean(P1 > -1 & P1 < 1)
+  ),
+  by = .(sim_name, replicate, stage, k, b) ## also parameteres
+]
+
+
+## boxplots for each simulation with x = stage, y = prop, color = hybrid class
+ggplot(hyb_prop_1000, aes(x = stage, y = prop_hybrid, group = factor(stage), fill = factor(stage)))+geom_boxplot()+  facet_grid(sim_name+b~ k) 
+
+## potentially calcualting a hybrid index which incorporates the P1 value (1 - P1 = how much the hybrid is towards the parental or towards the F1)
+
+hyb_index <- dt[generation == generation,
+  .(
+    hybrid_index = mean(P1 > -1 & P1 < 1) *
+                   mean(1 - abs(P1))
+  ),
+  by = .(sim_name, replicate, stage, k, b)
+]
+ 
+
+ggplot(hyb_index, aes(x = stage, y = hybrid_index, group = factor(stage), fill = factor(stage)))+geom_boxplot()+  facet_grid(sim_name+b~ k)
+
+```
+
+### Hybrid class
+
+Then we try a simple classification of the hybrids:
+
+-   parental species (P1 = -1 or P1 = +1) = 0
+
+-   F1 (P1 = 0) = 1
+
+    to try to distinguish between F1 and advanced generation hybrids
+
+ggplot(hyb_classes_1000, aes(x = factor(stage), y = prop, group = interaction(hybrid_class, factor(stage)), fill = factor(hybrid_class)))+geom_boxplot()+ facet_grid(sim_name+b\~ k)
+
+```{r}
+#| label: hybrid type
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+## hybrid classes
+dt[, hybrid_class := fcase(
+  abs(P1) == 1,                "parental", # both -1 and +1
+  abs(P1) <= 0.2,              "F1", # between 0 and + - 0.2
+  abs(P1) <= 0.8,              "F2 or BC", # 0.6-0.2
+  default = "introgressed"
+)]
+
+## summarize 
+hyb_classes_1000 <- dt[generation == generation,
+  .N,
+  by = .(sim_name, replicate, stage, k, b, hybrid_class)
+][
+  , prop := N / sum(N),
+  by = .(sim_name, replicate, stage, k, b)
+]
+
+## plot for each stage the proportion of classes
+ggplot(hyb_classes_1000, aes(x = factor(stage), y = prop, group = interaction(hybrid_class, factor(stage)), color = factor(hybrid_class), fill = factor(hybrid_class)))+geom_boxplot()+ facet_grid(sim_name+b~ k) 
+
+```
+
+### Hybridization through time
+
+Plotting the average hybridization rate (P1 value) across time for each stage
+
+```{r}
+#| label: hybrid time
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+
+hyb_time <- dt[
+  , .(
+    prop_hybrid = mean(P1 > -1 & P1 < 1)
+  ),
+  by = .
+  
+  (sim_name, replicate, generation, stage, k, b)
+]
+
+ggplot(hyb_time, aes(x = generation, y = prop_hybrid, group = interaction(replicate, factor(stage)), color = factor(stage)))+geom_line()+ facet_grid(sim_name+b~ k) 
+
+```
