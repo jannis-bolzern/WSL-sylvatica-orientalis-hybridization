@@ -1,0 +1,117 @@
+## Camilla Stefanini ##
+
+-----------------------------------------
+ Steps to install nemoage in Windows
+-----------------------------------------
+1) install Cigwin 
+2) verify this by running 
+
+	cygcheck -c libgsl-devel 
+
+in the Cygwin terminal. If it’s not installed, rerun the Cygwin setup and select the libgsl-devel package
+
+NB: During the Cygwin setup, make sure to select the following packages:
+gcc-core
+gcc-g++
+libgsl-devel
+make
+You can select these packages during the setup by searching for them in the package selection screen.
+
+3) Extract the nemoage0.32.2.tgz file within Cygwin by running 
+
+	tar -xvzf /path/to/nemoage0.32.2.tgz
+
+4) change to the extracted directory
+
+	cd nemoage0.32.2
+
+5) check the Makefile for any configuration changes
+
+	nano Makefile
+
+--------------------------------------------
+ Steps to install nemoage in Ubuntu
+--------------------------------------------
+Download Ubuntu on you windows pc:
+
+1) open settings -> update & security. 
+2) From the side panel on the left select "For developers"
+3) enable Developer mode. You can now close the settings.
+4) Open control panel -> programs and features
+5) From the side panel click on "Turn Windows features on or off"
+6) Scroll to the bottom and tick "Windows Subsystem for Linux"
+7) When prompted restart your computer.
+8) After restarting open Microsoft store, this can be found from the search bar at the bottom right of your screen.
+9) Search for Ubuntu and download the first one.
+10) Launch Ubuntu and create a Ubuntu user.
+11) Now run the following commands (do not include the $) 
+
+list of commands:
+$ sudo apt-get update
+$ sudo apt install build-essential  
+$ mkdir bin
+$ sudo apt-get install libgsl-dev
+
+12) Close Ubuntu
+13) Go back to windows and download the version of Nemo you want to run. 
+14) In you Ubuntu home folder (Ubuntu/home/<username>, at the bottom of your file explorer sidebar under Linux) create a folder called nemoage0.32.X and place the downloaded archive there
+15) Open ubuntu again as administrator and run the following commands. Again do not include the $ in your commands
+
+$ cd ~/nemoage0.32.x
+$ mkdir -p obj/src
+$ tar -xvzf nemoage0.32.x.tgz
+$ make
+
+16) open the Makefile and change the BIN_INSTALL directory with the path where you want to run the program, like  
+BIN_INSTALL = /home/camilla/nemoage0.32.4/ or /home/camilla/nemoage0.32.4/exe/
+and run 
+
+$ make install
+
+this will copy the program to the folder where you want to run it
+
+16) place in that folder all the files to run nemo 
+17) run nemo taping 
+
+$ ./nemoage0.32.2 file_script.ini
+
+
+--------------------------------------------
+ Steps to recompile nemoage to upgraded version (to check)
+--------------------------------------------
+
+1) make the new folder for the new version 
+
+$ mkdir ~/nemoage0.32.x
+
+2) put the new nemo folder in the new directory 
+
+$ cd ~/nemoage0.32.new (new version)
+$ cp -r /path/to/new/nemoage0.32.x-src.tgz ~/nemoage0.32.x/
+
+3) uncompress the scr folder
+
+$ tar xvf nemoage0.32.x-src.tgz
+
+4) copy all the additional files in from the previous version (getVersion.sh, Makefile and bin folder with Nemo exe file)
+
+$ cp ~/nemoage0.32.old/* ~/nemoage0.32.new/
+$ cp -r ~/nemoage0.32.old/bin ~/nemoage0.32.new/
+
+5) update the BIN_INSTALL path: open the Makefile in the directory, make sure that BIN_INSTALL is something like /home/camilla/nemoage0.32.5/
+
+$ nano ~/nemoage0.32.5/Makefile
+
+6) recompile the new version after clearing existing compiled files to avoid conflicts
+
+$ mkdir -p obj/src
+$ make
+
+5) install the updated version (check the Name …)
+
+$ make install
+
+6) change the permissions if needed 
+
+$ ls -l ~/nemoage0.32.5/exe
+$ chmod +x ~/nemoage0.32.5/exe/nemoage0.32.5
