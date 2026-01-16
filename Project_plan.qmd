@@ -30,9 +30,9 @@ Main Steps:
 
 1.  Find common patterns in the simulation scenarios and cluster the designs: translate each questionnaires into a small set of quantitative descriptors, for instance:
 
-    1.  \% orientalis
+    1.  \% orientalis (choose three values from the questionnaires)
 
-    2.  number of clusters
+    2.  number of clusters (choose one or 2 values from the questionnaires)
 
     3.  cluster size
 
@@ -40,15 +40,8 @@ Main Steps:
 
     5.  ....
 
-2.  Perform a Sensitivity analysis on the influence of the following parameters on the simulation, using one simulation per set (empty / beech / mixed) and few replicates (5) and few generations (like 50 or 100) to speed up:
+2.  Demographic and biological data from literature
 
-    -   carrying capacity
-    -   competition coefficient
-    -   selection ?
-
-    If there is no or negligible difference in the hybridization patterns, just choose one value.
-
-3.  Perform all the simulations with the chosen values.
 
 Pipeline for each step:
 
@@ -72,7 +65,7 @@ The simulation should be defined at patch-level. In general: *patch_nbfem* = 1 f
 
 ## Simulation sets
 
-### 1. Starting from empty land
+### 1. Starting from empty land (NB: MAYBE NOT RELEVANT)
 
 **Goal**\
 Introduce *Fagus sylvatica* and *Fagus orientalis* seedlings into empty habitat in a single-step simulation.
@@ -123,17 +116,13 @@ Create a mature *F. sylvatica* forest and clear selected patches for later *F. o
 
     -   `quanti_init_freq = 0` everywhere
 
--   **Patch availability**
+-   **Patch availability and cutting**
 
 ```         
--   `patch_nbfem` homogeneous\
-        → seedlings can grow everywhere
+-   `patch_nbfem`  (@g0 200, @g50  &patch_nbfem_cutting_sim_name_repX.txt)
+        → seedlings can grow everywhere, but at the last generation of the simulation, the patches of the cutting are cleared  → **each replicate has to be linked to the right ini file** ???
+
 ```
-
--   **Harvesting / clearing**
-
-    -   `extinction_rate {{0, 0, 0, 1 ...}}`\
-        → value = 1 in patches that are cut or reserved for *Orientalis*
 
 -   **Output**
 
@@ -153,9 +142,10 @@ Introduce *F. orientalis* into selected patches and simulate replacement dynamic
 
 2.  **Plant *F. orientalis***
 
-    -   `patch_init_stage_size {{0, X, 0, 1}}`
+    -   `patch_init_stage_size {{0, X, 0, 1}}` \
+        → planting patternlinked to the final patch_nbfem of the burnin for the cutting scheme
     -   `quanti_init_freq = 1` in planted patches\
-        → planting pattern as defined in `config.txt`
+        → planting pattern as defined in external matrices
 
 3.  **Patch availability**
 
@@ -173,7 +163,7 @@ Introduce *F. orientalis* into selected patches and simulate replacement dynamic
 
 ------------------------------------------------------------------------
 
-### 3. Starting from mature European beech forest (40 years)
+### 3. Starting from mixed mature forest (40 years) (NB: MAYBE WE DO NOT SIMULATE)
 
 Same structure as Scenario 2, but with a mixed-species background forest.
 
@@ -243,19 +233,6 @@ Introduce *F. orientalis* into selected patches within a mixed-stand background 
         → remove approximately 20% of adults\
         → exact value depends on the scenario
 
-------------------------------------------------------------------------
-
-### Simulation workflow
-
-1.  sensitivity analysis:
-
--   carrying capacity
--   competition coefficient
--   selection? fitness parameters?
-
-2.  Full simulations:
-
--   one value per parameter if possible
 
 ------------------------------------------------------------------------
 
@@ -297,9 +274,7 @@ Testing parameters:
 
 1.  number of trees of relative species –\> *quanti_init_freq*
 2.  position of trees of relative species –\> *quanti_init_freq*
-3.  carrying capacity? –-\> *patch_nbfem*
-4.  competition coefficient —\> three b parameters?
-5.  fitness reduction / selection (DMI trait) —\> three DMI parameters?
+5.  fitness reduction / selection against orientalis/sylvatica/hybrids? (environmental effect?)
 
 ### Spatial architecture (simulation grid)
 
@@ -1756,3 +1731,4 @@ hyb_time <- dt[
 ggplot(hyb_time, aes(x = generation, y = prop_hybrid, group = interaction(replicate, factor(stage)), color = factor(stage)))+geom_line()+ facet_grid(sim_name+b~ k) 
 
 ```
+
