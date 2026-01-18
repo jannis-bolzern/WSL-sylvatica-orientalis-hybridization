@@ -238,9 +238,9 @@ Introduce *F. orientalis* into selected patches within a mixed-stand background 
 
 ## Create input files
 
-Fixed parameters:
+Fixed (species-specific) parameters: Trasobares et al., 2016; Maringer et al., 2021; Wilkens et al., 2021
 
-1.  population structure, age of reproduction and stage survival (from COMPADRE):
+1.  population structure and age of reproduction (40) as average value found in the literature (between 30 and 50), or 50 as found in https://www.cabidigitallibrary.org/doi/full/10.5555/19531101078 
 
     pop_age_structure {{0,1,4,40}}
 
@@ -253,19 +253,31 @@ Fixed parameters:
     Stage 3: adults\
     pop_transition_by_age —-\> transition happens at max age for each stage (useful when juveniles require decades before transitioning to a reproductive stage
 
+2. stage survival from COMPADRE matrix, fecundity value (1000) and S1 (survival of Stage1) were previously tested in Stefaninin et al., in prep (previous paper)
+
     pop_transition_matrix {{0, 0, 0, 1000}\
     {0.3, 0, 0, 0}\
     {0, 0.7, 0, 0}\
     {0, 0, 1, 0.97}}
 
-    Survival from COMPADRE + cit. previous paper, with adults producing 1000 seedlings per generation.
 
 2.  patch number and grid: 25 x 25 grid, each patch is 16\^2 m.
 
-3.  carrying capacity –-\> *patch_nbfem* (max number of adult females per patch, can encode planting, thinning, harvesting or unsuitable habitat)
+3.  patch carrying capacity (patch_nbfem) = from literature: 
+    - 50 in Waldi (Stefanini et al., in review), 
+    - 800 in Allenwiller (Stefanini et al., in review),  
+    - roughly 16-48 in favorable conditions in Dobrovolný et al., 2010 (https://jfs.agriculturejournals.cz/pdfs/jfs/2010/12/04.pdf?utm_source=chatgpt.com)
+    - max found 8750/ha (but very variable depending on the conditions) in Axer 2021 (https://link.springer.com/article/10.1007/s10342-021-01377-w?utm_source=chatgpt.com)
+    - more than 10000/ha in one study in Poland (10.3161/15052249PJE2015.63.2.009)
+
+  ---> 8-16 seedlings = moderate regeneration scenario, 50 seedlings = high regeneration scenario
 
 4.  seed and pollen dispersal matrix (average from literature) —\>*seed_disperse_connectivity_matrix etc*
-
+    -  check dispersal gradient in https://iforest.sisef.org/contents/?id=ifor1581-008&utm_source=chatgpt.com
+    - 20 m radius for the seed falling according to Wagner 1999 - Wagner S (1999) The initial phase of natural regeneration in mixed ash-beech stands—ecological aspects. Sauerländer;
+    and  Kutter and Gratzer 2006 (Kutter M, Gratzer G (2006) New methods for estimating seed dispersal distances of forest trees on the example of the spread of Picea abies, Abies alba and Fagus sylvatica. Centralblatt für das gesamte Forstwesen 123:103–120); 
+    and Millerón et al. 2013 (https://doi.org/10.1111/mec.12200 )
+    
 5.  selfing (from literature) —\> *mating_system 4, mating_proportion*
 
 6.  competition model and competition coefficient??? —-\> b
