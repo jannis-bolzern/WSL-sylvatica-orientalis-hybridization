@@ -238,7 +238,7 @@ Introduce *F. orientalis* into selected patches within a mixed-stand background 
 
 ## Create input files
 
-Fixed (species-specific) parameters: Trasobares et al., 2016; Maringer et al., 2021; Wilkens et al., 2021
+Fixed (species-specific) parameters: 
 
 1.  population structure and age of reproduction (40) as average value found in the literature (between 30 and 50), or 50 as found in https://www.cabidigitallibrary.org/doi/full/10.5555/19531101078 
 
@@ -253,7 +253,7 @@ Fixed (species-specific) parameters: Trasobares et al., 2016; Maringer et al., 2
     Stage 3: adults\
     pop_transition_by_age —-\> transition happens at max age for each stage (useful when juveniles require decades before transitioning to a reproductive stage
 
-2. stage survival from COMPADRE matrix, fecundity value (1000) and S1 (survival of Stage1) were previously tested in Stefaninin et al., in prep (previous paper)
+2. stage survival from COMPADRE matrix, fecundity value (1000) and S1 (survival of Stage1) were previously tested in Stefaninin et al., in prep (previous paper). S3 (adult survival also tested but didn't give differences in the output).
 
     pop_transition_matrix {{0, 0, 0, 1000}\
     {0.3, 0, 0, 0}\
@@ -266,21 +266,34 @@ Fixed (species-specific) parameters: Trasobares et al., 2016; Maringer et al., 2
 3.  patch carrying capacity (patch_nbfem) = from literature: 
     - 50 in Waldi (Stefanini et al., in review), 
     - 800 in Allenwiller (Stefanini et al., in review),  
-    - roughly 16-48 in favorable conditions in Dobrovolný et al., 2010 (https://jfs.agriculturejournals.cz/pdfs/jfs/2010/12/04.pdf?utm_source=chatgpt.com)
-    - max found 8750/ha (but very variable depending on the conditions) in Axer 2021 (https://link.springer.com/article/10.1007/s10342-021-01377-w?utm_source=chatgpt.com)
+    - roughly 16-48 in favorable conditions in Dobrovolný et al., 2010 (https://jfs.agriculturejournals.cz/pdfs/jfs/2010/12/04.pdf)
+    - max found 8750/ha (but very variable depending on the conditions) in Axer 2021 (https://link.springer.com/article/10.1007/s10342-021-01377-w)
     - more than 10000/ha in one study in Poland (10.3161/15052249PJE2015.63.2.009)
 
   ---> 8-16 seedlings = moderate regeneration scenario, 50 seedlings = high regeneration scenario
 
-4.  seed and pollen dispersal matrix (average from literature) —\>*seed_disperse_connectivity_matrix etc*
-    -  check dispersal gradient in https://iforest.sisef.org/contents/?id=ifor1581-008&utm_source=chatgpt.com
-    - 20 m radius for the seed falling according to Wagner 1999 - Wagner S (1999) The initial phase of natural regeneration in mixed ash-beech stands—ecological aspects. Sauerländer;
-    and  Kutter and Gratzer 2006 (Kutter M, Gratzer G (2006) New methods for estimating seed dispersal distances of forest trees on the example of the spread of Picea abies, Abies alba and Fagus sylvatica. Centralblatt für das gesamte Forstwesen 123:103–120); 
-    and Millerón et al. 2013 (https://doi.org/10.1111/mec.12200 )
-    
-5.  selfing (from literature) —\> *mating_system 4, mating_proportion*
+4.  seed dispersal distance and shape parameter: 
+    -  29m and 0.5 shape in Waldi (too large in Allenwiller)
+    -  7m and 1.2 in Westergren 2023
+    -  10m in Oddou-Muratorio 2010
+    -  up to 20-25 m the max amount, max at 1-5 m (+ refs in Dobrovolny 2016 https://iforest.sisef.org/contents/?id=ifor1581-008)
+    - 20 m radius for the seed falling according to Wagner 1999 (Wagner S (1999) The initial phase of natural regeneration in mixed ash-beech stands—ecological aspects. Sauerländer)
+    -  6m highest in Kutter M, Gratzer G (2006) https://www.researchgate.net/publication/286327613_Current_methods_for_estimation_of_seed_dispersal_of_trees_-_An_example_of_seed_dispersal_of_Picea_abies_Abies_alba_and_Fagus_sylvatica); 
+    -  13-20m in Millerón et al. 2013 (https://doi.org/10.1111/mec.12200 ) --> other references in dicussion
 
-6.  competition model and competition coefficient??? —-\> b
+5.  pollen dispersal distance and pollen shape paraneter:
+    -  800-1000m and 0.17 in Westergren 2023
+    -  41.63m in Oddou-Muratorio 2010
+    -  110m and 0.85 in Waldi (previous paper - not converging in Allenwiller)
+
+5.  selfing ( *mating_system 4, + mating_proportion* ): 
+    -  0.0073 in Allenwiller
+    -  0.0032 in Wäldi
+    -  0.00036 in Westergren 2023
+
+6.  competition model and competition coefficient (regulation_by_competition)
+    -  0.005 in Allenwiller
+    -  0.01 in Wäldi
 
 Testing parameters:
 
@@ -1743,4 +1756,5 @@ hyb_time <- dt[
 ggplot(hyb_time, aes(x = generation, y = prop_hybrid, group = interaction(replicate, factor(stage)), color = factor(stage)))+geom_line()+ facet_grid(sim_name+b~ k) 
 
 ```
+
 
