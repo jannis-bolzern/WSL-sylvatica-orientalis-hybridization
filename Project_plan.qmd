@@ -239,6 +239,7 @@ Introduce *F. orientalis* into selected patches within a mixed-stand background 
 ## Create input files
 
 Fixed (species-specific) parameters: 
+(but potentially add in the Supp. a little sensitivity analysis on carryinc capacity and competition coeff. to check the robustness of the results)
 
 1.  population structure and age of reproduction (40) as average value found in the literature (between 30 and 50), or 50 as found in https://www.cabidigitallibrary.org/doi/full/10.5555/19531101078 
 
@@ -261,37 +262,37 @@ Fixed (species-specific) parameters:
     {0, 0, 1, 0.97}}
 
 
-2.  patch number and grid: 25 x 25 grid, each patch is 16\^2 m.
+2.  (patch number and grid: 25 x 25 grid, each patch is 16\^2 m = 100m x 100m = 1 ha)
 
-3.  patch carrying capacity (patch_nbfem) = from literature: 
+3.  patch carrying capacity (patch_nbfem) fixed at 50 (?), from literature: 
     - 50 in Waldi (Stefanini et al., in review), 
     - 800 in Allenwiller (Stefanini et al., in review),  
     - roughly 16-48 in favorable conditions in Dobrovolný et al., 2010 (https://jfs.agriculturejournals.cz/pdfs/jfs/2010/12/04.pdf)
-    - max found 8750/ha (but very variable depending on the conditions) in Axer 2021 (https://link.springer.com/article/10.1007/s10342-021-01377-w)
-    - more than 10000/ha in one study in Poland (10.3161/15052249PJE2015.63.2.009)
+    - max found 8750/ha (14/patch) (but very variable depending on the conditions) in Axer 2021 (https://link.springer.com/article/10.1007/s10342-021-01377-w)
+    - more than 10000/ha (16/patch) in one study in Poland (10.3161/15052249PJE2015.63.2.009)
 
   ---> 8-16 seedlings = moderate regeneration scenario, 50 seedlings = high regeneration scenario
 
-4.  seed dispersal distance and shape parameter: 
+4.  seed dispersal distance and shape parameter fixed at 10 or 15 m, and ~1 (shape)
     -  29m and 0.5 shape in Waldi (too large in Allenwiller)
     -  7m and 1.2 in Westergren 2023
     -  10m in Oddou-Muratorio 2010
     -  up to 20-25 m the max amount, max at 1-5 m (+ refs in Dobrovolny 2016 https://iforest.sisef.org/contents/?id=ifor1581-008)
-    - 20 m radius for the seed falling according to Wagner 1999 (Wagner S (1999) The initial phase of natural regeneration in mixed ash-beech stands—ecological aspects. Sauerländer)
+    - 20 m radius for the seed falling according to (Wagner S (1999) The initial phase of natural regeneration in mixed ash-beech stands—ecological aspects. Sauerländer)
     -  6m highest in Kutter M, Gratzer G (2006) https://www.researchgate.net/publication/286327613_Current_methods_for_estimation_of_seed_dispersal_of_trees_-_An_example_of_seed_dispersal_of_Picea_abies_Abies_alba_and_Fagus_sylvatica); 
     -  13-20m in Millerón et al. 2013 (https://doi.org/10.1111/mec.12200 ) --> other references in dicussion
 
-5.  pollen dispersal distance and pollen shape paraneter:
+5.  pollen dispersal distance and pollen shape parameter: 40/50? (need to create spatial structure)
     -  800-1000m and 0.17 in Westergren 2023
     -  41.63m in Oddou-Muratorio 2010
     -  110m and 0.85 in Waldi (previous paper - not converging in Allenwiller)
 
-5.  selfing ( *mating_system 4, + mating_proportion* ): 
+5.  selfing ( *mating_system 4, + mating_proportion* ): 0.003 from literature
     -  0.0073 in Allenwiller
     -  0.0032 in Wäldi
     -  0.00036 in Westergren 2023
 
-6.  competition model and competition coefficient (regulation_by_competition)
+6.  competition model and competition coefficient (regulation_by_competition): 0.005 or 0.01
     -  0.005 in Allenwiller
     -  0.01 in Wäldi
 
@@ -1090,8 +1091,8 @@ write.red.dispersal.matrix(connectivity_matrix, rate_matrix,
                            paste0("Input_files/disperse/Seed_rate_matrix_d", d, ".txt"))
 
 # ----------POLLEN dispersal parameters (here we use Waldi dispersal parameters)
-b <- c(0.5,0.5,0.5) # shape parameter from NMpi2 
-d <- c(200, 400, 800)  # mean dispersal distance from NMpi2 and reduced dispersal 
+b <- c(0.5,0.5,0.5) # kernel shape
+d <- c(200, 400, 800)  # mean dispersal distance
 ## check the curves
 x <- 1:1000 
 results <- data.frame()
@@ -1756,5 +1757,6 @@ hyb_time <- dt[
 ggplot(hyb_time, aes(x = generation, y = prop_hybrid, group = interaction(replicate, factor(stage)), color = factor(stage)))+geom_line()+ facet_grid(sim_name+b~ k) 
 
 ```
+
 
 
