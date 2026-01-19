@@ -24,32 +24,25 @@ Which planting scheme is giving more hybrids, and how this is influenced by the 
 
 ## Pipeline
 
-The starting configurations are collected in an excel file, inside the questionnaires folder (questionnaires_all-xlsx contains all the information, including the participants names and comments, while configurations_sheet.xlsx is just the collection of all the configurations - one sheet per configuration, and is used for processing).
+1.  Find common patterns in the simulation scenarios and cluster the designs: translate each questionnaires into a small set of quantitative descriptors, for instance \% orientalis (choose three values from the questionnaires), number of clusters (choose one or 2 values from the questionnaires), cluster size, level of aggregation, etc...
 
-Main Steps:
+2.  Fix demographic and biological data based on literature ---> (add a quick sensitivity analysis for the supplementary on carrying capacity and competition coefficient, by keeping only one value of % orientalis introduced)
 
-1.  Find common patterns in the simulation scenarios and cluster the designs: translate each questionnaires into a small set of quantitative descriptors, for instance:
+3.  Create the three spatial configurations: **mixed**, **clustered** and **striped**? with 3 values of \%orientalis introduced. 
 
-    1.  \% orientalis (choose three values from the questionnaires)
+-\> in total, 3 x 3 = 9 spatial configurations? 
+-\> NB: testing only set of simulations starting with European beech?
 
-    2.  number of clusters (choose one or 2 values from the questionnaires)
+4. For each spatial configuration, create the input files (matrices) and the init files. 
 
-    3.  cluster size
+5. Run the simulations 
 
-    4.  level of aggregation
+-\>  REPLICATES: **first exploratory test with 3-5 replicates, final simulations with 30 replicates, after everything is defined**
+-\>  GENERATIONS (years): burnin simulations approx 20 to let E. beech grow and reproduce a bit, then actual simulations for 300-500 years.
 
-    5.  ....
+6. Analyse results
 
-2.  Demographic and biological data from literature
-
-
-Pipeline for each step:
-
-1.  for each simulation, create the input files (matrices, etc)
-2.  define parameters
-3.  create the Nemoage ini files (the simulation script) for each simulation
-4.  run the simulations (burnin: 30 replicates, 20 generations - simulations: 30 replicates, 300 generations = years)
-5.  analyse the results.
+---
 
 Conversion from questionnaire to simulation:
 
@@ -298,8 +291,8 @@ Fixed (species-specific) parameters:
 
 Testing parameters:
 
-1.  number of trees of relative species –\> *quanti_init_freq*
-2.  position of trees of relative species –\> *quanti_init_freq*
+1.  number of trees of relative species –\> 3 values from the questionnaires?
+2.  position of trees of relative species –\> **mixed, stripes, clusters**
 5.  fitness reduction / selection against orientalis/sylvatica/hybrids? (environmental effect?)
 
 ### Spatial architecture (simulation grid)
@@ -339,7 +332,7 @@ writeVector(grid_poly, "Input_files/Grid_4x4m_100x100m.shp", filetype = "ESRI Sh
 
 ### configuration files and source_pop
 
-For each spatial configuration, I translated the excel grid into a master file organized as in the table below:
+For each spatial configuration, create a master file with the structure as below: 
 
 | simulation | patchID | patch_value |
 |------------|:--------|------------:|
@@ -372,103 +365,6 @@ NA Empty land ---\> quanti = 0, patch_nbfem = 0
   If the source population does not contain enough individuals within patches to fill the receiving patches to the carrying capacity, the landscape is not filled (== maybe I dont need to set carrying capacity 0 for non-beech starting patches??)
   
 ```
-
-```{r}
-#| label: configurations
-#| eval: false
-#| output: false
-#| echo: true
-#| code-fold: true
-#| code-summary: "Expand for full code"
-
-### read excel file with all configurations (one per sheet)
-library(readxl)
-library(dplyr)
-library(tidyr)
-library(terra)
-
-# read 25 x 25 grid - file with one configuration per sheet and convert to matrix
-read_config <- function(path, sheet, n = 25) {
-
-  mat <- readxl::read_excel(
-    path,
-    sheet = sheet,
-    range = cell_limits( c(1, 1),c(n, n)),
-    col_names = FALSE
-  )
-  mat <- as.matrix(mat)
-  mat <- apply(mat, 2, as.character)
-  mat
-}
-
-# convert matrix to long table
-config_to_table <- function(mat) {
-
-  nr <- nrow(mat)
-  nc <- ncol(mat)
-
-  expand.grid(
-    row = 1:nr,
-    col = 1:nc
-  ) |>
-    dplyr::mutate(
-      patchID = (row - 1) * nc + col,
-      value   = mat[cbind(row, col)]
-    ) |>
-    mutate(
-      value = ifelse(is.na(value), "NA", value),
-      value = trimws(value),              # removes hidden spaces
-      value = recode(value,
-                     E = "S",
-                     S = "S",
-                     O = "O",
-                     A = "A",
-                     X = "X",
-                     .default = "NA")
-    ) |>
-       arrange(patchID) |>
-    dplyr::select(patchID, value)
-}
-
-## combine functions
-process_configuration <- function(path, sheet, outdir, n = 25) {
-
-  if (!dir.exists(outdir)) {
-    dir.create(outdir, recursive = TRUE)
-  }
-
-  mat <- read_config(path, sheet, n)
-  tab <- config_to_table(mat)
-  master <- tab |>
-    mutate(simulation = sheet) |>
-    dplyr::select(simulation, patchID, patch_value = value)
-  
-  write.table(
-    master,
-    file.path(outdir, paste0( sheet, ".txt")),
-    row.names = FALSE,
-    sep = "\t",
-    quote = FALSE
-  )
-
-  invisible(master)
-}
-
-### apply
-path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/questionnaires/configurations_sheets.xlsx"
-sheets <- excel_sheets(path)
-dir.create("Input_files/configs_txt", showWarnings = TRUE)
-
-lapply(
-  sheets,
-  process_configuration,
-  path   = path,
-  outdir = "Input_files/configs_txt",
-  n      = 25
-)
-
-```
-
 ### Quanti trait (species identity)
 
 The species identity is encoded as quantitative trait (quanti) based on loci with 2 possible "alleles":
@@ -1757,6 +1653,7 @@ hyb_time <- dt[
 ggplot(hyb_time, aes(x = generation, y = prop_hybrid, group = interaction(replicate, factor(stage)), color = factor(stage)))+geom_line()+ facet_grid(sim_name+b~ k) 
 
 ```
+
 
 
 
