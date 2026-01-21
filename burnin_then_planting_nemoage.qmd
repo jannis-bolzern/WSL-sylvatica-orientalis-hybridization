@@ -1,0 +1,979 @@
+---
+title: "Nemo-age workflow: burn-in + clearing patches + planting scenarios"
+format: html
+editor: visual
+execute:
+  warning: false
+  message: true
+---
+
+This document builds a **two-phase Nemo-age workflow**:
+
+1.  **Scenario generator** (parametric): chooses patches where *Fagus orientalis* will be planted (with replicates) and writes all scenario-dependent input files.
+2.  **Burn-in**: runs a *pure sylvatica* forest and clears the planting patches at the last burn-in generation by setting patch carrying capacity to 0 in those patches.
+3.  **Main run**: starts from the burned-in, cleared forest and plants orientalis seedlings in the cleared patches.
+
+------------------------------------------------------------------------
+
+## Packages
+
+```{r}
+#| label: packages
+#| echo: true
+suppressPackageStartupMessages({
+  library(terra)
+  library(data.table)
+  library(ggplot2)
+  library(cowplot)
+})
+```
+
+------------------------------------------------------------------------
+
+## Control panel
+
+### Paths and templates
+
+```{r}
+#| label: control-paths
+#| echo: true
+
+# ---- Templates
+TEMPLATE_BURNIN_INI <- "Init_files/beech1_burnin.ini"
+TEMPLATE_RUN_INI    <- "Init_files/beech1.ini"
+
+stopifnot(file.exists(TEMPLATE_BURNIN_INI), file.exists(TEMPLATE_RUN_INI))
+
+# ---- Output folders
+OUT <- list(
+  input       = "input_files",
+  ini_burnin  = "ini_files_burnin",
+  ini_run     = "ini_files_run",
+  results     = "results",
+  scripts     = "scripts",
+  plots       = "plots"
+)
+
+dir.create(OUT$input, showWarnings = FALSE, recursive = TRUE)
+dir.create(OUT$ini_burnin,  showWarnings = FALSE, recursive = TRUE)
+dir.create(OUT$ini_run,     showWarnings = FALSE, recursive = TRUE)
+dir.create(OUT$results,     showWarnings = FALSE, recursive = TRUE)
+dir.create(OUT$scripts,     showWarnings = FALSE, recursive = TRUE)
+dir.create(OUT$plots,       showWarnings = FALSE, recursive = TRUE)
+
+# ---- Subfolders under input_files
+DIRS <- list(
+  grid     = file.path(OUT$input, "grid"),
+  cfg      = file.path(OUT$input, "configs_txt"),
+  quanti   = file.path(OUT$input, "quanti_init_freq"),
+  stage    = file.path(OUT$input, "patch_init_stage_size"),
+  cutK     = file.path(OUT$input, "patch_nbfem_cut"),
+  disperse = file.path(OUT$input, "disperse"),
+  plots    = file.path(OUT$plots)
+)
+
+for (d in DIRS) dir.create(d, showWarnings = FALSE, recursive = TRUE)
+```
+
+### Grid
+
+```{r}
+#| label: control-grid
+#| echo: true
+
+GRID_RES  <- 4     # meters (patch size = 4x4 m)
+EXTENT_M  <- 100   # landscape extent (100x100 m)
+N         <- EXTENT_M / GRID_RES   # 25
+CRS       <- "EPSG:3035"
+
+GRID_SHP  <- file.path(DIRS$grid, "Grid_4x4m_100x100m.shp")
+```
+
+### Scenario design
+
+```{r}
+#| label: control-scenarios
+#| echo: true
+
+PROP_LEVELS    <- c(0.05, 0.20, 0.50)   # % orientalis patches to plant into
+CLUSTER_LEVELS <- c("dispersed", "small_clusters", "big_clusters")
+
+# Replicates of the *spatial layout* per scenario (not Nemoage replicates)
+N_LAYOUT_REPS  <- 5
+
+SEED_BASE      <- 20260120  # reproducible layouts across runs
+```
+
+### Burn-in design (standing *sylvatica* forest)
+
+```{r}
+#| label: control-burnin
+#| echo: true
+
+BURNIN_GENS <- 20
+
+# Base carrying capacity (used during burn-in; and also during the main run)
+BASE_K     <- 200
+
+# Initial sylvatica forest structure at generation 0:
+#   - adult_occupancy: fraction of patches that start with one stage3 adult
+#   - stage1_seedlings: optional small initial regeneration everywhere
+BURNIN_ADULT_OCCUPANCY <- 1.0   # 1.0 = adult in every patch; 0.7 = 70% of patches
+BURNIN_STAGE1_SEEDLINGS <- 0    # do we need seedlings?
+
+# Nemo-age replicates for the burn-in and the main run
+NEMO_REPS_BURNIN <- 1
+NEMO_REPS_RUN    <- 1
+
+# Main run generations
+RUN_GENS <- 200
+
+# Planting scheme:
+# stage0, stage1, stage2, stage3
+PLANTING_SCHEME <- c(0, 20, 0, 0)
+```
+
+### Dispersal (fixed parameter)
+
+```{r}
+#| label: control-dispersal
+#| echo: true
+
+# SEED
+SEED_D_MEAN <- 10
+SEED_B      <- 0.5
+SEED_D_T    <- 50
+
+# POLLEN
+POLLEN_D_MEAN <- 800
+POLLEN_B      <- 0.5
+POLLEN_D_T    <- 1000
+```
+
+------------------------------------------------------------------------
+
+## Build or load the simulation grid
+
+```{r}
+#| label: grid-make
+#| echo: true
+
+make_or_load_grid_strict <- function(shp_path, extent_m = 100, res = 4, crs = "EPSG:3035") {
+  if (file.exists(shp_path)) return(vect(shp_path))
+
+  r <- rast(extent = ext(0, extent_m, 0, extent_m), resolution = res, crs = crs)
+  r[] <- 1:ncell(r)
+
+  grid_poly <- as.polygons(r, dissolve = FALSE)
+  names(grid_poly)[names(grid_poly) == "lyr.1"] <- "patchID"
+
+  writeVector(grid_poly, shp_path, filetype = "ESRI Shapefile", overwrite = TRUE)
+  grid_poly
+}
+
+grid <- make_or_load_grid_strict(GRID_SHP, EXTENT_M, GRID_RES, CRS)
+stopifnot(nrow(grid) == N * N)
+
+cent <- centroids(grid)
+coords <- as.data.frame(crds(cent))
+names(coords) <- c("x", "y")
+coords$patchID <- grid$patchID
+
+coords$row    <- ((coords$patchID - 1) %/% N) + 1
+coords$col    <- ((coords$patchID - 1) %%  N) + 1
+coords$y_plot <- N - coords$row + 1
+coords$x_plot <- coords$col
+
+patch_ids <- coords$patchID
+n_patches <- length(patch_ids)
+
+dist_mat <- as.matrix(distance(cent))
+```
+
+------------------------------------------------------------------------
+
+## Dispersal matrices (seed + pollen)
+
+```{r}
+#| label: dispersal-functions
+#| echo: true
+
+exp_power_kernel <- function(d, b, x) {
+  a <- d * exp(lgamma(2 / b) - lgamma(3 / b))
+  b * exp(-(x^b / a^b)) / (2 * pi * a^2 * exp(lgamma(2 / b)))
+}
+
+build.reduced.dispersal.matrices <- function(num_patch, distance_matrix, d, b, d_thresh) {
+  stopifnot(dim(distance_matrix)[1] == num_patch)
+
+  full_rate <- matrix(0, nrow = num_patch, ncol = num_patch)
+  for (i in 1:num_patch) {
+    for (j in 1:num_patch) {
+      full_rate[i, j] <- exp_power_kernel(d, b, distance_matrix[i, j])
+    }
+  }
+
+  rate_matrix <- full_rate
+  connectivity_matrix <- matrix(NA_integer_, nrow = num_patch, ncol = num_patch)
+
+  for (i in 1:num_patch) {
+    ord <- order(rate_matrix[i, ], decreasing = TRUE)
+    rate_matrix[i, ] <- rate_matrix[i, ord]
+    connectivity_matrix[i, ] <- ord
+
+    to_remove <- which(rate_matrix[i, ] < d_thresh)
+    rate_matrix[i, to_remove] <- NA
+    connectivity_matrix[i, to_remove] <- NA
+
+    sum_d <- sum(rate_matrix[i, ], na.rm = TRUE)
+    if (sum_d > 0) {
+      rate_matrix[i, !is.na(rate_matrix[i, ])] <- rate_matrix[i, !is.na(rate_matrix[i, ])] / sum_d
+    } else {
+      rate_matrix[i, 1] <- 1
+      connectivity_matrix[i, 1] <- i
+    }
+  }
+
+  list(full_rate = full_rate, connectivity_matrix = connectivity_matrix, rate_matrix = rate_matrix)
+}
+
+write.matrix.nemo <- function(mat, outfile) {
+  cat("{", file = outfile)
+  for (i in seq_len(nrow(mat))) {
+    cat("{", file = outfile, append = TRUE)
+    cat(mat[i, ], sep = ",", file = outfile, append = TRUE)
+    cat("}\n", file = outfile, append = TRUE)
+  }
+  cat("}\n", file = outfile, append = TRUE)
+}
+
+write.red.dispersal.matrix <- function(connectivity_matrix, rate_matrix, conn_file, rate_file) {
+  cat("{", file = conn_file)
+  for (i in 1:nrow(connectivity_matrix)) {
+    cat("{", file = conn_file, append = TRUE)
+    cat(i, file = conn_file, append = TRUE)
+    if (!all(is.na(connectivity_matrix[i, ]))) {
+      non_na <- connectivity_matrix[i, which(!is.na(connectivity_matrix[i, ]))]
+      non_na <- non_na[non_na != i]
+      if (length(non_na) > 0) {
+        cat(",", file = conn_file, append = TRUE)
+        cat(non_na, sep = ",", file = conn_file, append = TRUE)
+      }
+    }
+    cat("}\n", file = conn_file, append = TRUE)
+  }
+  cat("}\n", file = conn_file, append = TRUE)
+
+  cat("{", file = rate_file)
+  for (i in 1:nrow(rate_matrix)) {
+    cat("{", file = rate_file, append = TRUE)
+    if (all(is.na(rate_matrix[i, ]))) {
+      cat(1, file = rate_file, append = TRUE)
+    } else {
+      cat(rate_matrix[i, which(!is.na(rate_matrix[i, ]))], sep = ",", file = rate_file, append = TRUE)
+    }
+    cat("}\n", file = rate_file, append = TRUE)
+  }
+  cat("}\n", file = rate_file, append = TRUE)
+}
+```
+
+```{r}
+#| label: dispersal-build
+#| echo: true
+
+dir.create(DIRS$disperse, showWarnings = FALSE, recursive = TRUE)
+
+# SEED
+seed_thresh <- exp_power_kernel(SEED_D_MEAN, SEED_B, SEED_D_T)
+seed_disp <- build.reduced.dispersal.matrices(n_patches, dist_mat, SEED_D_MEAN, SEED_B, seed_thresh)
+
+seed_conn_file <- file.path(DIRS$disperse, sprintf("Seed_connectivity_matrix_d%d.txt", SEED_D_MEAN))
+seed_rate_file <- file.path(DIRS$disperse, sprintf("Seed_rate_matrix_d%d.txt", SEED_D_MEAN))
+write.red.dispersal.matrix(seed_disp$connectivity_matrix, seed_disp$rate_matrix, seed_conn_file, seed_rate_file)
+
+# POLLEN
+pollen_thresh <- exp_power_kernel(POLLEN_D_MEAN, POLLEN_B, POLLEN_D_T)
+pollen_disp <- build.reduced.dispersal.matrices(n_patches, dist_mat, POLLEN_D_MEAN, POLLEN_B, pollen_thresh)
+
+pollen_conn_file <- file.path(DIRS$disperse, sprintf("Pollen_connectivity_matrix_d%d.txt", POLLEN_D_MEAN))
+pollen_rate_file <- file.path(DIRS$disperse, sprintf("Pollen_rate_matrix_d%d.txt", POLLEN_D_MEAN))
+write.red.dispersal.matrix(pollen_disp$connectivity_matrix, pollen_disp$rate_matrix, pollen_conn_file, pollen_rate_file)
+
+message("Wrote dispersal files to: ", DIRS$disperse)
+```
+
+------------------------------------------------------------------------
+
+## Scenario generator
+
+This generates, for each scenario × layout replicate:
+
+-   `configs_txt/<sim>.txt` : patch table with `S` vs `O` (sylvatica vs orientalis planting patches)
+-   `quanti_init_freq/quanti_init_file_<sim>.txt` : 0/1 allele-frequency init (sylv=0, orientalis=1)
+-   `patch_init_stage_size/patch_init_stage_size_<sim>.txt` : planting individuals in the orientalis patches
+-   `patch_nbfem_cut/patch_nbfem_cut_<sim>.txt` : carrying capacity vector with 0 in planting patches (used for the final burn-in generation)
+
+### Plot helper
+
+```{r}
+#| label: plot-helper
+#| echo: true
+
+plot_grid_binary_gg <- function(conf_dt, coords_df, title = NULL) {
+  df <- merge(coords_df, conf_dt, by = "patchID", all.x = TRUE)
+  df$patch_value <- ifelse(is.na(df$patch_value), "S", df$patch_value)
+
+  ggplot(df, aes(x = x_plot, y = y_plot, fill = patch_value)) +
+    geom_tile(color = "grey85", linewidth = 0.1) +
+    coord_equal() +
+    labs(title = title, x = "", y = "", fill = "") +
+    theme_minimal(base_size = 11) +
+    theme(
+      panel.grid = element_blank(),
+      legend.position = "none",
+      plot.title = element_text(size = 10, hjust = 0.5)
+    )
+}
+```
+
+### Placement generators
+
+Three levels:
+
+-   **dispersed**: a Poisson-disc-like sampler enforcing a minimum spacing
+-   **small_clusters**: multiple Gaussian-weighted clusters (soft edges, no isolated singletons)
+-   **big_clusters**: hard-edge clusters created by taking nearest patches to a few centers
+
+```{r}
+#| label: placement
+#| echo: true
+
+# Dispersed (Poisson-disc-ish, tunable)
+select_orientalis_dispersed_poisson <- function(
+    nO, patch_ids, dist_mat, base_spacing_m, seed = NULL,
+    strength = 1.20,
+    relax_step = 0.95,
+    max_relax = 12
+) {
+  if (!is.null(seed)) set.seed(seed)
+  if (nO <= 0) return(integer(0))
+  if (nO >= length(patch_ids)) return(patch_ids)
+
+  minDist <- base_spacing_m * strength
+  chosen <- integer(0)
+
+  for (attempt in seq_len(max_relax)) {
+    chosen <- integer(0)
+    available <- sample(patch_ids)
+
+    for (cand in available) {
+      if (length(chosen) == 0) {
+        chosen <- c(chosen, cand)
+      } else {
+        if (min(dist_mat[cand, chosen]) >= minDist) chosen <- c(chosen, cand)
+      }
+      if (length(chosen) >= nO) break
+    }
+
+    if (length(chosen) >= nO) return(chosen[1:nO])
+    minDist <- minDist * relax_step
+  }
+
+  # fallback: top up randomly
+  if (length(chosen) < nO) {
+    chosen <- c(chosen, sample(setdiff(patch_ids, chosen), nO - length(chosen)))
+  }
+  chosen
+}
+
+# Small clusters (all O belong to clusters; soft edges via local "bleed")
+select_orientalis_small_clusters_soft <- function(
+    nO, patch_ids, dist_mat, seed = NULL,
+    n_centers = 8,
+    sigma_m = 3.2,
+    bleed_rate = 0.08,
+    bleed_dist = 10
+) {
+  if (!is.null(seed)) set.seed(seed)
+  if (nO <= 0) return(integer(0))
+  if (nO >= length(patch_ids)) return(patch_ids)
+
+  n_centers <- min(n_centers, nO)
+  centers <- sample(patch_ids, n_centers)
+
+  # balanced-ish cluster sizes
+  w <- runif(n_centers); w <- w / sum(w)
+  sizes <- pmax(1, as.integer(round(w * nO)))
+  sizes[1] <- sizes[1] + (nO - sum(sizes))
+
+  chosen <- integer(0)
+  remaining <- patch_ids
+
+  for (k in seq_len(n_centers)) {
+    c0 <- centers[k]
+    d <- dist_mat[c0, remaining]
+    prob <- exp(-(d^2) / (2 * sigma_m^2))
+    prob <- prob / sum(prob)
+    take <- sample(remaining, size = min(sizes[k], length(remaining)), replace = FALSE, prob = prob)
+    chosen <- c(chosen, take)
+    remaining <- setdiff(remaining, take)
+    if (length(chosen) >= nO) break
+  }
+
+  chosen <- unique(chosen)
+  if (length(chosen) > nO) chosen <- sample(chosen, nO)
+  if (length(chosen) < nO) chosen <- c(chosen, sample(setdiff(patch_ids, chosen), nO - length(chosen)))
+
+  # edge softness: swap a small proportion to nearby outside patches
+  n_bleed <- as.integer(round(bleed_rate * nO))
+  if (n_bleed > 0 && length(chosen) > 0) {
+    outside <- setdiff(patch_ids, chosen)
+    near <- outside[sapply(outside, function(pid) min(dist_mat[pid, chosen]) <= bleed_dist)]
+    if (length(near) > 0) {
+      add <- sample(near, size = min(n_bleed, length(near)), replace = FALSE)
+      drop <- sample(chosen, size = min(n_bleed, length(chosen)), replace = FALSE)
+      chosen <- unique(c(setdiff(chosen, drop), add))
+    }
+  }
+
+  # ensure exact nO
+  if (length(chosen) > nO) chosen <- sample(chosen, nO)
+  if (length(chosen) < nO) chosen <- c(chosen, sample(setdiff(patch_ids, chosen), nO - length(chosen)))
+
+  chosen
+}
+
+# Big clusters (hard edge; allow configurable number of centers)
+select_orientalis_big_clusters_hard <- function(
+    nO, patch_ids, dist_mat, seed = NULL,
+    n_centers = 2,
+    jitter = 0.10
+) {
+  if (!is.null(seed)) set.seed(seed)
+  if (nO <= 0) return(integer(0))
+  if (nO >= length(patch_ids)) return(patch_ids)
+
+  n_centers <- min(n_centers, nO)
+  centers <- sample(patch_ids, n_centers)
+
+  # split nO across centers with small jitter
+  base <- rep(floor(nO / n_centers), n_centers)
+  base[1] <- base[1] + (nO - sum(base))
+  # jitter a bit (still sums to nO)
+  if (n_centers > 1 && jitter > 0) {
+    for (k in 1:(n_centers-1)) {
+      delta <- as.integer(round(runif(1, -jitter, jitter) * nO))
+      give <- max(-base[k] + 1, min(delta, base[k+1] - 1))
+      base[k] <- base[k] + give
+      base[k+1] <- base[k+1] - give
+    }
+  }
+
+  chosen <- integer(0)
+  remaining <- patch_ids
+
+  for (k in seq_len(n_centers)) {
+    ord <- remaining[order(dist_mat[centers[k], remaining])]
+    take <- head(ord, base[k])
+    chosen <- c(chosen, take)
+    remaining <- setdiff(remaining, take)
+    if (length(chosen) >= nO) break
+  }
+
+  chosen <- unique(chosen)
+  if (length(chosen) > nO) chosen <- chosen[1:nO]
+  if (length(chosen) < nO) chosen <- c(chosen, sample(setdiff(patch_ids, chosen), nO - length(chosen)))
+
+  chosen
+}
+
+select_orientalis <- function(nO, level, patch_ids, dist_mat, seed = NULL) {
+  level <- match.arg(level, c("dispersed", "small_clusters", "big_clusters"))
+
+  if (level == "dispersed") {
+    spacing_m <- sqrt(length(patch_ids) / max(1, nO)) * GRID_RES
+    return(select_orientalis_dispersed_poisson(
+      nO, patch_ids, dist_mat,
+      base_spacing_m = spacing_m,
+      seed = seed,
+      strength = 1.20
+    ))
+  }
+
+  if (level == "small_clusters") {
+    return(select_orientalis_small_clusters_soft(
+      nO, patch_ids, dist_mat,
+      seed = seed,
+      n_centers = 8,
+      sigma_m = 3.2,
+      bleed_rate = 0.08,
+      bleed_dist = 10
+    ))
+  }
+
+  if (level == "big_clusters") {
+    return(select_orientalis_big_clusters_hard(
+      nO, patch_ids, dist_mat,
+      seed = seed,
+      n_centers = 2,   # change later if you like
+      jitter = 0.10
+    ))
+  }
+
+  stop("Unknown level")
+}
+```
+
+### Writers: config, quanti, planting, cut-K
+
+```{r}
+#| label: scenario-writers
+#| echo: true
+
+scenario_id <- function(p_orientalis, cluster_level, rep_id) {
+  p_lab <- sprintf("p%02d", round(100 * p_orientalis))
+  sprintf("sc_%s_%s_rep%02d", p_lab, cluster_level, rep_id)
+}
+
+# config table: S vs O
+build_config_table <- function(orientalis_ids, patch_ids) {
+  dt <- data.table(patchID = patch_ids, patch_value = "S")
+  dt[patchID %in% orientalis_ids, patch_value := "O"]
+  dt[order(patchID)]
+}
+
+write_config_quarto_schema <- function(conf_dt, sim_name, outfile) {
+  out <- copy(conf_dt)
+  out[, simulation := sim_name]
+  setcolorder(out, c("simulation", "patchID", "patch_value"))
+  fwrite(out, outfile, sep = "\t")
+}
+
+# quanti init: 1 in O patches, 0 otherwise (one column)
+build_quanti_init <- function(conf_dt, n_patches) {
+  mat <- matrix(0, nrow = n_patches, ncol = 1)
+  mat[conf_dt$patchID, 1] <- ifelse(conf_dt$patch_value == "O", 1, 0)
+  mat
+}
+
+# planting stage init (patches not planted stay 0)
+build_patch_init_stage_size_planting <- function(conf_dt, scheme = c(0,20,0,0)) {
+  n <- nrow(conf_dt)
+  mat <- matrix(0, nrow = n, ncol = 4)
+  colnames(mat) <- c("stage0","stage1","stage2","stage3")
+  O <- conf_dt$patchID[conf_dt$patch_value == "O"]
+  mat[O, ] <- matrix(rep(scheme, each = length(O)), nrow = length(O), byrow = FALSE)
+  mat
+}
+
+# burn-in initial forest (sylvatica-only): stage3 adults + optional stage1 seedlings
+build_patch_init_stage_size_burnin <- function(n_patches, adult_occupancy = 1.0, stage1_seedlings = 0, seed = 1) {
+  set.seed(seed)
+  mat <- matrix(0, nrow = n_patches, ncol = 4)
+  colnames(mat) <- c("stage0","stage1","stage2","stage3")
+
+  adults <- rep(0, n_patches)
+  if (adult_occupancy >= 1) {
+    adults[] <- 1
+  } else if (adult_occupancy > 0) {
+    idx <- sample(seq_len(n_patches), size = as.integer(round(adult_occupancy * n_patches)))
+    adults[idx] <- 1
+  }
+
+  mat[, "stage3"] <- adults
+  mat[, "stage1"] <- stage1_seedlings
+  mat
+}
+
+# patch_nbfem cut vector file: {{K1,K2,...,Kn}} with K=0 for O patches
+write_patchK_vector <- function(K_vec, outfile) {
+  stopifnot(length(K_vec) > 0)
+  cat("{{", file = outfile)
+  cat(K_vec, sep = ",", file = outfile, append = TRUE)
+  cat("}}\n\n", file = outfile, append = TRUE)
+}
+```
+
+### Generate all scenario inputs + overview plots
+
+```{r}
+#| label: generate-scenarios
+#| echo: true
+
+manifest <- data.table()
+
+for (p in PROP_LEVELS) {
+  nO <- as.integer(round(p * n_patches))
+
+  for (cl in CLUSTER_LEVELS) {
+    for (r in seq_len(N_LAYOUT_REPS)) {
+
+      sim_name <- scenario_id(p, cl, r)
+      seed <- SEED_BASE + round(p * 1000) * 10000 + match(cl, CLUSTER_LEVELS) * 100 + r
+
+      O_ids <- select_orientalis(nO = nO, level = cl, patch_ids = patch_ids, dist_mat = dist_mat, seed = seed)
+      conf  <- build_config_table(O_ids, patch_ids)
+
+      # --- write config
+      cfg_file <- file.path(DIRS$cfg, paste0(sim_name, ".txt"))
+      write_config_quarto_schema(conf, sim_name, cfg_file)
+
+      # --- write quanti init (scenario)
+      q_mat <- build_quanti_init(conf, n_patches)
+      q_file <- file.path(DIRS$quanti, paste0("quanti_init_file_", sim_name, ".txt"))
+      write.matrix.nemo(q_mat, q_file)
+
+      # --- planting stage init (scenario)
+      plant_mat <- build_patch_init_stage_size_planting(conf, scheme = PLANTING_SCHEME)
+      plant_file <- file.path(DIRS$stage, paste0("patch_init_stage_size_", sim_name, ".txt"))
+      write.matrix.nemo(plant_mat, plant_file)
+
+      # --- cut-K vector (scenario): BASE_K everywhere, 0 on O patches
+      K_vec <- rep(BASE_K, n_patches)
+      K_vec[O_ids] <- 0
+      cut_file <- file.path(DIRS$cutK, paste0("patch_nbfem_cut_", sim_name, ".txt"))
+      write_patchK_vector(K_vec, cut_file)
+
+      manifest <- rbind(
+        manifest,
+        data.table(
+          sim_name = sim_name,
+          prop_orientalis = p,
+          n_orientalis = nO,
+          cluster_level = cl,
+          layout_rep = r,
+          seed = seed,
+          cfg_file = cfg_file,
+          quanti_file = q_file,
+          planting_stage_file = plant_file,
+          cutK_file = cut_file
+        )
+      )
+    }
+  }
+}
+
+manifest_file <- file.path(OUT$input, "manifest_scenarios.tsv")
+fwrite(manifest, manifest_file, sep = "\t")
+
+message("Generated ", nrow(manifest), " scenario layouts.")
+message("Manifest: ", manifest_file)
+
+# --- base-K vector (shared by all scenarios; used for temporal patch_nbfem @g0)
+K_base_vec <- rep(BASE_K, n_patches)
+K_base_file <- file.path(DIRS$cutK, sprintf("patch_nbfem_baseK_%d.txt", BASE_K))
+write_patchK_vector(K_base_vec, K_base_file)
+
+message("Base-K vector: ", K_base_file)
+```
+
+```{r}
+#| label: scenario-plots
+#| echo: true
+
+# One combined plot per (prop × clustering): 1×N_LAYOUT_REPS
+PLOT_REP_DIR <- file.path(DIRS$plots, "layout_replicates")
+dir.create(PLOT_REP_DIR, showWarnings = FALSE, recursive = TRUE)
+
+manifest_dt <- copy(manifest)
+manifest_dt[, scenario_key := sub("_rep[0-9]+$", "", sim_name)]
+
+scenario_groups <- manifest_dt[, .(cfg_files = list(cfg_file), sims = list(sim_name),
+                                  prop_orientalis = prop_orientalis[1],
+                                  cluster_level = cluster_level[1]),
+                              by = .(scenario_key)]
+
+for (i in seq_len(nrow(scenario_groups))) {
+  sc_key <- scenario_groups$scenario_key[i]
+  p <- scenario_groups$prop_orientalis[i]
+  cl <- scenario_groups$cluster_level[i]
+
+  cfg_files <- unlist(scenario_groups$cfg_files[i])
+  sims <- unlist(scenario_groups$sims[i])
+  ord <- order(sims)
+  cfg_files <- cfg_files[ord]
+  sims <- sims[ord]
+
+  plist <- vector("list", length(cfg_files))
+  for (j in seq_along(cfg_files)) {
+    cfg <- fread(cfg_files[j])
+    rep_lab <- sub("^.*_rep", "rep", sims[j])
+    plist[[j]] <- plot_grid_binary_gg(cfg[, .(patchID, patch_value)], coords, rep_lab)
+  }
+
+  main_title <- sprintf("Planting layout | Orientalis %.0f%% | %s", 100 * p, cl)
+  panel <- cowplot::plot_grid(plotlist = plist, nrow = 1, align = "hv")
+  final <- cowplot::plot_grid(
+    cowplot::ggdraw() + cowplot::draw_label(main_title, fontface = "bold", size = 14),
+    panel,
+    ncol = 1,
+    rel_heights = c(0.18, 1)
+  )
+
+  out_combined <- file.path(PLOT_REP_DIR, paste0("overview_", sc_key, ".png"))
+  ggsave(out_combined, final, width = 16, height = 3.8, dpi = 220)
+}
+
+message("Scenario overview plots: ", PLOT_REP_DIR)
+```
+
+------------------------------------------------------------------------
+
+## Burn-in input files (sylvatica-only)
+
+Two “global” burn-in inputs (shared by all scenarios):
+
+-   `quanti_init_file_burnin_sylv.txt` : all zeros (pure sylvatica)
+-   `patch_init_stage_size_burnin_sylv.txt` : initial stage structure of the forest
+
+```{r}
+#| label: burnin-input-files
+#| echo: true
+
+# quanti init: all 0
+q_burnin <- matrix(0, nrow = n_patches, ncol = 1)
+q_burnin_file <- file.path(DIRS$quanti, "quanti_init_file_burnin_sylv.txt")
+write.matrix.nemo(q_burnin, q_burnin_file)
+
+# initial forest stage structure
+burnin_stage <- build_patch_init_stage_size_burnin(
+  n_patches,
+  adult_occupancy = BURNIN_ADULT_OCCUPANCY,
+  stage1_seedlings = BURNIN_STAGE1_SEEDLINGS,
+  seed = SEED_BASE
+)
+burnin_stage_file <- file.path(DIRS$stage, "patch_init_stage_size_burnin_sylv.txt")
+write.matrix.nemo(burnin_stage, burnin_stage_file)
+
+message("Burn-in quanti init:  ", q_burnin_file)
+message("Burn-in stage init:   ", burnin_stage_file)
+```
+
+------------------------------------------------------------------------
+
+## INI generation (burn-in + main run)
+
+Using beech1.ini and beech1_burnin.ini as templates and changing:
+
+-   paths to the generated input files
+-   output naming (`root_dir`, `filename`, `logfile`)
+-   replicate / generation numbers
+-   burn-in only: remove unsupported extinction and replace with a temporal patch_nbfem that switches to the scenario-specific `patch_nbfem_cut_<sim>.txt` at the end of burn-in.
+
+### Helpers to edit templates safely
+
+```{r}
+#| label: ini-helpers
+#| echo: true
+
+read_ini_lines <- function(path) readLines(path, warn = FALSE)
+
+# replace a single-line parameter
+set_ini_param <- function(lines, key, value) {
+  rx <- paste0("^\\s*", key, "\\b")
+  idx <- grep(rx, lines)
+  if (length(idx) == 0) {
+    # add at end if missing
+    return(c(lines, paste(key, value)))
+  }
+  lines[idx[1]] <- paste(key, value)
+  lines
+}
+
+# remove any line(s) matching a regex
+drop_ini_lines <- function(lines, regex) {
+  lines[!grepl(regex, lines)]
+}
+
+# remove an LCE from the life-cycle list (e.g., "extinction 6")
+drop_lce <- function(lines, lce_name) {
+  rx <- paste0("^\\s*", lce_name, "\\b")
+  drop_ini_lines(lines, rx)
+}
+```
+
+### Create INIs for all scenarios
+
+```{r}
+#| label: ini-generate
+#| echo: true
+
+rep_digit <- function(n) nchar(as.character(max(1L, as.integer(n))))
+
+# where run ini should load the stored burn-in population from
+burnin_store_dir_name <- "burnin"
+
+burnin_lines_template <- read_ini_lines(TEMPLATE_BURNIN_INI)
+run_lines_template    <- read_ini_lines(TEMPLATE_RUN_INI)
+
+ini_manifest <- data.table()
+
+for (i in seq_len(nrow(manifest))) {
+  sim <- manifest$sim_name[i]
+
+  # output dirs
+  root_dir <- file.path(OUT$results, sim)
+  dir.create(root_dir, showWarnings = FALSE, recursive = TRUE)
+  dir.create(file.path(root_dir, burnin_store_dir_name), showWarnings = FALSE, recursive = TRUE)
+
+  # deterministic seed per scenario layout
+  seed <- manifest$seed[i]
+
+  # ---------- BURN-IN INI ----------
+  burn <- burnin_lines_template
+
+  # drop unsupported extinction LCE + extinction_rate param
+  burn <- drop_lce(burn, "extinction")
+  burn <- drop_ini_lines(burn, "^\\s*extinction_rate\\b")
+
+  # core sim params
+  burn <- set_ini_param(burn, "run_mode", "overwrite")
+  burn <- set_ini_param(burn, "random_seed", seed)
+  burn <- set_ini_param(burn, "root_dir", root_dir)
+  burn <- set_ini_param(burn, "filename", paste0(sim, "_burnin"))
+  burn <- set_ini_param(burn, "logfile", paste0(sim, "_burnin_log"))
+  burn <- set_ini_param(burn, "replicates", NEMO_REPS_BURNIN)
+  burn <- set_ini_param(burn, "generations", BURNIN_GENS)
+
+  # input files for burn-in (sylv-only)
+  burn <- set_ini_param(burn, "quanti_init_freq", paste0("&", q_burnin_file))
+  burn <- set_ini_param(burn, "patch_init_stage_size", paste0("&", burnin_stage_file))
+
+  # dispersal files (ensure we point to input_files/disperse)
+  burn <- set_ini_param(burn, "seed_disperse_connectivity_matrix",
+                        paste0("&", seed_conn_file))
+  burn <- set_ini_param(burn, "seed_disperse_reduced_matrix",
+                        paste0("&", seed_rate_file))
+  burn <- set_ini_param(burn, "breed_disperse_connectivity_matrix_mal",
+                        paste0("&", pollen_conn_file))
+  burn <- set_ini_param(burn, "breed_disperse_reduced_matrix_mal",
+                        paste0("&", pollen_rate_file))
+
+  # STORE: save exactly at the final burn-in generation
+  burn <- set_ini_param(burn, "store_generation", BURNIN_GENS)
+  burn <- set_ini_param(burn, "store_dir", burnin_store_dir_name)
+
+  burn <- set_ini_param(burn, "save_files", 6)
+
+  # CARRYING CAPACITY SWITCH (the key trick):
+  # Keep BASE_K during burn-in, then at generation BURNIN_GENS switch to the scenario-specific cutK vector
+  cut_file <- manifest$cutK_file[i]
+  burn <- set_ini_param(
+    burn,
+    "patch_nbfem",
+    sprintf("(@g0 &%s, @g%d &%s)", K_base_file, BURNIN_GENS, cut_file)
+  )
+
+  # optional: make sure patch_nbmal exists (template has it)
+  burn <- set_ini_param(burn, "patch_nbmal", 0)
+  
+  # Force a single (non-sequential) competition coefficient during burn-in
+  # so the burn-in produces ONE stored population (no -1/-2/-3 suffix)
+  burn <- set_ini_param(burn, "regulation_by_competition", 0.01)
+
+  burn_ini_path <- file.path(OUT$ini_burnin, paste0(sim, "_burnin.ini"))
+  writeLines(burn, burn_ini_path)
+
+  # ---------- MAIN RUN INI ----------
+  run <- run_lines_template
+
+  run <- set_ini_param(run, "run_mode", "overwrite")
+  run <- set_ini_param(run, "random_seed", seed + 999)  # keep different from burn-in
+  run <- set_ini_param(run, "root_dir", root_dir)
+  run <- set_ini_param(run, "filename", paste0(sim, "_run"))
+  run <- set_ini_param(run, "logfile", paste0(sim, "_run_log"))
+  run <- set_ini_param(run, "replicates", NEMO_REPS_RUN)
+  run <- set_ini_param(run, "generations", RUN_GENS)
+
+  # scenario-specific planting/genetics
+  run <- set_ini_param(run, "quanti_init_freq", paste0("&", manifest$quanti_file[i]))
+  run <- set_ini_param(run, "patch_init_stage_size", paste0("&", manifest$planting_stage_file[i]))
+
+  # dispersal files
+  run <- set_ini_param(run, "seed_disperse_connectivity_matrix",
+                       paste0("&", seed_conn_file))
+  run <- set_ini_param(run, "seed_disperse_reduced_matrix",
+                       paste0("&", seed_rate_file))
+  run <- set_ini_param(run, "breed_disperse_connectivity_matrix_mal",
+                       paste0("&", pollen_conn_file))
+  run <- set_ini_param(run, "breed_disperse_reduced_matrix_mal",
+                       paste0("&", pollen_rate_file))
+
+  # load population from stored burn-in files (base name only; no replicate counter / extension)
+  # store binary file naming uses replicate-digit based on the maximum replicate number;
+  # therefore source_replicate_digit is set accordingly.
+  src_base <- file.path(root_dir, burnin_store_dir_name, paste0(sim, "_burnin"))
+  run <- set_ini_param(run, "source_pop", src_base)
+  run <- set_ini_param(run, "source_preserve", 1)
+  run <- set_ini_param(run, "source_replicates", NEMO_REPS_BURNIN)
+  run <- set_ini_param(run, "source_replicate_digit", rep_digit(NEMO_REPS_BURNIN))
+
+  run_ini_path <- file.path(OUT$ini_run, paste0(sim, ".ini"))
+  writeLines(run, run_ini_path)
+
+  ini_manifest <- rbind(
+    ini_manifest,
+    data.table(
+      sim_name = sim,
+      burnin_ini = burn_ini_path,
+      run_ini = run_ini_path,
+      root_dir = root_dir,
+      source_pop = src_base
+    )
+  )
+}
+
+ini_manifest_file <- file.path(OUT$scripts, "ini_manifest.tsv")
+fwrite(ini_manifest, ini_manifest_file, sep = "\t")
+
+message("Wrote burn-in ini files to: ", OUT$ini_burnin)
+message("Wrote run ini files to:    ", OUT$ini_run)
+message("INI manifest:              ", ini_manifest_file)
+```
+
+------------------------------------------------------------------------
+
+## Run nemo-age
+
+Create a shortcut to the location of the compiled nemo-age binary:
+
+```{bash}
+ln -sf /home/jannis/nemoage/nemoage0.32.6b/bin/nemoageE.E.E ./nemoage
+chmod +x ./nemoage
+```
+
+Running a scenario:
+
+```{bash}
+./nemoage ini_files_burnin/sc_p05_dispersed_rep01_burnin.ini
+./nemoage ini_files_run/sc_p05_dispersed_rep01.ini
+```
+
+Create bash script to run all:
+
+```{r}
+#| label: write-run-scripts
+#| echo: true
+
+run_one <- function(sim) {
+  b <- file.path(OUT$ini_burnin, paste0(sim, "_burnin.ini"))
+  r <- file.path(OUT$ini_run, paste0(sim, ".ini"))
+  c(sprintf("./nemoage %s", b), sprintf("./nemoage %s", r))
+}
+
+# script to run all scenarios sequentially
+all_cmds <- unlist(lapply(ini_manifest$sim_name, run_one))
+
+sh_all <- file.path(OUT$scripts, "run_all.sh")
+writeLines(c("#!/usr/bin/env bash", "set -euo pipefail", "", all_cmds), sh_all)
+Sys.chmod(sh_all, mode = "0755")
+
+message("Wrote: ", sh_all)
+```
+
+Run it:
+
+```{bash}
+bash scripts/run_all.sh
+```

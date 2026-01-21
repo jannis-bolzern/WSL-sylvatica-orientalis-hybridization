@@ -2,3 +2,11 @@
 .Rhistory
 .RData
 .Ruserdata
+
+*_log
+nemoage
+parametric_empty_land_nemoage_complete_v2.qmd
+parametric_empty_land_nemoage.qmd
+results
+results_empty_parametric
+variance_analysis_p20_rep01.qmd
