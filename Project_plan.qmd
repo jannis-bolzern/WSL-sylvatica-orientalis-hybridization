@@ -8,6 +8,8 @@ execute:
     warning: false
     message: false
     freeze: false
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Introduction
@@ -24,25 +26,23 @@ Which planting scheme is giving more hybrids, and how this is influenced by the 
 
 ## Pipeline
 
-1.  Find common patterns in the simulation scenarios and cluster the designs: translate each questionnaires into a small set of quantitative descriptors, for instance \% orientalis (choose three values from the questionnaires), number of clusters (choose one or 2 values from the questionnaires), cluster size, level of aggregation, etc...
+1.  Find common patterns in the simulation scenarios and cluster the designs: translate each questionnaires into a small set of quantitative descriptors, for instance % orientalis (choose three values from the questionnaires), number of clusters (choose one or 2 values from the questionnaires), cluster size, level of aggregation, etc...
 
-2.  Fix demographic and biological data based on literature ---> (add a quick sensitivity analysis for the supplementary on carrying capacity and competition coefficient, by keeping only one value of % orientalis introduced)
+2.  Fix demographic and biological data based on literature ---\> (add a quick sensitivity analysis for the supplementary on carrying capacity and competition coefficient, by keeping only one value of % orientalis introduced)
 
-3.  Create the three spatial configurations: **mixed**, **clustered** and **striped**? with 3 values of \%orientalis introduced. 
+3.  Create the three spatial configurations: **mixed**, **clustered** and **striped**? with 3 values of %orientalis introduced.
 
--\> in total, 3 x 3 = 9 spatial configurations? 
--\> NB: testing only set of simulations starting with European beech?
+-\> in total, 3 x 3 = 9 spatial configurations? -\> NB: testing only set of simulations starting with European beech?
 
-4. For each spatial configuration, create the input files (matrices) and the init files. 
+4.  For each spatial configuration, create the input files (matrices) and the init files.
 
-5. Run the simulations 
+5.  Run the simulations
 
--\>  REPLICATES: **first exploratory test with 3-5 replicates, final simulations with 30 replicates, after everything is defined**
--\>  GENERATIONS (years): burnin simulations approx 20 to let E. beech grow and reproduce a bit, then actual simulations for 300-500 years.
+-\> REPLICATES: **first exploratory test with 3-5 replicates, final simulations with 30 replicates, after everything is defined** -\> GENERATIONS (years): burnin simulations approx 20 to let E. beech grow and reproduce a bit, then actual simulations for 300-500 years.
 
-6. Analyse results
+6.  Analyse results
 
----
+------------------------------------------------------------------------
 
 Conversion from questionnaire to simulation:
 
@@ -114,7 +114,6 @@ Create a mature *F. sylvatica* forest and clear selected patches for later *F. o
 ```         
 -   `patch_nbfem`  (@g0 200, @g50  &patch_nbfem_cutting_sim_name_repX.txt)
         → seedlings can grow everywhere, but at the last generation of the simulation, the patches of the cutting are cleared  → **each replicate has to be linked to the right ini file** ???
-
 ```
 
 -   **Output**
@@ -135,7 +134,7 @@ Introduce *F. orientalis* into selected patches and simulate replacement dynamic
 
 2.  **Plant *F. orientalis***
 
-    -   `patch_init_stage_size {{0, X, 0, 1}}` \
+    -   `patch_init_stage_size {{0, X, 0, 1}}`\
         → planting patternlinked to the final patch_nbfem of the burnin for the cutting scheme
     -   `quanti_init_freq = 1` in planted patches\
         → planting pattern as defined in external matrices
@@ -226,15 +225,13 @@ Introduce *F. orientalis* into selected patches within a mixed-stand background 
         → remove approximately 20% of adults\
         → exact value depends on the scenario
 
-
 ------------------------------------------------------------------------
 
 ## Create input files
 
-Fixed (species-specific) parameters: 
-(but potentially add in the Supp. a little sensitivity analysis on carryinc capacity and competition coeff. to check the robustness of the results)
+Fixed (species-specific) parameters: (but potentially add in the Supp. a little sensitivity analysis on carryinc capacity and competition coeff. to check the robustness of the results)
 
-1.  population structure and age of reproduction (40) as average value found in the literature (between 30 and 50), or 50 as found in https://www.cabidigitallibrary.org/doi/full/10.5555/19531101078 
+1.  population structure and age of reproduction (40) as average value found in the literature (between 30 and 50), or 50 as found in https://www.cabidigitallibrary.org/doi/full/10.5555/19531101078
 
     pop_age_structure {{0,1,4,40}}
 
@@ -247,53 +244,50 @@ Fixed (species-specific) parameters:
     Stage 3: adults\
     pop_transition_by_age —-\> transition happens at max age for each stage (useful when juveniles require decades before transitioning to a reproductive stage
 
-2. stage survival from COMPADRE matrix, fecundity value (1000) and S1 (survival of Stage1) were previously tested in Stefaninin et al., in prep (previous paper). S3 (adult survival also tested but didn't give differences in the output).
+2.  stage survival from COMPADRE matrix, fecundity value (1000) and S1 (survival of Stage1) were previously tested in Stefaninin et al., in prep (previous paper). S3 (adult survival also tested but didn't give differences in the output).
 
     pop_transition_matrix {{0, 0, 0, 1000}\
     {0.3, 0, 0, 0}\
     {0, 0.7, 0, 0}\
     {0, 0, 1, 0.97}}
 
+3.  (patch number and grid: 25 x 25 grid, each patch is 16\^2 m = 100m x 100m = 1 ha)
 
-2.  (patch number and grid: 25 x 25 grid, each patch is 16\^2 m = 100m x 100m = 1 ha)
+4.  patch carrying capacity (patch_nbfem) fixed at 50 (?), from literature:
 
-3.  patch carrying capacity (patch_nbfem) fixed at 50 (?), from literature: 
-    - 50 in Waldi (Stefanini et al., in review), 
-    - 800 in Allenwiller (Stefanini et al., in review),  
-    - roughly 16-48 in favorable conditions in Dobrovolný et al., 2010 (https://jfs.agriculturejournals.cz/pdfs/jfs/2010/12/04.pdf)
-    - max found 8750/ha (14/patch) (but very variable depending on the conditions) in Axer 2021 (https://link.springer.com/article/10.1007/s10342-021-01377-w)
-    - more than 10000/ha (16/patch) in one study in Poland (10.3161/15052249PJE2015.63.2.009)
+    -   50 in Waldi (Stefanini et al., in review),
+    -   800 in Allenwiller (Stefanini et al., in review),\
+    -   roughly 16-48 in favorable conditions in Dobrovolný et al., 2010 (https://jfs.agriculturejournals.cz/pdfs/jfs/2010/12/04.pdf)
+    -   max found 8750/ha (14/patch) (but very variable depending on the conditions) in Axer 2021 (https://link.springer.com/article/10.1007/s10342-021-01377-w)
+    -   more than 10000/ha (16/patch) in one study in Poland (10.3161/15052249PJE2015.63.2.009)
 
-  ---> 8-16 seedlings = moderate regeneration scenario, 50 seedlings = high regeneration scenario
+---\> 8-16 seedlings = moderate regeneration scenario, 50 seedlings = high regeneration scenario
 
-4.  seed dispersal distance and shape parameter fixed at 10 or 15 m, and ~1 (shape)
-    -  29m and 0.5 shape in Waldi (too large in Allenwiller)
-    -  7m and 1.2 in Westergren 2023
-    -  10m in Oddou-Muratorio 2010
-    -  up to 20-25 m the max amount, max at 1-5 m (+ refs in Dobrovolny 2016 https://iforest.sisef.org/contents/?id=ifor1581-008)
-    - 20 m radius for the seed falling according to (Wagner S (1999) The initial phase of natural regeneration in mixed ash-beech stands—ecological aspects. Sauerländer)
-    -  6m highest in Kutter M, Gratzer G (2006) https://www.researchgate.net/publication/286327613_Current_methods_for_estimation_of_seed_dispersal_of_trees_-_An_example_of_seed_dispersal_of_Picea_abies_Abies_alba_and_Fagus_sylvatica); 
-    -  13-20m in Millerón et al. 2013 (https://doi.org/10.1111/mec.12200 ) --> other references in dicussion
-
+4.  seed dispersal distance and shape parameter fixed at 10 or 15 m, and \~1 (shape)
+    -   29m and 0.5 shape in Waldi (too large in Allenwiller)
+    -   7m and 1.2 in Westergren 2023
+    -   10m in Oddou-Muratorio 2010
+    -   up to 20-25 m the max amount, max at 1-5 m (+ refs in Dobrovolny 2016 https://iforest.sisef.org/contents/?id=ifor1581-008)
+    -   20 m radius for the seed falling according to (Wagner S (1999) The initial phase of natural regeneration in mixed ash-beech stands—ecological aspects. Sauerländer)
+    -   6m highest in Kutter M, Gratzer G (2006) https://www.researchgate.net/publication/286327613_Current_methods_for_estimation_of_seed_dispersal_of_trees\_-\_An_example_of_seed_dispersal_of_Picea_abies_Abies_alba_and_Fagus_sylvatica);
+    -   13-20m in Millerón et al. 2013 (https://doi.org/10.1111/mec.12200 ) --\> other references in dicussion
 5.  pollen dispersal distance and pollen shape parameter: 40/50? (need to create spatial structure)
-    -  800-1000m and 0.17 in Westergren 2023
-    -  41.63m in Oddou-Muratorio 2010
-    -  110m and 0.85 in Waldi (previous paper - not converging in Allenwiller)
-
-5.  selfing ( *mating_system 4, + mating_proportion* ): 0.003 from literature
-    -  0.0073 in Allenwiller
-    -  0.0032 in Wäldi
-    -  0.00036 in Westergren 2023
-
-6.  competition model and competition coefficient (regulation_by_competition): 0.005 or 0.01
-    -  0.005 in Allenwiller
-    -  0.01 in Wäldi
+    -   800-1000m and 0.17 in Westergren 2023
+    -   41.63m in Oddou-Muratorio 2010
+    -   110m and 0.85 in Waldi (previous paper - not converging in Allenwiller)
+6.  selfing ( *mating_system 4, + mating_proportion* ): 0.003 from literature
+    -   0.0073 in Allenwiller
+    -   0.0032 in Wäldi
+    -   0.00036 in Westergren 2023
+7.  competition model and competition coefficient (regulation_by_competition): 0.005 or 0.01
+    -   0.005 in Allenwiller
+    -   0.01 in Wäldi
 
 Testing parameters:
 
 1.  number of trees of relative species –\> 3 values from the questionnaires?
 2.  position of trees of relative species –\> **mixed, stripes, clusters**
-5.  fitness reduction / selection against orientalis/sylvatica/hybrids? (environmental effect?)
+3.  fitness reduction / selection against orientalis/sylvatica/hybrids? (environmental effect?)
 
 ### Spatial architecture (simulation grid)
 
@@ -332,7 +326,7 @@ writeVector(grid_poly, "Input_files/Grid_4x4m_100x100m.shp", filetype = "ESRI Sh
 
 ### configuration files and source_pop
 
-For each spatial configuration, create a master file with the structure as below: 
+For each spatial configuration, create a master file with the structure as below:
 
 | simulation | patchID | patch_value |
 |------------|:--------|------------:|
@@ -365,6 +359,7 @@ NA Empty land ---\> quanti = 0, patch_nbfem = 0
   If the source population does not contain enough individuals within patches to fill the receiving patches to the carrying capacity, the landscape is not filled (== maybe I dont need to set carrying capacity 0 for non-beech starting patches??)
   
 ```
+
 ### Quanti trait (species identity)
 
 The species identity is encoded as quantitative trait (quanti) based on loci with 2 possible "alleles":
@@ -922,8 +917,8 @@ num_patch = ncell(grid)
 # ----- SEED dispersal parameters 
 
 ## plot kernel 
-b <- c(0.5,0.5) # shape parameter from NMpi2 
-d <- c(20, 10)  # mean dispersal distance from NMpi2 and reduced dispersal 
+b <- c(1,1,1) # shape parameter
+d <- c(10,15,20)  # mean dispersal distance
 
 ## check the curves
 x <- 1:100 
@@ -945,8 +940,8 @@ ggplot(results, aes(x = x, y = K, group =d, color = d))+
 # final parameters
 # define threshold for rate going to 0 at tot meters from focal tree
 d_t <- 50
-d <- 10
-b <- 0.5
+d <- 15
+b <- 1
 threshold = exp_power_kernel(d,b, d_t) ## otherwise, just keep d
 threshold
 
@@ -965,12 +960,6 @@ dim(rate_matrix)
 # check that rate for each row sums to 1
 rowSums(rate_matrix, na.rm = TRUE)
 
-# plot dispresal of one random focal patch
-# grid dimensions 
-grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
-n_rows = dim(grid_r)[1]
-n_cols = dim(grid_r)[2]
-    
 ## plot how many seeds fall in each patch if a tree is dispersing 1000 seeds
 mati=matrix(dispersal_matrix[,num_patch],ncol=n_cols,byrow= T)
 mati=mati/sum(mati) # normalization
@@ -987,8 +976,8 @@ write.red.dispersal.matrix(connectivity_matrix, rate_matrix,
                            paste0("Input_files/disperse/Seed_rate_matrix_d", d, ".txt"))
 
 # ----------POLLEN dispersal parameters (here we use Waldi dispersal parameters)
-b <- c(0.5,0.5,0.5) # kernel shape
-d <- c(200, 400, 800)  # mean dispersal distance
+b <- c(1,1,1) # kernel shape
+d <- c(40,50,60)  # mean dispersal distance
 ## check the curves
 x <- 1:1000 
 results <- data.frame()
@@ -1009,9 +998,9 @@ ggplot(results, aes(x = x, y = K, group =d, color = d))+
 
 # final parameters
 # define threshold for rate going to 0 at tot meters from focal tree
-d_t <- 1000
-d <- 800
-b <- 0.5
+d_t <- 100
+d <- 40
+b <- 1
 threshold = exp_power_kernel(d,b, d_t) ## otherwise, just keep d
 threshold
 
@@ -1030,13 +1019,7 @@ dim(rate_matrix)
 # check that rate for each row sums to 1
 rowSums(rate_matrix, na.rm = TRUE)
 
-# plot dispresal of one random focal patch
-grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
-# grid dimensions 
-n_rows = dim(grid_r)[1]
-n_cols = dim(grid_r)[2]
-    
-## plot how many seeds fall in each patch if a tree is releasing 10000 pollens
+## plot how many pollen grain fall in each patch if a tree is releasing 10000 pollens
 mati=matrix(dispersal_matrix[,num_patch],ncol=n_cols,byrow= T)
 mati=mati/sum(mati) # normalization
 par(mar = c(4, 4, 4, 10))
@@ -1044,7 +1027,6 @@ plot(mati)
 b=reshape2::melt(mati,id.vars="rows")
 b$value[b$value*10000<1]=NA ## set <1 seeds as NA
 ggplot(data=b,aes(x=Var1,y=Var2,fill=value*10000))+geom_raster()+scale_fill_gradientn(colours = terrain.colors(20),trans = "log")
-
 
 # double check distance against dispersal
 distance_v <- distance_matrix[lower.tri(distance_matrix, diag = T)][order(row(distance_matrix)[lower.tri(row(distance_matrix), diag = T)])]
@@ -1133,27 +1115,23 @@ echo "Finished with ${SIM_NAME}"
 
 ```
 
-## Analyse results (sensitivity analysis)
+## Analyse results of sensitivity analysis
 
-Main questions to answer:
+For this step we want to check:
 
-1.  which simulation configuration predicts more hybrids? which predict less hybrids? NB we will focus only on reproductive individuals (adults)
-2.  how are hybrids distributed across the landscape in the different simulations?
-3.  are these results consistent across different values of carrying capacity, competition coefficient and (selection)?
+1. if the hybrid proportions and distribution are consistent across replicates of the same simulation
 
-For each simulation scenario we want to report:
+2. if the hybrid proportions and distribution are consistent across different values of carrying capacity (K) and competition coefficient (B). 
+
 
 For each scenario:
 
-1.  **Hybrid proportions** at generation X
+1.  **Hybrid proportions** at generation X for each life stage
 
 2.  **Hybrid patterns across the grid/spatial extent of introgression**
 
-3.  **Hybrid class distribution**
 
-4.  **Hybridization trajectories through time (persistence of orientalis ancestry)**
-
-### Demographic patterns
+### Demographic patterns 
 
 First checking the demographic trends across the years for the different parameter combinations.
 
@@ -1188,10 +1166,13 @@ res_path2 <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Results/
 dir.create(res_path2, recursive = TRUE, showWarnings = FALSE)
 file.copy(from = list.files(res_path, full.names = TRUE), to=res_path2, recursive = TRUE)
 
+# OR
+# res_path2 <- "C:/Users/stefanin/Downloads/WSL-sylvatica-orientalis-hybridization-main/WSL-sylvatica-orientalis-hybridization-main"
+
 ####---------- demographic trend per simulation
 
 # files with demographic data
-file_pattern <- ".*_results\\.txt$" 
+file_pattern <- "sc_p20\\.txt$" 
 file_list <- list.files(path = res_path2, recursive = TRUE, full.names = TRUE, include.dirs = TRUE, pattern = file_pattern)
 file_list
 
@@ -1389,7 +1370,7 @@ ggplot(subset(mean_patch_data, nemo_stage == stage), aes(x = (patch - 1) %% n_ro
   theme(aspect.ratio = 1, legend.position = "bottom")
 ```
 
-### quanti patterns (species identity)
+### Species pattern (quanti trait)
 
 First check to the distribution of the quanti trait, i.e. the species identity. It is based on the quantitative trait P1, where
 
@@ -1401,7 +1382,7 @@ First check to the distribution of the quanti trait, i.e. the species identity. 
 
 intermediate = advanced generation hybrids
 
-**NB: check the variability between the replicates! Do not average.**
+**NB: MAKE SURE THAT THE FILENAME METADATA ARE CONSISTENT ACROSS SIMULATIONS, OTHERWISE THE FILES ARE NOT PROCESSED CORRECTLY**
 
 ```{r}
 #| label: processing quanti results
@@ -1413,10 +1394,14 @@ intermediate = advanced generation hybrids
 
 # the output is a unique file : Quanti_data_Allenwiller_year2020.RDS
 res_path2 <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Results/"
+# res_path2 <- "C:/Users/stefanin/Downloads/WSL-sylvatica-orientalis-hybridization-main/WSL-sylvatica-orientalis-hybridization-main"
+
 # to select all the replicates
-file_pattern <- ".*_results_([0-9]+)_([0-9]+)\\.quanti$"
-# to select 30 replicates
+file_pattern <- ".*\\.quanti$"
+
+# to select only 30 replicates
 #file_pattern <- ".*_results_([0-9]{2,3})_((0[1-9])|(1[0-9])|(2[0-9])|(30))\\.quanti$"
+
 quanti_files <- list.files(path = res_path2, recursive = TRUE,full.names = TRUE,include.dirs = TRUE,pattern = file_pattern)
 
 quanti_list <- vector("list", length(quanti_files))
@@ -1425,19 +1410,19 @@ for (i in seq_along(quanti_files)) {
 
   file <- quanti_files[i]
   data <- fread(file)
+  ori_proportion <- as.numeric( stringr::str_extract(basename(file), "(?<=_p)\\d+"))
+  configuration <-str_match(basename(file),"_p\\d+_(.*?)_rep")[, 2]
+  k <- as.numeric(sub(".*_k([0-9.]+).*", "\\1", file))
+  b <- as.numeric(sub(".*_b([0-9.]+).*", "\\1", file))
 
-  file_name <- sub("\\.quanti$", "", basename(file))
-
-  sim_name <- sub("_.*$", "", file_name)
-
-  k <- as.numeric(sub(".*_k([0-9.]+).*", "\\1", file_name))
-  b <- as.numeric(sub(".*_b([0-9.]+).*", "\\1", file_name))
-
-  generation <- as.numeric(str_extract(file_name, "(?<=results_)\\d+"))
-  replicate  <- as.numeric(sub("^.*_(\\d+)\\.quanti$", "\\1", basename(file)))
+ # generation-- any 3-digit number surrounded by _xxx_
+  generation <- as.numeric( str_extract(basename(file), "(?<=_)\\d{3}(?=_)"))
+ # replicate = last number before .quanti
+  replicate <- as.numeric(str_extract(basename(file), "(?<=_)\\d+(?=\\.quanti$)"))
 
   data[, `:=`(
-    sim_name  = sim_name,
+    configuration  = configuration,
+    ori_proportion = ori_proportion,
     k         = k,
     b         = b,
     generation = generation,
@@ -1449,27 +1434,178 @@ for (i in seq_along(quanti_files)) {
 
 # Combine all files into one data.table ad save
 quanti_data_all <- rbindlist(quanti_list, fill = TRUE)
-saveRDS(quanti_data_all,file = file.path(res_path2, "Quanti_data.RDS")
-)
-rm(quanti_files, quanti_list)
+# saveRDS(quanti_data_all,file = file.path(res_path2, "Quanti_data.RDS"))
+#rm(quanti_files, quanti_list)
 
 ```
 
-First look at the patterns across the landscape: there are quite some variables:
+For each simulation and replicate, plot the mean p1 value (species identity) across all the individuals of the patch (to have a very general overview of the result of the simulation):
 
-k = carrying capacity of each patch,
+*NB: each line is a replicate*
 
-b = competition coefficient,
+```{r}
+#| label: plot P1 across time
 
-type of simulation and replicate simulation
+quanti_data_all <- readRDS(file.path(res_path2, "Quanti_data.RDS"))
 
-stage (stage 1, 2 or 3),
+## summarise data per patch = each patch has the average P1 value across individuals of the patch
+quanti_average <- quanti_data_all %>%
+  group_by(configuration, ori_proportion, replicate, generation, stage, k,b) %>%
+  summarize(P1 = mean(P1, na.rm = T), .groups = "drop")
 
-and everything is plot across multiple generations (from 0 to 1000, every 100 generations).
+ggplot(quanti_average,aes(x = as.numeric(generation), y = as.numeric(P1),group = interaction(replicate, factor(stage)),  color = factor(stage))) +
+    geom_line() +
+    #scale_fill_viridis_c(option = "viridis", direction = -1) +
+    facet_grid( ori_proportion+ b~ configuration +k) + 
+    labs(x = "Generations", y = "Average P1 across the whole stand") +
+    theme_bw()+
+    theme(
+      aspect.ratio = 1,
+      legend.position = "right",
+      panel.spacing.x = unit(1, "lines"),
+      panel.spacing.y = unit(0.1, "lines"),
+      strip.text = element_text(size = 10))
 
-**Question: are the patterns different for different values of k and b? If yes —\> choose one. If no —-\> how is changing the pattern?**
+```
 
-**Question: ? how to summarize results across simulations?**
+
+Checking if results are consistent across replicates using the Coefficient of Variation (CV, SD / mean). As SD increases with the mean, you cannot compare the mean across simulations that have different mean, so CV does not depend on the mean anymore since it is divided by the mean. It shows the variation relative to the mean.
+The higher the CV, the higher the SD relative to the mean.
+
+
+```{r}
+#| label: hybrid proportions replicates check
+
+# caluclate the proportion of hybrids for each simulation (data table is faster)
+library(data.table)
+
+dt <- copy(quanti_data_all)
+generation <- 200
+
+hyb_prop <- dt[generation == generation,
+  .( N = .N,N_hybrid = sum(P1 > -1 & P1 < 1),prop_hybrid = mean(P1 > -1 & P1 < 1)), by = .(configuration, ori_proportion, replicate, stage, k, b) ]
+
+## calculate mean sd and cv per sim
+replicate_cv <- hyb_prop %>%
+  group_by(configuration, ori_proportion, stage, k, b) %>%
+  summarize(
+    mean_hi = mean(prop_hybrid),
+    sd_hi   = sd(prop_hybrid),
+    cv_hi   = sd_hi / mean_hi,
+    .groups = "drop"
+  )
+
+
+## check the sd
+ggplot(replicate_cv,
+       aes(x = factor(stage), y = sd_hi, fill = factor(stage))) +
+  geom_boxplot() +
+  facet_grid(ori_proportion + b ~ configuration + k) +
+  labs(
+    y = "SD of hybrid proportion",
+    x = "Stage"
+  ) +
+  theme_bw()
+
+## check the CV
+ggplot(replicate_cv,
+       aes(x = factor(stage), y = cv_hi, fill = factor(stage))) +
+  geom_boxplot() +
+  facet_grid(ori_proportion + b ~ configuration + k) +
+  labs(
+    x = "Stage",
+    y = "Coefficient of variation (CV)",
+    title = "Replicate variability across simulation parameter combinations"
+  ) +
+  theme_bw()
+
+
+```
+
+Now plot the hybrid proportions across the whole stand for each simulation, age class (stage) and at generation X. 
+
+```{r}
+#| label: hybrid proporiton boxplot
+
+## boxplots for each simulation with x = stage, y = prop, color = hybrid class
+ggplot(hyb_prop, aes(x = stage, y = prop_hybrid, group = factor(stage), fill = factor(stage)))+
+  geom_boxplot()+ theme_bw()+  
+  facet_grid( ori_proportion+ b~ configuration +k) 
+
+
+```
+
+---
+
+Next question: 
+**within the same configuration and proportion of orientalis, do K and B significantly change the hybrid proportions?**
+
+To test the effect of k and b on the response variable hybrid proportions, I fit one model per subset simulation (configuration x ori proportion):
+
+```{r}
+#| label: k and b model
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+# split dataset
+hyb_list <- split(hyb_prop, list(hyb_prop$configuration, hyb_prop$ori_proportion), drop = TRUE)
+
+# loop to fit the model 
+library(lme4)
+
+results_list <- list()
+
+for(i in seq_along(hyb_list)) {
+  
+  dat <- hyb_list[[i]]
+  
+  model <- glmer(
+    cbind(N_hybrid, N - N_hybrid) ~ k + b + (1 | replicate),  ## comparing N hybrids ~ N not hybrids
+    data = dat,
+    family = binomial  ## N_hyb ~ binomial(N, p) --?
+  )
+  
+  results_list[[names(hyb_list)[i]]] <- model
+}
+
+
+## create summary of results for each model of each sim
+
+model_summary <- function(model) {
+  s <- summary(model)
+  coef <- s$coefficients
+  return(coef)
+}
+
+res_coef <- lapply(results_list,model_summary)
+
+
+## store in one df
+res_df <- do.call(rbind, lapply(names(res_coef), function(nm) {
+  coefs <- res_coef[[nm]]
+  cfg <- strsplit(nm, "\\.")[[1]]
+  data.frame(
+    configuration = cfg[1],
+    ori_proportion = as.numeric(cfg[2]),
+    term = rownames(coefs),
+    estimate = coefs[,1],
+    std_error = coefs[,2],
+    z_value = coefs[,3],
+    p_value = coefs[,4],
+    row.names = NULL,
+    stringsAsFactors = FALSE
+  )
+}))
+
+```
+
+Next step: check the results
+
+---
+## Analyse results of final simulations
 
 ### Hybrid distribution
 
@@ -1482,6 +1618,16 @@ quanti_data_all <- readRDS(file.path(res_path2, "Quanti_data.RDS"))
 quanti_patch <- quanti_data_all %>%
   group_by(sim_name, replicate, generation,stage,pop, k,b) %>%
   summarize(P1 = mean(P1, na.rm = T), .groups = "drop")
+
+## quick look at P1 distirbution
+hist(quanti_data_all$P1)
+
+# importing grid 
+grid <- vect("Input_files/Grid_4x4m_100x100m.shp")
+grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
+# grid dimensions 
+n_rows = dim(grid_r)[1]
+n_cols = dim(grid_r)[2]
 
 ### SUBSET FOR STAGE REPLICATE OR OTHER PARAM TO VISUALISE BETTER
 
@@ -1507,84 +1653,6 @@ quanti_patch <- quanti_data_all %>%
 
 Plotting the trend of average P1 for the whole landscape, for each simulation, and stage, across the generations:
 
-*each line is a replicate*
-
-```{r}
-#| label: plot P1 across time
-
-quanti_data_all <- readRDS(file.path(res_path2, "Quanti_data.RDS"))
-
-## summarise data per patch = each patch has the average P1 value
-quanti_average <- quanti_data_all %>%
-  group_by(sim_name, replicate, generation,stage, k,b) %>%
-  summarize(P1 = mean(P1, na.rm = T), .groups = "drop")
-
-ggplot(quanti_average,
-         aes(x = as.numeric(generation), y = as.numeric(P1),group = interaction(replicate, factor(stage)),  color = factor(stage))) +
-    geom_line() +
-    #scale_fill_viridis_c(option = "viridis", direction = -1) +
-    facet_grid(sim_name+b~ k) + 
-    labs(x = "Generations", y = "Average P1") +
-  theme_bw()+
-    theme(
-      aspect.ratio = 1,
-      legend.position = "right",
-      panel.spacing.x = unit(1, "lines"),
-      panel.spacing.y = unit(0.1, "lines"),
-      strip.text = element_text(size = 10))
-```
-
-it looks like that
-
--   for higher k (carrying capacity) and higher b (competition coefficient), the simulations point more toward 0.5 or -0.5 (more BC sylvatica, or more BC orientalis, or pure individuals);
-
--   for lower k and lower b, simulations are more stable to 0 (F1 hybrids?)
-
-### Hybrid proportions
-
-To quantify the results, for each simulation and age class (stage) we calculate the hybrid proportions at generation X (100? 200?)
-
-```{r}
-#| label: hybrid rate
-#| eval: false
-#| output: false
-#| echo: true
-#| code-fold: true
-#| code-summary: "Expand for full code"
-
-# caluclate the proportion of hybrids for each simulation 
-library(data.table)
-
-dt <- copy(quanti_data_all)
-generation <- 400
-
-hyb_prop_1000 <- dt[generation == generation,
-  .(
-    N = .N,
-    N_hybrid = sum(P1 > -1 & P1 < 1),
-    prop_hybrid = mean(P1 > -1 & P1 < 1)
-  ),
-  by = .(sim_name, replicate, stage, k, b) ## also parameteres
-]
-
-
-## boxplots for each simulation with x = stage, y = prop, color = hybrid class
-ggplot(hyb_prop_1000, aes(x = stage, y = prop_hybrid, group = factor(stage), fill = factor(stage)))+geom_boxplot()+  facet_grid(sim_name+b~ k) 
-
-## potentially calcualting a hybrid index which incorporates the P1 value (1 - P1 = how much the hybrid is towards the parental or towards the F1)
-
-hyb_index <- dt[generation == generation,
-  .(
-    hybrid_index = mean(P1 > -1 & P1 < 1) *
-                   mean(1 - abs(P1))
-  ),
-  by = .(sim_name, replicate, stage, k, b)
-]
- 
-
-ggplot(hyb_index, aes(x = stage, y = hybrid_index, group = factor(stage), fill = factor(stage)))+geom_boxplot()+  facet_grid(sim_name+b~ k)
-
-```
 
 ### Hybrid class
 
@@ -1653,7 +1721,3 @@ hyb_time <- dt[
 ggplot(hyb_time, aes(x = generation, y = prop_hybrid, group = interaction(replicate, factor(stage)), color = factor(stage)))+geom_line()+ facet_grid(sim_name+b~ k) 
 
 ```
-
-
-
-
