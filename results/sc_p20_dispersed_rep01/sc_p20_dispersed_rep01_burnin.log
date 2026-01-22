@@ -1,6 +1,6 @@
 # Nemo    v0.32.6b DMI  [06 Mar 2025]
 #
-# simulation started on 21-01-2026 10:33:06
+# simulation started on 22-01-2026 15:22:01
 
 
 filename sc_p20_dispersed_rep01_burnin
@@ -64,5 +64,5 @@ quanti_init_freq &input_files/quanti_init_freq/quanti_init_file_burnin_sylv.txt
 
 #random_seed 22260221
 
-# simulation finished 21-01-2026 10:33:10
+# simulation finished 22-01-2026 15:22:06
 # CPU time used: 00:00:04s

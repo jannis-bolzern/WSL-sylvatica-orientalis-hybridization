@@ -39,27 +39,20 @@ suppressPackageStartupMessages({
 #| echo: true
 
 # ---- Templates
-TEMPLATE_BURNIN_INI <- "Init_files/beech1_burnin.ini"
-TEMPLATE_RUN_INI    <- "Init_files/beech1.ini"
+TEMPLATE_BURNIN_INI <- "ini_files/templates/beech1_burnin.ini"
+TEMPLATE_RUN_INI    <- "ini_files/templates/beech1.ini"
 
 stopifnot(file.exists(TEMPLATE_BURNIN_INI), file.exists(TEMPLATE_RUN_INI))
 
 # ---- Output folders
 OUT <- list(
   input       = "input_files",
-  ini_burnin  = "ini_files_burnin",
-  ini_run     = "ini_files_run",
+  ini         = "ini_files",
   results     = "results",
-  scripts     = "scripts",
-  plots       = "plots"
+  scripts     = "scripts"
 )
 
-dir.create(OUT$input, showWarnings = FALSE, recursive = TRUE)
-dir.create(OUT$ini_burnin,  showWarnings = FALSE, recursive = TRUE)
-dir.create(OUT$ini_run,     showWarnings = FALSE, recursive = TRUE)
-dir.create(OUT$results,     showWarnings = FALSE, recursive = TRUE)
-dir.create(OUT$scripts,     showWarnings = FALSE, recursive = TRUE)
-dir.create(OUT$plots,       showWarnings = FALSE, recursive = TRUE)
+for (d in OUT) dir.create(d, showWarnings = FALSE, recursive = TRUE)
 
 # ---- Subfolders under input_files
 DIRS <- list(
@@ -69,7 +62,9 @@ DIRS <- list(
   stage    = file.path(OUT$input, "patch_init_stage_size"),
   cutK     = file.path(OUT$input, "patch_nbfem_cut"),
   disperse = file.path(OUT$input, "disperse"),
-  plots    = file.path(OUT$plots)
+  plots    = file.path(OUT$input, "plots"),
+  burnin   = file.path(OUT$ini, "burnin"),
+  run      = file.path(OUT$ini, "run")
 )
 
 for (d in DIRS) dir.create(d, showWarnings = FALSE, recursive = TRUE)
@@ -140,14 +135,14 @@ PLANTING_SCHEME <- c(0, 20, 0, 0)
 #| echo: true
 
 # SEED
-SEED_D_MEAN <- 10
-SEED_B      <- 0.5
+SEED_D_MEAN <- 15
+SEED_B      <- 1
 SEED_D_T    <- 50
 
 # POLLEN
-POLLEN_D_MEAN <- 800
-POLLEN_B      <- 0.5
-POLLEN_D_T    <- 1000
+POLLEN_D_MEAN <- 40
+POLLEN_B      <- 1
+POLLEN_D_T    <- 100
 ```
 
 ------------------------------------------------------------------------
@@ -673,16 +668,18 @@ message("Base-K vector: ", K_base_file)
 #| echo: true
 
 # One combined plot per (prop × clustering): 1×N_LAYOUT_REPS
-PLOT_REP_DIR <- file.path(DIRS$plots, "layout_replicates")
+PLOT_REP_DIR <- file.path(DIRS$plots)
 dir.create(PLOT_REP_DIR, showWarnings = FALSE, recursive = TRUE)
 
 manifest_dt <- copy(manifest)
 manifest_dt[, scenario_key := sub("_rep[0-9]+$", "", sim_name)]
 
-scenario_groups <- manifest_dt[, .(cfg_files = list(cfg_file), sims = list(sim_name),
-                                  prop_orientalis = prop_orientalis[1],
-                                  cluster_level = cluster_level[1]),
-                              by = .(scenario_key)]
+scenario_groups <- manifest_dt[, .(
+  cfg_files = list(cfg_file),
+  sims = list(sim_name),
+  prop_orientalis = prop_orientalis[1],
+  cluster_level = cluster_level[1]
+), by = .(scenario_key)]
 
 for (i in seq_len(nrow(scenario_groups))) {
   sc_key <- scenario_groups$scenario_key[i]
@@ -691,6 +688,8 @@ for (i in seq_len(nrow(scenario_groups))) {
 
   cfg_files <- unlist(scenario_groups$cfg_files[i])
   sims <- unlist(scenario_groups$sims[i])
+
+  # Ensure rep01..repNN order
   ord <- order(sims)
   cfg_files <- cfg_files[ord]
   sims <- sims[ord]
@@ -711,11 +710,13 @@ for (i in seq_len(nrow(scenario_groups))) {
     rel_heights = c(0.18, 1)
   )
 
+  # Save the combined overview into input_files/plots
   out_combined <- file.path(PLOT_REP_DIR, paste0("overview_", sc_key, ".png"))
   ggsave(out_combined, final, width = 16, height = 3.8, dpi = 220)
 }
 
-message("Scenario overview plots: ", PLOT_REP_DIR)
+cat("Scenario overview plots saved to: ", PLOT_REP_DIR)
+
 ```
 
 ------------------------------------------------------------------------
@@ -872,7 +873,7 @@ for (i in seq_len(nrow(manifest))) {
   # so the burn-in produces ONE stored population (no -1/-2/-3 suffix)
   burn <- set_ini_param(burn, "regulation_by_competition", 0.01)
 
-  burn_ini_path <- file.path(OUT$ini_burnin, paste0(sim, "_burnin.ini"))
+  burn_ini_path <- file.path(DIRS$burnin, paste0(sim, "_burnin.ini"))
   writeLines(burn, burn_ini_path)
 
   # ---------- MAIN RUN INI ----------
@@ -909,7 +910,7 @@ for (i in seq_len(nrow(manifest))) {
   run <- set_ini_param(run, "source_replicates", NEMO_REPS_BURNIN)
   run <- set_ini_param(run, "source_replicate_digit", rep_digit(NEMO_REPS_BURNIN))
 
-  run_ini_path <- file.path(OUT$ini_run, paste0(sim, ".ini"))
+  run_ini_path <- file.path(DIRS$run, paste0(sim, ".ini"))
   writeLines(run, run_ini_path)
 
   ini_manifest <- rbind(
@@ -927,8 +928,8 @@ for (i in seq_len(nrow(manifest))) {
 ini_manifest_file <- file.path(OUT$scripts, "ini_manifest.tsv")
 fwrite(ini_manifest, ini_manifest_file, sep = "\t")
 
-message("Wrote burn-in ini files to: ", OUT$ini_burnin)
-message("Wrote run ini files to:    ", OUT$ini_run)
+message("Wrote burn-in ini files to: ", DIRS$burnin)
+message("Wrote run ini files to:    ", DIRS$run)
 message("INI manifest:              ", ini_manifest_file)
 ```
 
@@ -946,8 +947,8 @@ chmod +x ./nemoage
 Running a scenario:
 
 ```{bash}
-./nemoage ini_files_burnin/sc_p05_dispersed_rep01_burnin.ini
-./nemoage ini_files_run/sc_p05_dispersed_rep01.ini
+./nemoage ini_files/burnin/sc_p05_dispersed_rep01_burnin.ini
+./nemoage ini_files/run/sc_p05_dispersed_rep01.ini
 ```
 
 Create bash script to run all:
@@ -975,5 +976,5 @@ message("Wrote: ", sh_all)
 Run it:
 
 ```{bash}
-bash scripts/run_all.sh
+scripts/run_all.sh
 ```

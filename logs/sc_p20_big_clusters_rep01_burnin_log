@@ -1,0 +1,6 @@
+--- N E M O ---
+    LOGFILE
+
+
+| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
+| sc_p20_big_clusters_rep01_burnin        | 21-01-2026 12:11:06 | 21-01-2026 12:11:11 |   00:00:04 |         1 |   00:00:04 |       20 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/sc_p20_big_clusters_rep01/ ".txt":results/sc_p20_big_clusters_rep01/ ".bin":results/sc_p20_big_clusters_rep01/burnin/

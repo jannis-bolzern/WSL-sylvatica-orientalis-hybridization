@@ -301,8 +301,8 @@ First we need to define the starting grid:
 #| code-fold: true
 #| code-summary: "Expand for full code"
 
-dir.create("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Input_files")
-setwd("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Input_files")
+dir.create("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/input_files")
+setwd("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/input_files")
 
 library(terra)
 
@@ -320,7 +320,7 @@ grid_poly$patch_id <- 1:nrow(grid_poly) ## add patch ID
 ## number of patchs
 length(grid_poly$patch_id)
 
-writeVector(grid_poly, "Input_files/Grid_4x4m_100x100m.shp", filetype = "ESRI Shapefile",overwrite = TRUE)
+writeVector(grid_poly, "input_files/grid_4x4m_100x100m.shp", filetype = "ESRI Shapefile",overwrite = TRUE)
 
 ```
 
@@ -382,9 +382,9 @@ The script uses the write.nemo.matrix to convert the quanti_init_freq matrix int
 
 library(data.table)
 library(terra)
-dir.create("Input_files/quanti_init_freq")
-files <- list.files("Input_files/configs_txt")
-grid <-  vect("Input_files/Grid_4x4m_100x100m.shp")
+dir.create("input_files/quanti_init_freq")
+files <- list.files("input_files/configs_txt")
+grid <-  vect("input_files/grid_4x4m_100x100m.shp")
 
 # function to write matrix in NEMO format 
 write.matrix.nemo <- function(mat, outfile) {
@@ -406,7 +406,7 @@ for (file in files) {
       
     # importing simulated population with species information and patch ID (check the path)
     sim_name <-  sub("^(.*)\\.txt$", "\\1", file)
-    indiv <- fread(paste0("Input_files/configs_txt/", file))
+    indiv <- fread(paste0("input_files/configs_txt/", file))
     # creating matrix with 0 as default value (empty patches will be ignored automatically, but they need to appear in the matrix)
     quanti_init_freq = matrix(0, ncol = 1, nrow = ncell(grid))
     # assign patch value based on patch id in individuals file
@@ -414,14 +414,14 @@ for (file in files) {
     indiv[is.na(indiv$quanti_code), "quanti_code"] <- 0
     quanti_init_freq[ c(indiv$patchID), ] = indiv$quanti_code
     # write quanti_init matrix to file (or whether you want to store them) and copy to the nemo folder 
-    write.matrix.nemo(quanti_init_freq, paste0("Input_files/quanti_init_freq/quanti_init_file_",sim_name,".txt"))
+    write.matrix.nemo(quanti_init_freq, paste0("input_files/quanti_init_freq/quanti_init_file_",sim_name,".txt"))
 
 }
 
 ## creating the initial empty matrix for empty simulations: 
 sim_name <- "empty0"
 quanti_init_freq = matrix(0, ncol = 1, nrow = ncell(grid))
-write.matrix.nemo(quanti_init_freq, paste0("Input_files/quanti_init_freq/quanti_init_file_",sim_name,".txt"))
+write.matrix.nemo(quanti_init_freq, paste0("input_files/quanti_init_freq/quanti_init_file_",sim_name,".txt"))
 
 ```
 
@@ -458,9 +458,9 @@ NB: for the initial scenario (empty0, beech0, mixed0) there is no need for this
 
 library(data.table)
 library(terra)
-dir.create("Input_files/patch_init_stage_size")
-files <- list.files("Input_files/configs_txt")
-grid <-  vect("Input_files/Grid_4x4m_100x100m.shp")
+dir.create("input_files/patch_init_stage_size")
+files <- list.files("input_files/configs_txt")
+grid <-  vect("input_files/grid_4x4m_100x100m.shp")
 
 ### for each configuration, set the number of planted seedlings and the stage from the table above
 planting_scheme <- list(
@@ -564,14 +564,14 @@ for (conf_file in files) {
   sim_name <- tools::file_path_sans_ext(conf_file)
 
   # read the configuration file
-  conf <- fread(file.path("Input_files/configs_txt", conf_file))
+  conf <- fread(file.path("input_files/configs_txt", conf_file))
 
   # build patch_init_stage_size from the *config*, not the grid
   mat <- make_patch_init_stage_size(conf, sim_name)
 
   # output file
   out_file <- file.path(
-    "Input_files/patch_init_stage_size",
+    "input_files/patch_init_stage_size",
     paste0("patch_init_stage_size_", sim_name, ".txt")
   )
 
@@ -603,10 +603,10 @@ This script is to create aan an **extinction‐rate matrix** that:
 library(data.table)
 library(terra)
 
-dir.create("Input_files/patch_extinction_rate", showWarnings = FALSE)
+dir.create("input_files/patch_extinction_rate", showWarnings = FALSE)
 
-files <- list.files("Input_files/configs_txt")
-grid  <- vect("Input_files/Grid_4x4m_100x100m.shp")
+files <- list.files("input_files/configs_txt")
+grid  <- vect("input_files/grid_4x4m_100x100m.shp")
 
 # function to write matrix in NEMO format 
 write.matrix.nemo <- function(mat, outfile) {
@@ -627,7 +627,7 @@ write.matrix.nemo <- function(mat, outfile) {
 for (file in files) {
 
   sim_name <- sub("\\.txt$", "", file)
-  indiv <- fread(file.path("Input_files/configs_txt", file))
+  indiv <- fread(file.path("input_files/configs_txt", file))
 
   # initialize extinction matrix (0 = no extinction)
   patch_extinction_rate <- matrix(0, ncol = 1, nrow = ncell(grid))
@@ -650,7 +650,7 @@ for (file in files) {
   write.matrix.nemo(
     patch_extinction_rate,
     paste0(
-      "Input_files/patch_extinction_rate/patch_extinction_rate_",
+      "input_files/patch_extinction_rate/patch_extinction_rate_",
       sim_name, ".txt"
     )
   )
@@ -696,10 +696,10 @@ For the *mixed* configurations, a matrix *patch_nbfem* has to be created to set 
 
 library(data.table)
 library(terra)
-dir.create("Input_files/patch_nbfem")
+dir.create("input_files/patch_nbfem")
 
-files <- list.files("Input_files/configs_txt")
-grid <-  vect("Input_files/Grid_4x4m_100x100m.shp")
+files <- list.files("input_files/configs_txt")
+grid <-  vect("input_files/grid_4x4m_100x100m.shp")
 
 # function to write matrix in NEMO format 
 write.matrix.nemo <- function(mat, outfile) {
@@ -725,7 +725,7 @@ for (file in files_mixed) {
   for (value in values) {  
     # importing simulated population with species information and patch ID (check the path)
     sim_name <-  sub("^(.*)\\.txt$", "\\1", file)
-    indiv <- fread(paste0("Input_files/configs_txt/", file))
+    indiv <- fread(paste0("input_files/configs_txt/", file))
     # creating matrix with 0 as default value (empty patches will be ignored automatically, but they need to appear in the matrix)
     patch_nbfem = matrix(0, ncol = 1, nrow = ncell(grid))
     # assign patch value based on patch id in individual files (0 only where abies, otherwise carrying capacity)
@@ -733,7 +733,7 @@ for (file in files_mixed) {
     indiv[is.na(indiv$patch_nbfem), "patch_nbfem"] <- value
     patch_nbfem[ c(indiv$patchID), ] = indiv$patch_nbfem
     # write quanti_init matrix to file (or whether you want to store them) and copy to the nemo folder 
-    write.matrix.nemo(patch_nbfem, paste0("Input_files/patch_nbfem/patch_nbfem_",sim_name,"_", value, ".txt"))
+    write.matrix.nemo(patch_nbfem, paste0("input_files/patch_nbfem/patch_nbfem_",sim_name,"_", value, ".txt"))
 
   }
 }
@@ -763,7 +763,7 @@ NB: connectivity / dispersal measure used is accounting also for survival (measu
 library(data.table)
 library(terra)
 library(ggplot2)
-dir.create("Input_files/disperse")
+dir.create("input_files/disperse")
 
 # dispersal function (implement such that can be customized)
 exp_power_kernel <- function(d, b, x) {
@@ -900,7 +900,7 @@ write.red.dispersal.matrix <- function(connectivity_matrix, rate_matrix, conn_fi
 
 #### SEED DISPERSAL MATRIX ####
 # importing grid 
-grid <- vect("Input_files/Grid_4x4m_100x100m.shp")
+grid <- vect("input_files/grid_4x4m_100x100m.shp")
 
 # build distance matrix between each patch (using centroid of the patch)
 centroids = centroids(grid)
@@ -972,8 +972,8 @@ ggplot(data=b,aes(x=Var1,y=Var2,fill=value*1000))+geom_raster()+scale_fill_gradi
 # write connectivity and rate matrix to files 
 # save d = mean dispersal distance of the kernel
 write.red.dispersal.matrix(connectivity_matrix, rate_matrix, 
-                           paste0("Input_files/disperse/Seed_connectivity_matrix_d", d, ".txt"), 
-                           paste0("Input_files/disperse/Seed_rate_matrix_d", d, ".txt"))
+                           paste0("input_files/disperse/Seed_connectivity_matrix_d", d, ".txt"), 
+                           paste0("input_files/disperse/Seed_rate_matrix_d", d, ".txt"))
 
 # ----------POLLEN dispersal parameters (here we use Waldi dispersal parameters)
 b <- c(1,1,1) # kernel shape
@@ -1036,8 +1036,8 @@ plot(distance_v, dispersal_v)
 # write connectivity and rate matrix to files 
 # save d = mean dispersal distance of the kernel
 write.red.dispersal.matrix(connectivity_matrix, rate_matrix, 
-                           paste0("Input_files/disperse/Pollen_connectivity_matrix_d", d, ".txt"), 
-                           paste0("Input_files/disperse/Pollen_rate_matrix_d", d, ".txt"))
+                           paste0("input_files/disperse/Pollen_connectivity_matrix_d", d, ".txt"), 
+                           paste0("input_files/disperse/Pollen_rate_matrix_d", d, ".txt"))
 ```
 
 ## Running Nemo on the cluster
@@ -1119,10 +1119,9 @@ echo "Finished with ${SIM_NAME}"
 
 For this step we want to check:
 
-1. if the hybrid proportions and distribution are consistent across replicates of the same simulation
+1.  if the hybrid proportions and distribution are consistent across replicates of the same simulation
 
-2. if the hybrid proportions and distribution are consistent across different values of carrying capacity (K) and competition coefficient (B). 
-
+2.  if the hybrid proportions and distribution are consistent across different values of carrying capacity (K) and competition coefficient (B).
 
 For each scenario:
 
@@ -1130,8 +1129,7 @@ For each scenario:
 
 2.  **Hybrid patterns across the grid/spatial extent of introgression**
 
-
-### Demographic patterns 
+### Demographic patterns
 
 First checking the demographic trends across the years for the different parameter combinations.
 
@@ -1217,7 +1215,7 @@ rm(data_list, data, pop_data)
 
 ##----- summarize data per patch
 # importing grid 
-grid <- vect("Input_files/Grid_4x4m_100x100m.shp")
+grid <- vect("input_files/grid_4x4m_100x100m.shp")
 grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
 # grid dimensions 
 n_rows = dim(grid_r)[1]
@@ -1319,7 +1317,7 @@ combined_pop_data <- readRDS(file.path(res_path2, "Demographic_data_per_simulati
 combined_patch_data <- readRDS(file.path(res_path2, "Demographic_data_per_patch.RDS"))
 
 # importing grid 
-grid <- vect("Input_files/Grid_4x4m_100x100m.shp")
+grid <- vect("input_files/grid_4x4m_100x100m.shp")
 grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
 # grid dimensions 
 n_rows = dim(grid_r)[1]
@@ -1468,10 +1466,7 @@ ggplot(quanti_average,aes(x = as.numeric(generation), y = as.numeric(P1),group =
 
 ```
 
-
-Checking if results are consistent across replicates using the Coefficient of Variation (CV, SD / mean). As SD increases with the mean, you cannot compare the mean across simulations that have different mean, so CV does not depend on the mean anymore since it is divided by the mean. It shows the variation relative to the mean.
-The higher the CV, the higher the SD relative to the mean.
-
+Checking if results are consistent across replicates using the Coefficient of Variation (CV, SD / mean). As SD increases with the mean, you cannot compare the mean across simulations that have different mean, so CV does not depend on the mean anymore since it is divided by the mean. It shows the variation relative to the mean. The higher the CV, the higher the SD relative to the mean.
 
 ```{r}
 #| label: hybrid proportions replicates check
@@ -1522,7 +1517,7 @@ ggplot(replicate_cv,
 
 ```
 
-Now plot the hybrid proportions across the whole stand for each simulation, age class (stage) and at generation X. 
+Now plot the hybrid proportions across the whole stand for each simulation, age class (stage) and at generation X.
 
 ```{r}
 #| label: hybrid proporiton boxplot
@@ -1535,10 +1530,9 @@ ggplot(hyb_prop, aes(x = stage, y = prop_hybrid, group = factor(stage), fill = f
 
 ```
 
----
+------------------------------------------------------------------------
 
-Next question: 
-**within the same configuration and proportion of orientalis, do K and B significantly change the hybrid proportions?**
+Next question: **within the same configuration and proportion of orientalis, do K and B significantly change the hybrid proportions?**
 
 To test the effect of k and b on the response variable hybrid proportions, I fit one model per subset simulation (configuration x ori proportion):
 
@@ -1604,7 +1598,8 @@ res_df <- do.call(rbind, lapply(names(res_coef), function(nm) {
 
 Next step: check the results
 
----
+------------------------------------------------------------------------
+
 ## Analyse results of final simulations
 
 ### Hybrid distribution
@@ -1623,7 +1618,7 @@ quanti_patch <- quanti_data_all %>%
 hist(quanti_data_all$P1)
 
 # importing grid 
-grid <- vect("Input_files/Grid_4x4m_100x100m.shp")
+grid <- vect("input_files/grid_4x4m_100x100m.shp")
 grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
 # grid dimensions 
 n_rows = dim(grid_r)[1]
@@ -1652,7 +1647,6 @@ n_cols = dim(grid_r)[2]
 ```
 
 Plotting the trend of average P1 for the whole landscape, for each simulation, and stage, across the generations:
-
 
 ### Hybrid class
 

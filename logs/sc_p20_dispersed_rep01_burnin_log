@@ -1,0 +1,11 @@
+--- N E M O ---
+    LOGFILE
+
+
+| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
+| sc_p20_dispersed_rep01_burnin           | 21-01-2026 10:08:27 | 21-01-2026 10:09:51 |   00:01:23 |        20 |   00:00:04 |       20 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/sc_p20_dispersed_rep01/ ".txt":results/sc_p20_dispersed_rep01/ ".bin":results/sc_p20_dispersed_rep01/burnin/
+| sc_p20_dispersed_rep01_burnin           | 21-01-2026 10:13:03 | 21-01-2026 10:14:29 |   00:01:24 |        20 |   00:00:04 |       20 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/sc_p20_dispersed_rep01/ ".txt":results/sc_p20_dispersed_rep01/ ".bin":results/sc_p20_dispersed_rep01/burnin/
+| sc_p20_dispersed_rep01_burnin           | 21-01-2026 10:22:18 | 21-01-2026 10:23:44 |   00:01:24 |        20 |   00:00:04 |       20 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/sc_p20_dispersed_rep01/ ".txt":results/sc_p20_dispersed_rep01/ ".bin":results/sc_p20_dispersed_rep01/burnin/
+| sc_p20_dispersed_rep01_burnin           | 21-01-2026 10:33:06 | 21-01-2026 10:33:10 |   00:00:04 |         1 |   00:00:04 |       20 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/sc_p20_dispersed_rep01/ ".txt":results/sc_p20_dispersed_rep01/ ".bin":results/sc_p20_dispersed_rep01/burnin/
+| sc_p20_dispersed_rep01_burnin           | 22-01-2026 10:56:09 | 22-01-2026 10:56:14 |   00:00:05 |         1 |   00:00:05 |       20 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/sc_p20_dispersed_rep01/ ".txt":results/sc_p20_dispersed_rep01/ ".bin":results/sc_p20_dispersed_rep01/burnin/
+| sc_p20_dispersed_rep01_burnin           | 22-01-2026 15:22:01 | 22-01-2026 15:22:06 |   00:00:04 |         1 |   00:00:04 |       20 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/sc_p20_dispersed_rep01/ ".txt":results/sc_p20_dispersed_rep01/ ".bin":results/sc_p20_dispersed_rep01/burnin/

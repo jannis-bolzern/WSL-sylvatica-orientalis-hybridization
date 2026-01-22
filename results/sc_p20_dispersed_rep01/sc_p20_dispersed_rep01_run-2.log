@@ -1,6 +1,6 @@
 # Nemo    v0.32.6b DMI  [06 Mar 2025]
 #
-# simulation started on 21-01-2026 10:35:29
+# simulation started on 22-01-2026 11:02:40
 
 
 filename sc_p20_dispersed_rep01_run-2
@@ -27,7 +27,7 @@ quanti_allele_model diallelic_HC
 quanti_allele_value {{0.05}}
 quanti_dir quanti_beech1_k200_b0.01
 quanti_loci 10
-quanti_logtime {{1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000}}
+quanti_logtime 200
 quanti_mutation_rate 0
 quanti_mutation_variance 0
 quanti_output 1
@@ -66,5 +66,5 @@ quanti_init_freq &input_files/quanti_init_freq/quanti_init_file_sc_p20_dispersed
 
 #random_seed 22261220
 
-# simulation finished 21-01-2026 10:38:29
-# CPU time used: 00:02:59s
+# simulation finished 22-01-2026 11:05:48
+# CPU time used: 00:03:07s
