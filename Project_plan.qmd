@@ -1537,9 +1537,26 @@ Next question: **within the same configuration and proportion of orientalis, do 
 Basically, we want to see if the main results are robust across the K and B values. To do that, we
 
 1.    run the simulations with the combinations of K and B
-2.    plot our main figure x = configuration_oriproportion; y = hybrid_proportions  and facet_grid for K and B. We compare the distirbutions of the data with statistical test (F-test, ANOVA). 
+2.    plot our main figure x = configuration_oriproportion; y = hybrid_proportions and facet_grid (create different panels) for K and B. We compare the distirbutions of the data with statistical test (ANOVA). 
 
---> is the significance changing?
+--> are the results consistent? E.g. is the hybrid proportion consistently highest(lowest) in the same configuration x ori_proportion across all k and b values, or is it changing? 
+If the main results are changing for different K and B values, the significantly affect the hybridization. 
+
+```{r}
+#| label: hybrid proporiton boxplot 2
+
+## select only one stage (e.g. adults)
+hyb_prop_adults <- subset(hyb_prop, stage == 2)
+
+## boxplots for each simulation with x = configuration, y = prop, color = % orientalis
+ggplot(hyb_prop_adults, aes(x = configuration, y = prop_hybrid, group = interaction(configuration, ori_proportion), fill = factor(ori_proportion)))+
+  geom_boxplot()+ theme_bw()+  
+  facet_grid( b~ k) 
+
+### run anova test to check significance (if needed)
+
+
+```
 
 
 ------------------------------------------------------------------------
