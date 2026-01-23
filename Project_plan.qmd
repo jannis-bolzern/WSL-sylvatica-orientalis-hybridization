@@ -1534,69 +1534,13 @@ ggplot(hyb_prop, aes(x = stage, y = prop_hybrid, group = factor(stage), fill = f
 
 Next question: **within the same configuration and proportion of orientalis, do K and B significantly change the hybrid proportions?**
 
-To test the effect of k and b on the response variable hybrid proportions, I fit one model per subset simulation (configuration x ori proportion):
+Basically, we want to see if the main results are robust across the K and B values. To do that, we
 
-```{r}
-#| label: k and b model
-#| eval: false
-#| output: false
-#| echo: true
-#| code-fold: true
-#| code-summary: "Expand for full code"
+1.    run the simulations with the combinations of K and B
+2.    plot our main figure x = configuration_oriproportion; y = hybrid_proportions  and facet_grid for K and B. We compare the distirbutions of the data with statistical test (F-test, ANOVA). 
 
-# split dataset
-hyb_list <- split(hyb_prop, list(hyb_prop$configuration, hyb_prop$ori_proportion), drop = TRUE)
+--> is the significance changing?
 
-# loop to fit the model 
-library(lme4)
-
-results_list <- list()
-
-for(i in seq_along(hyb_list)) {
-  
-  dat <- hyb_list[[i]]
-  
-  model <- glmer(
-    cbind(N_hybrid, N - N_hybrid) ~ k + b + (1 | replicate),  ## comparing N hybrids ~ N not hybrids
-    data = dat,
-    family = binomial  ## N_hyb ~ binomial(N, p) --?
-  )
-  
-  results_list[[names(hyb_list)[i]]] <- model
-}
-
-
-## create summary of results for each model of each sim
-
-model_summary <- function(model) {
-  s <- summary(model)
-  coef <- s$coefficients
-  return(coef)
-}
-
-res_coef <- lapply(results_list,model_summary)
-
-
-## store in one df
-res_df <- do.call(rbind, lapply(names(res_coef), function(nm) {
-  coefs <- res_coef[[nm]]
-  cfg <- strsplit(nm, "\\.")[[1]]
-  data.frame(
-    configuration = cfg[1],
-    ori_proportion = as.numeric(cfg[2]),
-    term = rownames(coefs),
-    estimate = coefs[,1],
-    std_error = coefs[,2],
-    z_value = coefs[,3],
-    p_value = coefs[,4],
-    row.names = NULL,
-    stringsAsFactors = FALSE
-  )
-}))
-
-```
-
-Next step: check the results
 
 ------------------------------------------------------------------------
 
