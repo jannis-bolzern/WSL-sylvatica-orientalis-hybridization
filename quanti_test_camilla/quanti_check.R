@@ -1,7 +1,7 @@
 
 #### quanti check ######
 res_path2 <- "C:/Users/stefanin/Desktop/nemo"
-# res_path2 <- "C:/Users/stefanin/Downloads/WSL-sylvatica-orientalis-hybridization-main/WSL-sylvatica-orientalis-hybridization-main"
+
 
 # to select all the replicates
 file_pattern <- ".*\\.quanti$"
@@ -58,7 +58,6 @@ quanti_patch <- quanti_data_all %>%
 ## quick look at P1 distirbution
 hist(quanti_data_all$P1)
 
-
 # grid dimensions 
 n_rows = 25
 n_cols = 25
@@ -99,3 +98,4 @@ ggplot(subset(quanti_patch,stage ==2& replicate ==2&generation==100),
     panel.spacing.x = unit(1, "lines"),
     panel.spacing.y = unit(0.1, "lines"),
     strip.text = element_text(size = 10))
+
