@@ -227,7 +227,7 @@ Introduce *F. orientalis* into selected patches within a mixed-stand background 
 
 ------------------------------------------------------------------------
 
-## Create input files
+## Starting values (demographic parameters)
 
 Fixed (species-specific) parameters: (but potentially add in the Supp. a little sensitivity analysis on carryinc capacity and competition coeff. to check the robustness of the results)
 
@@ -1049,6 +1049,44 @@ write.red.dispersal.matrix(connectivity_matrix, rate_matrix,
                            paste0("input_files/disperse/Pollen_connectivity_matrix_d", d, ".txt"), 
                            paste0("input_files/disperse/Pollen_rate_matrix_d", d, ".txt"))
 ```
+### selection
+We want to implement potential selection in two cases: 
+
+1.     O. beech is more adapted to dry climates: fitness is maximal around phenotype O. beech, while drops as the phenotype moves away from that (hybrids may be favoured or disfavoured)
+2.     E. beech is more locally adapted:fitness is maximal around phenotype E. beech, while drops as the phenotype moves away from that (hybrids may be favoured or disfavoured)
+
+Case 1: selection against E. beech ---> directional selection implemented by stabilizing selection with the optimum at + 1 (O. beech), with fitness declined smoothly toward P1 (z) = -1 (hybrids have an intermediate value). The selection_fitness_model set the fitness of the individual independent from the fitness of the other individuals of the population (--> possible population decline, stronger eco-evo feedback). Selection variance (w^2) is the quadratic of the inverse of the selection strenght, therefore, the smaller, the stronger the selection, the larger, the weaker the selection. 
+If 
+-   w^2 = 4, fitness (survival probability) is 0 for European beech = is not surviving, 
+-   w^2 = 10, fitness is 0.4 for E beech (60% mortality difference)
+-   w^2 = 20, fitness is 0.8 for E beech (20% mortality difference)
+
+in the ini file: 
+
+## SELECTION ##
+viability_selection        1          ## rank in life cycle
+selection_trait            quant
+selection_model            quadratic
+selection_fitness_model    absolute
+selection_at_stage         {{0}}       ## seedlings only or {{0,1}} for seedlings up to 4 age
+
+selection_local_optima     {{1.0}}     ## optimum = pure Oriental
+selection_variance         {{20}}     ## strength of selection
+
+Case 2. selection against O. beech
+
+The same as Case 1 but 
+
+selection_local_optima     {{-1.0}}    ## optimum = pure European
+selection_variance         {{20}}
+
+Potential Case 3. selection against both pure species = hybrid advantage
+
+selection_local_optima     {{0.0}}     ## hybrids optimal
+selection_variance         {{20}}
+
+
+
 
 ## Running Nemo on the cluster
 
