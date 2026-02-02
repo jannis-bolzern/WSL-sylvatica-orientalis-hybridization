@@ -260,6 +260,8 @@ Fixed (species-specific) parameters: (but potentially add in the Supp. a little 
     -   roughly 16-48 in favorable conditions in Dobrovolný et al., 2010 (https://jfs.agriculturejournals.cz/pdfs/jfs/2010/12/04.pdf)
     -   max found 8750/ha (14/patch) (but very variable depending on the conditions) in Axer 2021 (https://link.springer.com/article/10.1007/s10342-021-01377-w)
     -   more than 10000/ha (16/patch) in one study in Poland (10.3161/15052249PJE2015.63.2.009)
+    -   Gratzler et al., 2022 reported about 630 beech seedlings in 1 ha plot
+    -   
 
 ---\> 8-16 seedlings = moderate regeneration scenario, 50 seedlings = high regeneration scenario
 
@@ -271,17 +273,25 @@ Fixed (species-specific) parameters: (but potentially add in the Supp. a little 
     -   20 m radius for the seed falling according to (Wagner S (1999) The initial phase of natural regeneration in mixed ash-beech stands—ecological aspects. Sauerländer)
     -   6m highest in Kutter M, Gratzer G (2006) https://www.researchgate.net/publication/286327613_Current_methods_for_estimation_of_seed_dispersal_of_trees\_-\_An_example_of_seed_dispersal_of_Picea_abies_Abies_alba_and_Fagus_sylvatica);
     -   13-20m in Millerón et al. 2013 (https://doi.org/10.1111/mec.12200 ) --\> other references in dicussion
+
 5.  pollen dispersal distance and pollen shape parameter: 40/50? (need to create spatial structure)
     -   800-1000m and 0.17 in Westergren 2023
     -   41.63m in Oddou-Muratorio 2010
     -   110m and 0.85 in Waldi (previous paper - not converging in Allenwiller)
+
 6.  selfing ( *mating_system 4, + mating_proportion* ): 0.003 from literature
     -   0.0073 in Allenwiller
     -   0.0032 in Wäldi
     -   0.00036 in Westergren 2023
+
 7.  competition model and competition coefficient (regulation_by_competition): 0.005 or 0.01
     -   0.005 in Allenwiller
     -   0.01 in Wäldi
+
+NB: to parametrise the scenario, start from the number of adults in a 1 ha plot and the number of seedlings reported: 
+-  Pauline reported a max basal area of approx 0.2-0.3 m^2 per tree, ---> use to calcaulte the b coefficient
+-  Allenwiller = 68 adults per ha, Waldi = 34 adults per ha
+-   Gratzler et al., 2022 reported about 630 beech seedlings in 1 ha plot
 
 Testing parameters:
 
