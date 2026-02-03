@@ -590,83 +590,6 @@ for (conf_file in files) {
 
 ```
 
-### extinction_rate (mabye not possible)
-
-This script is to create aan an **extinction‐rate matrix** that:
-
--   is **1** in patches labeled **`X`** (→ patch emptied at generation 1)
-
--   is **0** everywhere else
-
-    is generated automatically from the config files.
-
-    The extinction rate is used at the end of the burnin simulation, to clear the patches where orientalis should be planted (according to the configurations defined on the questionnaires).
-
-```{r}
-#| label: extinction rate matrix
-#| eval: false
-#| output: false
-#| echo: true
-#| code-fold: true
-#| code-summary: "Expand for full code"
-
-library(data.table)
-library(terra)
-
-dir.create("input_files/patch_extinction_rate", showWarnings = FALSE)
-
-files <- list.files("input_files/configs_txt")
-grid  <- vect("input_files/grid_4x4m_100x100m.shp")
-
-# function to write matrix in NEMO format 
-write.matrix.nemo <- function(mat, outfile) {
-  rows <- dim(mat)[1]
-  cols <- dim(mat)[2]
-  cat("{", file = outfile)
-  
-  for (i in seq_len(rows)) {
-    cat("{", file = outfile, append = TRUE)
-    cat(mat[i, ], sep = ",", file = outfile, append = TRUE)
-    cat("}\n", file = outfile, append = TRUE)
-  }
-  
-  cat("}\n", file = outfile, append = TRUE)
-}
-
-#### create extinction_rate matrices
-for (file in files) {
-
-  sim_name <- sub("\\.txt$", "", file)
-  indiv <- fread(file.path("input_files/configs_txt", file))
-
-  # initialize extinction matrix (0 = no extinction)
-  patch_extinction_rate <- matrix(0, ncol = 1, nrow = ncell(grid))
-
-  # identify patches with BOTH X and O
-  patch_ext <- indiv[
-    ,
-    .(
-      extinction_rate = as.integer(
-        any(patch_value == "X") & any(patch_value == "O")
-      )
-    ),
-    by = patchID
-  ]
-
-  # fill extinction matrix
-  patch_extinction_rate[patch_ext$patchID, 1] <- patch_ext$extinction_rate
-
-  # write file
-  write.matrix.nemo(
-    patch_extinction_rate,
-    paste0(
-      "input_files/patch_extinction_rate/patch_extinction_rate_",
-      sim_name, ".txt"
-    )
-  )
-}
-```
-
 ### patch_nbfem (carrying capacity)
 
 The carrying capacity of each simulation can be specified using **patch_nbfem**, which is the maximum number of females that can occupy a patch, but it does not track whether females are currently present (if 0, it means no recruitment in that patch). In other words, it defines where trees can exist, not where they currently exist.
@@ -1063,8 +986,18 @@ If
 
 in the ini file: 
 
+## LIFE CYCLE EVENTS ##
+quanti_init	    0  # patch-specific init trait values 
+breed_disperse	1  # breeding with backward migration (WF model) --> for overalpping generations 
+seed_disperse	2  # only seed dispersal
+viability_selection 3
+regulation      4
+save_stats      5  # census
+aging_multi     6  # stage transition (after disperse, to save data for both adults and offspring)
+save_files      7  # write summary stats to file
+
 ## SELECTION ##
-viability_selection        1          ## rank in life cycle
+viability_selection        3          ## rank in life cycle
 selection_trait            quant
 selection_model            quadratic
 selection_fitness_model    absolute
