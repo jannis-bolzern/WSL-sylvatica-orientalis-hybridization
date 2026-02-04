@@ -1,6 +1,6 @@
 # Nemo    v0.32.6b DMI  [06 Mar 2025]
 #
-# simulation started on 04-02-2026 15:09:21
+# simulation started on 04-02-2026 20:29:56
 
 
 filename burnin_k30_b0.03
@@ -26,11 +26,12 @@ quanti_loci 10
 quanti_logtime {{2,50,100,150,200,250,300,350,400,450,500}}
 quanti_mutation_rate 0
 quanti_mutation_variance 0
+quanti_output 1
 quanti_traits 1
 
 save_stats 4
 stat pop pop.patch 
-stat_log_time 50
+stat_log_time {{2,50,100,150,200,250,300,350,400,450,500}}
 
 save_files 6
 
@@ -61,5 +62,5 @@ quanti_init_freq &input_files/quanti_init_freq/quanti_init_file_burnin_sylv.txt
 
 #random_seed 9999
 
-# simulation finished 04-02-2026 15:09:26
-# CPU time used: 00:00:04s
+# simulation finished 04-02-2026 20:30:02
+# CPU time used: 00:00:05s

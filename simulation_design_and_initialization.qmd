@@ -366,7 +366,8 @@ burnin_lines <- set_ini_param(burnin_lines, "patch_nbfem", K_VALUE)
 burnin_lines <- set_ini_param(burnin_lines, "regulation_by_competition", B_VALUE)
 
 # logging
-burnin_lines <- set_ini_param(burnin_lines, "stat_log_time", LOG_EVERY)
+burnin_lines <- set_ini_param(burnin_lines, "stat_log_time",
+                              paste0("{{", paste(LOG_TIMES, collapse = ","), "}}"))
 # quanti output in burn-in too
 burnin_lines <- set_ini_param(burnin_lines, "quanti_dir", "quanti")
 burnin_lines <- set_ini_param(burnin_lines, "quanti_logtime",
@@ -942,7 +943,8 @@ run_template <- set_ini_param(run_template, "generations", RUN_GENS)
 run_template <- set_ini_param(run_template, "patch_nbfem", K_VALUE)
 run_template <- set_ini_param(run_template, "regulation_by_competition", B_VALUE)
 
-run_template <- set_ini_param(run_template, "stat_log_time", LOG_EVERY)
+run_template <- set_ini_param(run_template, "stat_log_time",
+                              paste0("{{", paste(LOG_TIMES, collapse = ","), "}}"))
 run_template <- set_ini_param(run_template, "quanti_dir", "quanti")
 run_template <- set_ini_param(run_template, "quanti_logtime",
                               paste0("{{", paste(LOG_TIMES, collapse = ","), "}}"))
