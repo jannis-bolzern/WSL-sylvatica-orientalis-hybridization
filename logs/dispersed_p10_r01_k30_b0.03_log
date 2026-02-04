@@ -1,0 +1,7 @@
+--- N E M O ---
+    LOGFILE
+
+
+| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
+| dispersed_p10_r01_k30_b0.03             | 03-02-2026 15:44:34 | 03-02-2026 15:46:07 |   00:01:32 |        20 |   00:00:04 |      500 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/dispersed/p10/r01/run/ ".quanti":results/dispersed/p10/r01/run/quanti/ ".txt":results/dispersed/p10/r01/run/
+| dispersed_p10_r01_k30_b0.03             | 03-02-2026 16:17:41 | 03-02-2026 16:19:20 |   00:01:38 |        20 |   00:00:04 |      500 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/dispersed/p10/r01/run/ ".quanti":results/dispersed/p10/r01/run/quanti/ ".txt":results/dispersed/p10/r01/run/

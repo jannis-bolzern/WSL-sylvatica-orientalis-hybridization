@@ -1,0 +1,6 @@
+--- N E M O ---
+    LOGFILE
+
+
+| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
+| multi_cluster_p10_r04_burnin            | 26-01-2026 00:45:34 | 26-01-2026 00:45:36 |   00:00:02 |         1 |   00:00:02 |       20 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/multi_cluster/p10/r04/burnin/ ".quanti":results/multi_cluster/p10/r04/burnin/quanti/ ".txt":results/multi_cluster/p10/r04/burnin/ ".bin":results/multi_cluster/p10/r04/burnin/store/
