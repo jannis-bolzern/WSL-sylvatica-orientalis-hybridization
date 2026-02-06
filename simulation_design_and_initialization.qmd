@@ -28,6 +28,16 @@ suppressPackageStartupMessages({
 })
 ```
 
+## NEMO setup
+
+Create a shortcut to the location of the compiled NEMO-AGE binary.\
+This facilitates calling NEMO in the current project root.
+
+``` bash
+ln -sf /home/jannis/nemoage/nemoage0.32.6b/bin/nemoageE.E.E ./nemoage
+chmod +x ./nemoage
+```
+
 ## Control panel
 
 ```{r}
@@ -110,10 +120,10 @@ MULTI_N_CLUSTERS <- 4
 
 # Transects: approximate number of 1-patch-wide transects for min/max proportions
 TRANSECTS_MIN <- 2
-TRANSECTS_MAX <- 6
+TRANSECTS_MAX <- 7
 
 # Seed (deterministic layout generation)
-SEED_BASE <- 04022026
+SEED_BASE <- 9999
 ```
 
 ## Grid
@@ -156,16 +166,6 @@ patch_ids <- coords$patchID
 n_patches <- length(patch_ids)
 
 dist_mat <- as.matrix(distance(cent))  # meters
-```
-
-## NEMO setup
-
-Create a shortcut to the location of the compiled NEMO-AGE binary.\
-This facilitates calling NEMO in the current project root.
-
-``` bash
-ln -sf /home/jannis/nemoage/nemoage0.32.6b/bin/nemoageE.E.E ./nemoage
-chmod +x ./nemoage
 ```
 
 ## NEMO writers
@@ -630,38 +630,59 @@ select_orientalis_multi_cluster <- function(
 
 # 4) transects (hard edges): full-length straight columns, approx matching p
 select_orientalis_transects <- function(
-  nO,
-  coords_df,
-  prop_orientalis = NULL,
-  seed = NULL,
-  ...
+  nO, coords_df, prop_orientalis = NULL, seed = NULL,
+  min_tr = NULL, max_tr = NULL, gap = 4L, ...
 ) {
   if (!is.null(seed)) set.seed(seed)
   if (nO <= 0) return(integer(0))
   if (nO >= nrow(coords_df)) return(coords_df$patchID)
 
+  N <- max(coords_df$row)   # local grid size
+  k <- 3L
+
   n_full <- nO %/% N
   rem    <- nO %% N
 
-  full_cols <- if (n_full > 0) sample(1:N, n_full, replace = FALSE) else integer(0)
+  # distribute FULL columns across 3 transects
+  f <- rep(n_full %/% k, k)
+  r <- n_full %% k
+  if (r > 0) f[sample.int(k, r)] <- f[sample.int(k, r)] + 1L
 
-  chosen <- coords_df$patchID[coords_df$col %in% full_cols]
-
+  # choose which transect gets the ONE partial column (if any)
+  w_used <- f
+  t_rem  <- 0L
   if (rem > 0) {
-    remaining_cols <- setdiff(1:N, full_cols)
-    partial_col    <- sample(remaining_cols, 1)
+    z <- which(f == 0L)
+    t_rem <- if (length(z)) sample(z, 1) else sample.int(k, 1)
+    w_used[t_rem] <- w_used[t_rem] + 1L
+  }
 
-    # continuous partial transect: fill from top OR bottom
-    from_top    <- sample(c(TRUE, FALSE), 1)
-    partial_rows <- if (from_top) 1:rem else (N - rem + 1):N
+  w <- pmax(1L, w_used)  # keep 3 visible blocks (some may be unused at very low nO)
 
-    chosen <- c(
-      chosen,
-      coords_df$patchID[
-        coords_df$col == partial_col &
-          coords_df$row %in% partial_rows
-      ]
-    )
+  slack <- N - (sum(w) + 2L * gap)
+  if (slack < 0) stop("Impossible: N too small for 3 transects with this gap and nO.")
+
+  pad <- as.vector(rmultinom(1, slack, rep(1, 4)))
+  s1 <- 1L + pad[1]
+  s2 <- s1 + w[1] + gap + pad[2]
+  s3 <- s2 + w[2] + gap + pad[3]
+  starts <- c(s1, s2, s3)
+
+  chosen <- integer(0)
+
+  for (t in 1:k) {
+    cols_block <- starts[t]:(starts[t] + w[t] - 1L)
+    cols_use   <- if (w_used[t] > 0) cols_block[seq_len(w_used[t])] else integer(0)
+
+    if (f[t] > 0) {
+      chosen <- c(chosen, coords_df$patchID[coords_df$col %in% cols_use[1:f[t]]])
+    }
+
+    if (rem > 0 && t == t_rem) {
+      pc   <- cols_use[f[t] + 1L]
+      rows <- if (sample(c(TRUE, FALSE), 1)) 1:rem else (N - rem + 1L):N
+      chosen <- c(chosen, coords_df$patchID[coords_df$col == pc & coords_df$row %in% rows])
+    }
   }
 
   chosen
@@ -872,7 +893,7 @@ PLOT_DIR <- file.path(DIRS$plots, "layout_runs")
 dir.create(PLOT_DIR, showWarnings = FALSE, recursive = TRUE)
 
 manifest_dt <- copy(manifest)
-manifest_dt[, scenario_key := sub("_r[0-9]+$", "", sim_name)]  # group by config × p
+invisible(manifest_dt[, scenario_key := sub("_r[0-9]+$", "", sim_name)])
 
 scenario_groups <- manifest_dt[
   ,
