@@ -34,11 +34,11 @@ suppressPackageStartupMessages({
 #| label: control
 #| echo: true
 
-# ---- Templates (must exist)
+# Template (must exist)
 TEMPLATE_INI <- "ini_files/templates/nemoage_template.ini"
 stopifnot(file.exists(TEMPLATE_INI))
 
-# ---- Output folders
+# Output folders
 OUT <- list(
   input   = "input_files",
   ini     = "ini_files",
@@ -59,22 +59,22 @@ DIRS <- list(
 
 for (d in c(OUT, DIRS)) dir.create(d, showWarnings = FALSE, recursive = TRUE)
 
-# ---- Landscape
+# Landscape
 GRID_RES <- 4      # meters (patch = 4x4 m)
 EXTENT_M <- 100    # 100x100 m
 N        <- EXTENT_M / GRID_RES  # 25
 CRS      <- "EPSG:3035"
 GRID_SHP <- file.path(DIRS$grid, "Grid_4x4m_100x100m.shp")
 
-# ---- Scenario design
+# Scenario design
 PROP_LEVELS    <- c(0.10, 0.25, 0.40)
 CONFIG_LEVELS  <- c("dispersed", "one_cluster", "multi_cluster", "transects")
-N_LAYOUT_RUNS  <- 5  # "biological replicates" per (config × proportion)
+N_LAYOUT_RUNS  <- 5  # "biological replicates" per (config x proportion)
 
-# ---- Planting scheme for Orientalis
+# Planting scheme for orientalis
 PLANTING_SCHEME <- c(0, 20, 0, 0)  # stage0..stage3
 
-# ---- Burn-in + run settings (fixed, but easy to change)
+# Burn-in + run settings
 BURNIN_GENS <- 500
 RUN_GENS    <- 500
 K_VALUE     <- 30
@@ -88,7 +88,7 @@ LOG_TIMES <- c(2, seq(LOG_EVERY, RUN_GENS, by = LOG_EVERY))  # include generatio
 NEMO_REPS_BURNIN <- 1
 NEMO_REPS_RUN    <- 30
 
-# ---- Dispersal (fixed)
+# Dispersal (fixed)
 # SEED
 SEED_D_MEAN <- 5
 SEED_B      <- 1.3
@@ -98,12 +98,12 @@ POLLEN_D_MEAN <- 30
 POLLEN_B      <- 1
 POLLEN_D_T    <- 100
 
-# ---- Layout controls
+# Layout controls
 # Dispersed (Poisson-disc-like): larger -> more regular spacing
 DISPERSED_STRENGTH <- 1.20
 
-# One cluster: how "soft" the square edge is (0 = perfect square by layers)
-CLUSTER_JITTER <- 0.15   # small jitter on square distance ordering
+# One cluster: how "soft" the square edge is (0 = perfect square)
+CLUSTER_JITTER <- 0.15
 
 # Multi clusters: number of clusters (3 or 4 are typical)
 MULTI_N_CLUSTERS <- 4
@@ -112,7 +112,7 @@ MULTI_N_CLUSTERS <- 4
 TRANSECTS_MIN <- 2
 TRANSECTS_MAX <- 6
 
-# ---- Seed (deterministic layout generation)
+# Seed (deterministic layout generation)
 SEED_BASE <- 04022026
 ```
 
@@ -156,6 +156,16 @@ patch_ids <- coords$patchID
 n_patches <- length(patch_ids)
 
 dist_mat <- as.matrix(distance(cent))  # meters
+```
+
+## NEMO setup
+
+Create a shortcut to the location of the compiled NEMO-AGE binary.\
+This facilitates calling NEMO in the current project root.
+
+``` bash
+ln -sf /home/jannis/nemoage/nemoage0.32.6b/bin/nemoageE.E.E ./nemoage
+chmod +x ./nemoage
 ```
 
 ## NEMO writers
@@ -326,14 +336,13 @@ set_ini_param <- function(lines, key, value) {
   # replace first occurrence
   lines[idx[1]] <- newline
 
-  # remove any additional occurrences (CRITICAL for clean templates + no accidental sweeps)
+  # remove any additional occurrences
   if (length(idx) > 1) lines <- lines[-idx[-1]]
 
   lines
 }
 
-
-# drop lines matching regex (e.g. parameters unsupported in NEMO-age)
+# drop lines matching regex
 drop_ini_lines <- function(lines, regex) lines[!grepl(regex, lines)]
 ```
 
@@ -853,7 +862,7 @@ message("Generated ", nrow(manifest), " scenario layouts.")
 message("Manifest: ", manifest_file)
 ```
 
-## Layout sanity plots
+## Layout plots
 
 ```{r}
 #| label: scenario-plots

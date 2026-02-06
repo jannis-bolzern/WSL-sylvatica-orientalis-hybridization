@@ -1,0 +1,508 @@
+---
+title: "Run Diagnostics: Demography + Hybrid Distributions (All scenarios × all proportions)"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show code"
+execute:
+  warning: false
+  message: false
+params:
+  project_root: "~/Documents/WSL/WSL-sylvatica-orientalis-hybridization"
+  use_cache: false
+  layout_run: 1
+  gen_max: 500
+  gen_keep_every: 50
+  max_internal_replicate: 20
+  quanti_stage: 3
+  p1_bin_width: 0.1
+  p1_tol: 1e-8
+  out_dir: "run_outputs"
+  save_plots: true
+  configurations: ["dispersed","one_cluster","multi_cluster","transects"]
+  proportions: [10,25,40]
+---
+
+## Setup
+
+```{r}
+library(data.table)
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(viridis)
+
+project_root <- path.expand(params$project_root)
+res_root     <- file.path(project_root, "results")
+
+out_root  <- file.path(project_root, params$out_dir)
+plot_dir  <- file.path(out_root, "plots")
+cache_dir <- file.path(out_root, "cache")
+
+dir.create(plot_dir,  recursive = TRUE, showWarnings = FALSE)
+dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+
+CFGs <- as.character(params$configurations)
+PCTs <- as.integer(params$proportions)
+run_str <- sprintf("r%02d", as.integer(params$layout_run))
+
+safe_slug <- function(x) {
+  x <- gsub("[^A-Za-z0-9]+", "_", x)
+  x <- gsub("_+", "_", x)
+  x <- gsub("^_|_$", "", x)
+  x
+}
+
+save_plot <- function(p, name, w = 14, h = 8, dpi = 220) {
+  if (!isTRUE(params$save_plots)) return(invisible(NULL))
+  fn <- file.path(plot_dir, paste0(name, ".png"))
+  ggsave(fn, p, width = w, height = h, dpi = dpi, bg = "white")
+  invisible(fn)
+}
+```
+
+### Filename metadata parser
+
+Examples: - `dispersed_p10_r01_k20_b0.01.txt` - `dispersed_p10_r01_k20_b0.01_050_01.quanti`
+
+```{r}
+parse_meta_from_basename <- function(path) {
+  bname <- basename(path)
+  m <- str_match(
+    bname,
+    "^(.+?)_p(\\d+)_r(\\d+)_k(\\d+(?:\\.\\d+)?)_b(\\d+(?:\\.\\d+)?)(?:_|\\.|$)"
+  )
+  if (any(is.na(m))) stop("Could not parse metadata from filename: ", bname)
+  data.table(
+    configuration  = m[,2],
+    ori_proportion = as.integer(m[,3]),
+    layout_run     = as.integer(m[,4]),
+    k              = as.numeric(m[,5]),
+    b              = as.numeric(m[,6])
+  )
+}
+
+parse_quanti_suffix <- function(path) {
+  bname <- basename(path)
+  m <- str_match(bname, "_(\\d{1,3})_(\\d+)\\.quanti$")
+  if (any(is.na(m))) stop("Could not parse quanti suffix: ", bname)
+  list(generation = as.integer(m[,2]), replicate = as.integer(m[,3]))
+}
+```
+
+## File discovery (main run only)
+
+We only take files under: `results/dispersed/pXX/r01/run/...`
+
+```{r}
+cfg_rx <- paste(CFGs, collapse = "|")
+
+# demography .txt (exclude *_bygen.txt)
+demog_files <- list.files(res_root, recursive = TRUE, full.names = TRUE, pattern = "\\.txt$")
+demog_files <- demog_files[!grepl("_bygen\\.txt$", demog_files)]
+demog_files <- demog_files[!grepl("\\.log$", demog_files)]
+
+# keep only: results/<cfg>/pXX/rYY/run/...
+demog_files <- demog_files[
+  grepl(paste0("/(", cfg_rx, ")/p\\d+/", run_str, "/run/"), gsub("\\\\","/", demog_files))
+]
+
+# and enforce basename naming convention
+demog_files <- demog_files[
+  grepl(paste0("^(", cfg_rx, ")_p\\d+_", run_str, "_k[0-9.]+_b[0-9.]+\\.txt$"),
+        basename(demog_files))
+]
+
+# quanti .quanti (accept quanti/qunati directories)
+quanti_files <- list.files(res_root, recursive = TRUE, full.names = TRUE, pattern = "\\.quanti$")
+quanti_files <- quanti_files[
+  grepl(paste0("/(", cfg_rx, ")/p\\d+/", run_str, "/run/(quanti|qunati)/"), gsub("\\\\","/", quanti_files))
+]
+quanti_files <- quanti_files[
+  grepl(paste0("^(", cfg_rx, ")_p\\d+_", run_str, "_k[0-9.]+_b[0-9.]+_\\d{1,3}_\\d+\\.quanti$"),
+        basename(quanti_files))
+]
+
+length(demog_files)
+length(quanti_files)
+
+```
+
+------------------------------------------------------------------------
+
+# Demography: replicate cloud + mean
+
+## Read and cache demography (stand totals)
+
+```{r}
+cfg_tag <- paste(CFGs, collapse = "-")
+p_tag   <- paste(PCTs, collapse = "-")
+
+demog_rds <- file.path(
+  cache_dir,
+  paste0("run_demog_long_cfg_", safe_slug(cfg_tag),
+         "_p_", safe_slug(p_tag),
+         "_", run_str,
+         "_gmax", params$gen_max, ".rds")
+)
+
+cols_to_read <- c("replicate", "generation", "pop.tot", "a0.tot", "a1.tot", "a2.tot", "a3.tot")
+
+if (isTRUE(params$use_cache) && file.exists(demog_rds)) {
+  demog_long <- readRDS(demog_rds)
+} else {
+  dl <- vector("list", length(demog_files))
+
+  for (i in seq_along(demog_files)) {
+    f <- demog_files[i]
+    meta <- parse_meta_from_basename(f)
+
+    # filter early to save time
+    if (!(meta$configuration %in% CFGs)) next
+    if (!(meta$ori_proportion %in% PCTs)) next
+    if (meta$layout_run != as.integer(params$layout_run)) next
+
+    header <- names(fread(f, nrows = 0))
+    keep <- intersect(cols_to_read, header)
+    dt <- fread(f, select = keep)
+
+    dt <- cbind(dt, meta)
+
+    dl[[i]] <- melt(
+      dt,
+      id.vars = c("replicate","generation","configuration","ori_proportion","layout_run","k","b"),
+      measure.vars = patterns("\\.tot$"),
+      variable.name = "stage",
+      value.name = "N"
+    )
+  }
+
+  demog_long <- rbindlist(dl, use.names = TRUE, fill = TRUE)
+
+  demog_long <- demog_long[!is.na(configuration)]
+  demog_long <- demog_long[replicate %between% c(1, params$max_internal_replicate)]
+  demog_long <- demog_long[generation <= params$gen_max]
+  demog_long <- demog_long[configuration %in% CFGs & ori_proportion %in% PCTs]
+  demog_long <- demog_long[layout_run == as.integer(params$layout_run)]
+
+  if (isTRUE(params$use_cache)) saveRDS(demog_long, demog_rds)
+}
+
+stage_labs <- c(
+  "pop.tot" = "Total population",
+  "a0.tot"  = "Stage 0",
+  "a1.tot"  = "Stage 1",
+  "a2.tot"  = "Stage 2",
+  "a3.tot"  = "Stage 3"
+)
+demog_long[, stage_label := stage_labs[stage]]
+demog_long[, kb := paste0("k", k, " b", b)]
+
+```
+
+```{r}
+demog_mean <- demog_long[
+  , .(meanN = mean(N, na.rm = TRUE)),
+  by = .(configuration, ori_proportion, generation, stage_label, k, b, kb)
+]
+```
+
+## Plot: cloud (all stages)
+
+```{r}
+kb_levels <- sort(unique(demog_long$kb))
+
+for (kb_i in kb_levels) {
+
+  dL <- demog_long[kb == kb_i]
+  dM <- demog_mean[kb == kb_i]
+
+  # enforce facet order
+  dL[, configuration := factor(configuration, levels = CFGs)]
+  dM[, configuration := factor(configuration, levels = CFGs)]
+  dL[, ori_proportion := factor(ori_proportion, levels = PCTs)]
+  dM[, ori_proportion := factor(ori_proportion, levels = PCTs)]
+
+  p_dem_cloud <- ggplot() +
+    geom_line(
+      data = dL,
+      aes(x = generation, y = N,
+          group = interaction(stage_label, replicate, configuration, ori_proportion),
+          color = stage_label),
+      linewidth = 0.15, alpha = 0.35
+    ) +
+    geom_line(
+      data = dM,
+      aes(x = generation, y = meanN, color = stage_label),
+      linewidth = 0.8
+    ) +
+    facet_grid(ori_proportion ~ configuration, scales = "free_y") +
+    labs(
+      title = paste0("Demography cloud + mean (", kb_i, ")"),
+      subtitle = paste0("Run ", run_str, " | configs: ", paste(CFGs, collapse=", "),
+                        " | p: ", paste(PCTs, collapse=", "),
+                        " | reps 1..", params$max_internal_replicate),
+      x = "Generation", y = "Abundance", color = "Stage"
+    ) +
+    scale_y_continuous(labels = comma) +
+    theme_bw()
+
+  print(p_dem_cloud)
+  save_plot(p_dem_cloud,
+            paste0("run_demography_cloud_all_stages_", safe_slug(kb_i)),
+            w = 18, h = 10)
+}
+
+```
+
+## Plot: cloud (adults only)
+
+```{r}
+kb_levels <- sort(unique(demog_long$kb))
+
+for (kb_i in kb_levels) {
+
+  dL <- demog_long[kb == kb_i & stage_label == "Stage 3"]
+  dM <- demog_mean[kb == kb_i & stage_label == "Stage 3"]
+
+  dL[, configuration := factor(configuration, levels = CFGs)]
+  dM[, configuration := factor(configuration, levels = CFGs)]
+  dL[, ori_proportion := factor(ori_proportion, levels = PCTs)]
+  dM[, ori_proportion := factor(ori_proportion, levels = PCTs)]
+
+  p_dem_cloud_adults <- ggplot() +
+    geom_line(
+      data = dL,
+      aes(x = generation, y = N,
+          group = interaction(replicate, configuration, ori_proportion)),
+      linewidth = 0.3, alpha = 0.35, color = "dodgerblue"
+    ) +
+    geom_line(
+      data = dM,
+      aes(x = generation, y = meanN),
+      linewidth = 1.2, color = "dodgerblue"
+    ) +
+    facet_grid(ori_proportion ~ configuration, scales = "free_y") +
+    labs(
+      title = paste0("Adults only (Stage 3): cloud + mean (", kb_i, ")"),
+      subtitle = paste0("Run ", run_str, " | reps 1..", params$max_internal_replicate),
+      x = "Generation", y = "Adults (Stage 3)"
+    ) +
+    scale_y_continuous(labels = comma) +
+    theme_bw() +
+    theme(
+      panel.background = element_rect(fill = "grey98", colour = NA),
+      panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+      panel.grid.minor = element_line(colour = "grey92", linewidth = 0.2)
+    )
+
+  print(p_dem_cloud_adults)
+  save_plot(p_dem_cloud_adults,
+            paste0("run_demography_cloud_adults_only_", safe_slug(kb_i)),
+            w = 18, h = 10)
+}
+```
+
+------------------------------------------------------------------------
+
+# Quanti (P1): distribution over time and hybrids
+
+```{r}
+p1_bins_rds    <- file.path(cache_dir, paste0("run_quanti_p1_bins_cfg_", safe_slug(cfg_tag),
+                                              "_p_", safe_slug(p_tag),
+                                              "_", run_str, "_gmax", params$gen_max, ".rds"))
+p1_metrics_rds <- file.path(cache_dir, paste0("run_quanti_p1_metrics_cfg_", safe_slug(cfg_tag),
+                                              "_p_", safe_slug(p_tag),
+                                              "_", run_str, "_gmax", params$gen_max, ".rds"))
+
+bw  <- as.numeric(params$p1_bin_width)
+breaks <- seq(-1, 1, by = bw)
+if (tail(breaks, 1) < 1) breaks <- c(breaks, 1)
+
+tol <- as.numeric(params$p1_tol)
+STAGE <- as.integer(params$quanti_stage)
+
+build_quanti_summaries <- function() {
+  bin_list <- list()
+  met_list <- list()
+
+  for (f in quanti_files) {
+    meta <- parse_meta_from_basename(f)
+    suf  <- parse_quanti_suffix(f)
+
+    if (!(meta$configuration %in% CFGs)) next
+    if (!(meta$ori_proportion %in% PCTs)) next
+    if (meta$layout_run != as.integer(params$layout_run)) next
+    if (suf$generation > params$gen_max) next
+
+    dt <- fread(f, select = c("stage", "P1"))
+    dt <- dt[stage == STAGE]
+    if (nrow(dt) == 0) next
+
+    dt[, P1 := as.numeric(P1)]
+
+    dt[, is_f1    := abs(P1) <= tol]
+    dt[, is_intro := (P1 > (-1 + tol)) & (P1 < (1 - tol))]
+
+    N <- nrow(dt)
+
+    met_list[[length(met_list) + 1]] <- cbind(
+      data.table(
+        generation = suf$generation,
+        replicate  = suf$replicate,
+        N = N,
+        prop_f1 = mean(dt$is_f1, na.rm = TRUE),
+        prop_intro = mean(dt$is_intro, na.rm = TRUE),
+        mean_P1 = mean(dt$P1, na.rm = TRUE)
+      ),
+      meta
+    )
+
+    dt[, bin_id := findInterval(P1, breaks, rightmost.closed = TRUE, all.inside = TRUE)]
+    bin_mids <- (breaks[-length(breaks)] + breaks[-1]) / 2
+    dt[, bin_mid := bin_mids[bin_id]]
+
+    bins <- dt[, .N, by = .(bin_mid)]
+    bins[, prop := N / sum(N)]
+    bins[, `:=`(generation = suf$generation, replicate = suf$replicate)]
+    bins <- cbind(bins, meta)
+
+    bin_list[[length(bin_list) + 1]] <- bins
+  }
+
+  list(
+    p1_bins = rbindlist(bin_list, use.names = TRUE, fill = TRUE),
+    p1_metrics = rbindlist(met_list, use.names = TRUE, fill = TRUE)
+  )
+}
+
+if (isTRUE(params$use_cache) && file.exists(p1_bins_rds) && file.exists(p1_metrics_rds)) {
+  p1_bins <- readRDS(p1_bins_rds)
+  p1_metrics <- readRDS(p1_metrics_rds)
+} else {
+  tmp <- build_quanti_summaries()
+  p1_bins <- tmp$p1_bins
+  p1_metrics <- tmp$p1_metrics
+
+  if (isTRUE(params$use_cache)) {
+    saveRDS(p1_bins, p1_bins_rds)
+    saveRDS(p1_metrics, p1_metrics_rds)
+  }
+}
+
+p1_bins    <- p1_bins[replicate %between% c(1, params$max_internal_replicate)]
+p1_metrics <- p1_metrics[replicate %between% c(1, params$max_internal_replicate)]
+
+p1_bins    <- p1_bins[configuration %in% CFGs & ori_proportion %in% PCTs & layout_run == as.integer(params$layout_run)]
+p1_metrics <- p1_metrics[configuration %in% CFGs & ori_proportion %in% PCTs & layout_run == as.integer(params$layout_run)]
+
+p1_bins[, kb := paste0("k", k, " b", b)]
+p1_metrics[, kb := paste0("k", k, " b", b)]
+
+```
+
+## Plot: P1 distribution over time (tile plot; adults)
+
+Each tile shows the **mean proportion** (across internal replicates) of individuals whose P1 falls into that bin at that generation.
+
+```{r}
+bin_mids_expected <- (breaks[-length(breaks)] + breaks[-1]) / 2
+bin_mids_expected <- round(bin_mids_expected, 2)
+p1_bins[, bin_mid := round(as.numeric(bin_mid), 2)]
+
+kb_levels_q <- sort(unique(p1_bins$kb))
+
+for (kb_i in kb_levels_q) {
+
+  pb <- p1_bins[kb == kb_i]
+  if (nrow(pb) == 0) next
+
+  # full grid so missing bins become 0
+  keys <- unique(pb[, .(configuration, ori_proportion, layout_run, k, b, kb, generation, replicate)])
+
+  grid <- keys[
+    , .(bin_mid = bin_mids_expected),
+    by = .(configuration, ori_proportion, layout_run, k, b, kb, generation, replicate)
+  ]
+
+  p1_bins_full <- merge(
+    grid, pb,
+    by = c("configuration","ori_proportion","layout_run","k","b","kb","generation","replicate","bin_mid"),
+    all.x = TRUE
+  )
+  p1_bins_full[is.na(prop), prop := 0]
+
+  p1_bin_mean <- p1_bins_full[
+    , .(mean_prop = mean(prop)),
+    by = .(configuration, ori_proportion, generation, bin_mid, k, b, kb)
+  ]
+
+  p1_bin_mean[, configuration := factor(configuration, levels = CFGs)]
+  p1_bin_mean[, ori_proportion := factor(ori_proportion, levels = PCTs)]
+  p1_bin_mean[, gen_f := factor(generation, levels = sort(unique(generation)))]
+
+  p_p1_tile <- ggplot(p1_bin_mean, aes(x = gen_f, y = bin_mid, fill = mean_prop)) +
+    geom_tile() +
+    facet_grid(ori_proportion ~ configuration) +
+    scale_fill_viridis_c(option = "C", trans = "sqrt") +
+    labs(
+      title = paste0("P1 distribution over time (stage ", STAGE, "; mean across internal reps) — ", kb_i),
+      subtitle = paste0("Run ", run_str, " | p: ", paste(PCTs, collapse=", "), " | configs: ", paste(CFGs, collapse=", ")),
+      x = "Generation",
+      y = "P1 bin midpoint (-1 = sylvatica, 0 = hybrid, +1 = orientalis)",
+      fill = "Mean\nproportion"
+    ) +
+    theme_bw() +
+    theme(
+      panel.grid = element_blank(),
+      panel.background = element_rect(fill = "white", colour = NA)
+    )
+
+  print(p_p1_tile)
+  save_plot(p_p1_tile,
+            paste0("run_quanti_P1_distribution_tile_", safe_slug(kb_i)),
+            w = 18, h = 10)
+}
+
+
+```
+
+## Plot: How many hybrids over time (F1 = P1=0)
+
+```{r}
+kb_levels_m <- sort(unique(p1_metrics$kb))
+
+for (kb_i in kb_levels_m) {
+
+  pm <- p1_metrics[kb == kb_i]
+  if (nrow(pm) == 0) next
+
+  p1_f1_time <- pm[
+    , .(mean_f1 = mean(prop_f1, na.rm = TRUE)),
+    by = .(configuration, ori_proportion, generation, k, b, kb)
+  ]
+
+  p1_f1_time[, configuration := factor(configuration, levels = CFGs)]
+  p1_f1_time[, ori_proportion := factor(ori_proportion, levels = PCTs)]
+
+  p_f1 <- ggplot(p1_f1_time, aes(x = generation, y = mean_f1)) +
+    geom_line(linewidth = 0.8) +
+    facet_grid(ori_proportion ~ configuration) +
+    labs(
+      title = paste0("F1 hybrid proportion over time (P1=0) — ", kb_i),
+      subtitle = paste0("Run ", run_str, " | mean across internal reps"),
+      x = "Generation",
+      y = "Proportion F1 (P1=0)"
+    ) +
+    theme_bw()
+
+  print(p_f1)
+  save_plot(p_f1,
+            paste0("run_quanti_F1_prop_time_series_", safe_slug(kb_i)),
+            w = 18, h = 10)
+}
+
+```

@@ -1,0 +1,2 @@
+sim_name	configuration	prop_orientalis	n_orientalis	run_id	seed	cfg_file	quanti_file
+dispersed_p25_r01	dispersed	0.25	156	1	35016	supplementary/input_files/configs_txt/dispersed_p25_r01.txt	supplementary/input_files/quanti_init_freq/quanti_init_file_dispersed_p25_r01.txt

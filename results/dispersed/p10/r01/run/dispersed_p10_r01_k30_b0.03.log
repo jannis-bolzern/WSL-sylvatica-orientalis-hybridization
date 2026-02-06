@@ -1,6 +1,6 @@
 # Nemo    v0.32.6b DMI  [06 Mar 2025]
 #
-# simulation started on 04-02-2026 20:03:57
+# simulation started on 04-02-2026 21:08:12
 
 
 filename dispersed_p10_r01_k30_b0.03
@@ -26,11 +26,12 @@ quanti_loci 10
 quanti_logtime {{2,50,100,150,200,250,300,350,400,450,500}}
 quanti_mutation_rate 0
 quanti_mutation_variance 0
+quanti_output 1
 quanti_traits 1
 
 save_stats 4
 stat pop pop.patch 
-stat_log_time 50
+stat_log_time {{2,50,100,150,200,250,300,350,400,450,500}}
 
 save_files 6
 
@@ -61,5 +62,5 @@ quanti_init_freq &input_files/quanti_init_freq/quanti_init_file_dispersed_p10_r0
 
 #random_seed 9999
 
-# simulation finished 04-02-2026 20:06:09
-# CPU time used: 00:02:11s
+# simulation finished 04-02-2026 21:10:34
+# CPU time used: 00:02:21s

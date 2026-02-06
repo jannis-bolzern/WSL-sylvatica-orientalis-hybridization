@@ -10,18 +10,18 @@ execute:
   warning: false
   message: false
 params:
-  project_root: "~/Documents/WSL/WSL-sylvatica-orientalis-hybridization"
+  project_root: "~/Documents/WSL/WSL-sylvatica-orientalis-hybridization/supplementary"
   configuration: "dispersed"
   use_cache: false
   layout_run: 1
   p_focus: 25
   gen_max: 500
-  gen_keep_every: 50
+  gen_keep_every: 10
   max_internal_replicate: 20
   quanti_stage: 3
   p1_bin_width: 0.1
   p1_tol: 1e-8
-  out_dir: "run_outputs"
+  out_dir: "diagnostics"
   save_plots: true
 ---
 
@@ -95,21 +95,12 @@ We only take files under: `results/dispersed/pXX/r01/run/...`
 demog_files <- list.files(file.path(res_root, cfg),
                           recursive = TRUE, full.names = TRUE, pattern = "\\.txt$")
 
-demog_files <- demog_files[grepl(paste0("/", cfg, "/p\\d+/", run_str, "/run/"), gsub("\\\\","/", demog_files))]
+demog_files <- demog_files[grepl(paste0("/", cfg, "/p\\d+/", run_str,"/k\\d+_b[0-9.]+/run/"), gsub("\\\\","/", demog_files))]
 demog_files <- demog_files[grepl(paste0("^", cfg, "_p\\d+_", run_str, "_k[0-9.]+_b[0-9.]+\\.txt$"), basename(demog_files))]
 demog_files <- demog_files[!grepl("_bygen\\.txt$", demog_files)]
 demog_files <- demog_files[!grepl("\\.log$", demog_files)]
 
-# --- quanti .quanti (accept quanti/qunati)
-quanti_files <- list.files(file.path(res_root, cfg),
-                           recursive = TRUE, full.names = TRUE, pattern = "\\.quanti$")
-
-quanti_files <- quanti_files[grepl(paste0("/", cfg, "/p\\d+/", run_str, "/run/(quanti|qunati)/"), gsub("\\\\","/", quanti_files))]
-quanti_files <- quanti_files[grepl(paste0("^", cfg, "_p\\d+_", run_str, "_k[0-9.]+_b[0-9.]+_\\d{1,3}_\\d+\\.quanti$"),
-                                   basename(quanti_files))]
-
 length(demog_files)
-length(quanti_files)
 ```
 
 ------------------------------------------------------------------------
@@ -249,323 +240,8 @@ p_dem_cloud_adults
 save_plot(p_dem_cloud_adults, paste0("run_demography_cloud_adults_only_", params$p_focus, "_supplementary"), w = 20, h = 10)
 ```
 
-------------------------------------------------------------------------
-
-# Quanti (P1): distribution over time and hybrids
 
 ```{r}
-p1_bins_rds    <- file.path(cache_dir, paste0("run_quanti_p1_bins_", cfg, "_", run_str, "_gmax", params$gen_max, ".rds"))
-p1_metrics_rds <- file.path(cache_dir, paste0("run_quanti_p1_metrics_", cfg, "_", run_str, "_gmax", params$gen_max, ".rds"))
-
-# bins for P1
-bw  <- as.numeric(params$p1_bin_width)
-breaks <- seq(-1, 1, by = bw)
-if (tail(breaks, 1) < 1) breaks <- c(breaks, 1)
-
-tol <- as.numeric(params$p1_tol)
-STAGE <- as.integer(params$quanti_stage)
-
-build_quanti_summaries <- function() {
-  bin_list <- list()
-  met_list <- list()
-
-  for (f in quanti_files) {
-    meta <- parse_meta_from_basename(f)
-    suf  <- parse_quanti_suffix(f)
-
-    if (suf$generation > params$gen_max) next
-
-    dt <- fread(f, select = c("stage", "P1"))
-    dt <- dt[stage == STAGE]
-    if (nrow(dt) == 0) next
-
-    # classify
-    dt[, is_sylv := abs(P1 + 1) <= tol]
-    dt[, is_ori  := abs(P1 - 1) <= tol]
-    dt[, is_f1   := abs(P1) <= tol]
-    dt[, is_intro := (P1 > (-1 + tol)) & (P1 < (1 - tol))]
-
-    N <- nrow(dt)
-
-    met_list[[length(met_list) + 1]] <- cbind(
-      data.table(
-        generation = suf$generation,
-        replicate  = suf$replicate,
-        N = N,
-        prop_f1 = mean(dt$is_f1, na.rm = TRUE),
-        prop_intro = mean(dt$is_intro, na.rm = TRUE),
-        mean_P1 = mean(dt$P1, na.rm = TRUE)
-      ),
-      meta
-    )
-
-    # make sure P1 is numeric
-    dt[, P1 := as.numeric(P1)]
-
-    # assign each P1 to a numeric bin id (1..nbins)
-    dt[, bin_id := findInterval(P1, breaks, rightmost.closed = TRUE, all.inside = TRUE)]
-
-    # compute bin midpoints directly from breaks
-    bin_mids <- (breaks[-length(breaks)] + breaks[-1]) / 2
-
-    # attach midpoint to each row
-    dt[, bin_mid := bin_mids[bin_id]]
-
-    # summarize by midpoint
-    bins <- dt[, .N, by = .(bin_mid)]
-    bins[, prop := N / sum(N)]
-
-    bins[, `:=`(generation = suf$generation, replicate = suf$replicate)]
-    bins <- cbind(bins, meta)
-
-    bin_list[[length(bin_list) + 1]] <- bins
-  }
-
-  list(
-    p1_bins = rbindlist(bin_list, use.names = TRUE, fill = TRUE),
-    p1_metrics = rbindlist(met_list, use.names = TRUE, fill = TRUE)
-  )
-}
-
-if (isTRUE(params$use_cache) && file.exists(p1_bins_rds) && file.exists(p1_metrics_rds)) {
-  p1_bins <- readRDS(p1_bins_rds)
-  p1_metrics <- readRDS(p1_metrics_rds)
-} else {
-  tmp <- build_quanti_summaries()
-  p1_bins <- tmp$p1_bins
-  p1_metrics <- tmp$p1_metrics
-
-  if (isTRUE(params$use_cache)) {
-    saveRDS(p1_bins, p1_bins_rds)
-    saveRDS(p1_metrics, p1_metrics_rds)
-  }
-}
-
-
-# enforce internal replicate range + optional p focus
-p1_bins    <- p1_bins[replicate %between% c(1, params$max_internal_replicate)]
-p1_metrics <- p1_metrics[replicate %between% c(1, params$max_internal_replicate)]
-
-if (!is.null(params$p_focus)) {
-  p1_bins    <- p1_bins[ori_proportion == as.integer(params$p_focus)]
-  p1_metrics <- p1_metrics[ori_proportion == as.integer(params$p_focus)]
-}
-
-p1_bins[, kb := paste0("k", k, " b", b)]
-p1_metrics[, kb := paste0("k", k, " b", b)]
-```
-
-## Plot: P1 distribution over time (tile plot; adults)
-
-Each tile shows the **mean proportion** (across internal replicates) of individuals whose P1 falls into that bin at that generation.
-
-```{r}
-# Ensure bins missing in a replicate are treated as 0
-# Use expected bin midpoints from breaks (not just those observed)
-bin_mids_expected <- (breaks[-length(breaks)] + breaks[-1]) / 2
-bin_mids_expected <- round(bin_mids_expected, 2)
-
-# Round bin_mid in p1_bins too (prevents floating-point join mismatch)
-p1_bins[, bin_mid := round(as.numeric(bin_mid), 2)]
-
-# Build grid: all scenario×generation×replicate keys × all expected bins
-keys <- unique(p1_bins[, .(configuration, ori_proportion, layout_run, k, b, kb, generation, replicate)])
-
-grid <- keys[
-  , .(bin_mid = bin_mids_expected),
-  by = .(configuration, ori_proportion, layout_run, k, b, kb, generation, replicate)
-]
-
-# Left join observed bins onto the full grid, then fill missing with 0
-p1_bins_full <- merge(
-  grid, p1_bins,
-  by = c("configuration","ori_proportion","layout_run","k","b","kb","generation","replicate","bin_mid"),
-  all.x = TRUE
-)
-p1_bins_full[is.na(prop), prop := 0]
-
-# Mean across internal replicates
-p1_bin_mean <- p1_bins_full[
-  , .(mean_prop = mean(prop)),
-  by = .(generation, bin_mid, ori_proportion, k, b, kb)
-]
-
-p1_bin_mean[, gen_f := factor(generation, levels = sort(unique(generation)))]
-
-p_p1_tile <- ggplot(p1_bin_mean, aes(x = gen_f, y = bin_mid, fill = mean_prop)) +
-  geom_tile() +
-  facet_grid(ori_proportion ~ kb) +
-  scale_fill_viridis_c(option = "C", trans = "sqrt") +
-  labs(
-    title = paste0("P1 distribution over time (stage ", STAGE, "; mean across internal replicates)"),
-    x = "Generation",
-    y = "P1 bin midpoint (-1 = sylvatica, 0 = hybrid, +1 = orientalis)",
-    fill = "Mean\nproportion"
-  ) +
-  theme_bw() +
-  theme(
-    panel.grid = element_blank(),
-    panel.background = element_rect(fill = "white", colour = NA)
-  )
-
-p_p1_tile
-save_plot(p_p1_tile, paste0("run_quanti_P1_distribution_tile_", params$p_focus, "_supplementary"), w = 20, h = 10)
-
-```
-
-## Plot: How many hybrids over time (F1 = P1=0)
-
-```{r}
-p1_f1_time <- p1_metrics[
-  , .(
-    mean_f1 = mean(prop_f1, na.rm = TRUE)
-  ),
-  by = .(generation, ori_proportion, k, b, kb)
-]
-
-p_f1 <- ggplot(p1_f1_time, aes(x = generation, y = mean_f1)) +
-  geom_line(linewidth = 0.8) +
-  facet_grid(ori_proportion ~ kb) +
-  labs(
-    title = "F1 hybrid proportion over time (P1=0)",
-    x = "Generation",
-    y = "Proportion F1 (P1=0)"
-  ) +
-  theme_bw()
-
-p_f1
-save_plot(p_f1, paste0("run_quanti_F1_prop_time_series_", params$p_focus, "_supplementary"), w = 20, h = 10)
-```
-
-```{r}
-
-library(ggplot2)
-library(scales)
-library(dplyr)
-library(patchwork)
-
-# ---- Filter out total pop
-subsetdemog_long <- demog_long %>% filter(stage_label != "Total population")
-subsetdemog_mean <- demog_mean %>% filter(stage_label != "Total population")
-
-# ---- Nice labels for facets
-lab_k <- function(x) paste0("K = ", x)
-lab_b <- function(x) paste0("B = ", x)
-
-# ---- Consistent stage order (optional but helps legend/order)
-stage_levels <- c("Stage 0", "Stage 1", "Stage 2", "Stage 3")
-subsetdemog_long$stage_label <- factor(subsetdemog_long$stage_label, levels = stage_levels)
-subsetdemog_mean$stage_label <- factor(subsetdemog_mean$stage_label, levels = stage_levels)
-
-
-# Panel A: all stages (cloud + mean), sqrt y to show structure
-
-p_all <- ggplot() +
-  geom_line(
-    data = subsetdemog_long,
-    aes(x = generation, y = N,
-        group = interaction(stage_label, replicate),
-        color = stage_label),
-    linewidth = 0.18, alpha = 0.20
-  ) +
-  geom_line(
-    data = subsetdemog_mean,
-    aes(x = generation, y = meanN, color = stage_label),
-    linewidth = 0.85
-  ) +
-  facet_grid(
-    k ~ b,
-    labeller = labeller(k = lab_k, b = lab_b),
-    scales = "fixed",
-  ) +
-  scale_y_sqrt(
-    breaks = c(0, 100, 500, 1000, 2500, 5000, 10000),
-    labels = comma
-  ) +
-  labs(
-    title = "Burn-in demography across parameter combinations",
-    subtitle = "Faint lines = NEMO replicates, bold lines = mean trajectory",
-    x = "Generation (years)",
-    y = "Abundance (sqrt scale)",
-    color = "Life stage"
-  ) +
-  theme_bw(base_size = 11) +
-  theme(
-    legend.position = "bottom",
-    panel.grid.minor = element_blank(),
-    strip.background = element_rect(fill = "grey95", color = NA),
-    strip.text = element_text(face = "bold"),
-    plot.title = element_text(face = "bold")
-  )
-
-
-# Panel B: Adults only (Stage 3), linear y with target band
-
-adult_long <- subsetdemog_long %>% filter(stage_label == "Stage 3")
-adult_mean <- subsetdemog_mean %>% filter(stage_label == "Stage 3")
-
-facet_keys <- expand.grid(
-  k = sort(unique(adult_long$k)),
-  b = sort(unique(adult_long$b))
-)
-
-p_adults <- ggplot() +
-  geom_rect(
-    data = facet_keys,
-    aes(xmin = -Inf, xmax = Inf, ymin = 40, ymax = 60),
-    inherit.aes = FALSE,
-    alpha = 0.12
-  ) +
-  geom_hline(
-    data = facet_keys,
-    aes(yintercept = 50),
-    inherit.aes = FALSE,
-    linewidth = 0.4,
-    linetype = "dashed"
-  ) +
-  geom_line(
-    data = adult_long,
-    aes(x = generation, y = N, group = replicate),
-    linewidth = 0.25, alpha = 0.25
-  ) +
-  geom_line(
-    data = adult_mean,
-    aes(x = generation, y = meanN),
-    linewidth = 1.0
-  ) +
-  facet_grid(k ~ b, scales = "fixed") +
-  scale_y_continuous(breaks = pretty_breaks(n = 6), labels = comma) +
-  labs(
-    title = "Adults only (Stage 3): target ~50 adults",
-    subtitle = "Red band = 40–60 adults; dashed line = 50",
-    x = "Generation (years)",
-    y = "Adults (linear scale)"
-  ) +
-  theme_bw()
-
-p_adults
-
-# Combine into one clean figure
-
-final_demog_plot <- p_all / p_adults + plot_layout(heights = c(2.2, 1.6))
-
-final_demog_plot
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 library(ggplot2)
 library(scales)
@@ -604,6 +280,7 @@ theme_demog <- theme_minimal(base_size = 11) +
 # -----------------------------
 # Prep data
 # -----------------------------
+
 demog_long2 <- demog_long %>%
   filter(stage_label != "Total population") %>%
   mutate(stage_label = factor(stage_label, levels = stage_levels))
@@ -612,13 +289,19 @@ demog_mean2 <- demog_mean %>%
   filter(stage_label != "Total population") %>%
   mutate(stage_label = factor(stage_label, levels = stage_levels))
 
-# Panel A: all stages (replicate cloud + mean), sqrt y
+demog_long2 <- demog_long2 %>%
+  filter(!(b == 0.06))
+
+demog_mean2 <- demog_mean2 %>%
+  filter(!(b == 0.06))
+
+# Panel A: all stages (replicate cloud + mean)
 
 p_all <- ggplot(demog_long2, aes(generation, N, colour = stage_label)) +
   # Replicates: thin + transparent, but NOT in legend
   geom_line(
     aes(group = interaction(stage_label, replicate)),
-    linewidth = 0.2, alpha = 0.6,
+    linewidth = 0.2, alpha = 0.3,
     show.legend = FALSE
   ) +
   # Means: thicker, shown in legend
@@ -628,7 +311,7 @@ p_all <- ggplot(demog_long2, aes(generation, N, colour = stage_label)) +
     linewidth = 0.5
   ) +
   facet_grid(
-    k ~ b,
+    b ~ k,
     scales = "free_y",
     labeller = labeller(k = lab_k, b = lab_b)
   ) +
@@ -638,10 +321,10 @@ p_all <- ggplot(demog_long2, aes(generation, N, colour = stage_label)) +
     expand = expansion(mult = c(0.01, 0.02))
   ) +
   labs(
-    title = "Burn-in demography across parameter combinations",
+    title = "Demography across parameter combinations",
     subtitle = "Thin lines = replicates; thick lines = mean",
-    x = "Generation (years)",
-    y = "Abundance (sqrt scale)",
+    x = "Years",
+    y = "Abundance",
     colour = "Life stage"
   ) +
   guides(colour = guide_legend(override.aes = list(linewidth = 1.6, alpha = 1))) +
@@ -678,7 +361,7 @@ p_adults <- ggplot(adult_long, aes(generation, N)) +
   geom_line(
     aes(group = replicate),
     linewidth = 0.2,
-    alpha = 0.6,
+    alpha = 0.3,
     colour = stage3_col
   ) +
   # Mean (strong Stage 3)
@@ -689,7 +372,8 @@ p_adults <- ggplot(adult_long, aes(generation, N)) +
     colour = stage3_col
   ) +
   facet_grid(
-    k ~ b,
+    b ~ k,
+    scales = "free_y",
     labeller = labeller(k = lab_k, b = lab_b)
   ) +
   scale_y_continuous(
@@ -704,8 +388,8 @@ p_adults <- ggplot(adult_long, aes(generation, N)) +
   labs(
     title = "Adults only (Stage 3): target ≈ 50",
     subtitle = "Shaded band = 40–60; dashed line = 50",
-    x = "Generation (years)",
-    y = "Adults (linear scale)"
+    x = "Years",
+    y = "Adults"
   ) +
   theme_demog +
   theme(legend.position = "none")

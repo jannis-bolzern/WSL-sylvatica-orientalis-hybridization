@@ -3,4 +3,4 @@
 
 
 | basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
-| dispersed_p40_r01_k30_b0.03             | 03-02-2026 16:20:58 | 03-02-2026 16:22:37 |   00:01:38 |        20 |   00:00:04 |      500 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/dispersed/p40/r01/run/ ".quanti":results/dispersed/p40/r01/run/quanti/ ".txt":results/dispersed/p40/r01/run/
+| dispersed_p40_r01_k30_b0.03             | 04-02-2026 20:54:12 | 04-02-2026 20:56:32 |   00:02:20 |        30 |   00:00:04 |      500 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/dispersed/p40/r01/run/ ".quanti":results/dispersed/p40/r01/run/quanti/ ".txt":results/dispersed/p40/r01/run/

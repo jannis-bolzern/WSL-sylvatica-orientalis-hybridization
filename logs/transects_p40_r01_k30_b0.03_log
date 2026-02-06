@@ -1,0 +1,6 @@
+--- N E M O ---
+    LOGFILE
+
+
+| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
+| transects_p40_r01_k30_b0.03             | 04-02-2026 21:01:17 | 04-02-2026 21:03:39 |   00:02:21 |        30 |   00:00:04 |      500 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/transects/p40/r01/run/ ".quanti":results/transects/p40/r01/run/quanti/ ".txt":results/transects/p40/r01/run/
