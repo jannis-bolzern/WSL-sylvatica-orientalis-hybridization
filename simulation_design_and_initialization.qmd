@@ -956,6 +956,55 @@ for (i in seq_len(nrow(scenario_groups))) {
 message("Saved layout overviews in: ", PLOT_DIR)
 ```
 
+## Add selection
+
+This script define selection scenarios, and create a helper that add or remove selections from the ini file (created later). The selection matrix is row = N stages under selection, column = trait under selection, value = strength of selection (variance).
+
+```{r}
+#| label: add selection
+#| echo: true
+
+selection_scenarios <- data.table(
+  sel_id   = c("neutral", "sel_E", "sel_O"),
+  sel_opt  = c(NA,  1.0, -1.0),   # NA = no selection
+  sel_var  = c(NA, 20,  20)
+)
+
+add_selection_ini <- function(ini, opt, var) {
+
+  ## 1. change LIFE CYCLE EVENTS
+  ini <- set_ini_param(ini, "seed_disperse", "2")
+  ini <- set_ini_param(ini, "viability_selection", "3")
+  ini <- set_ini_param(ini, "regulation", "4")
+  ini <- set_ini_param(ini, "save_stats", "5")
+  ini <- set_ini_param(ini, "aging_multi", "6")
+  ini <- set_ini_param(ini, "save_files", "7")
+
+  ## 2. add SELECTION block at the end
+  selection_block <- c(
+    "",
+    "## ----------------------------",
+    "## SELECTION",
+    "## ----------------------------",
+    "viability_selection        3",
+    "selection_trait_dimension  1",
+    "selection_trait            quant",
+    "selection_model            quadratic",
+    "selection_fitness_model    absolute",
+    "selection_at_stage         {{0}}",
+    paste0("selection_local_optima     {{", opt, "}}"),
+    paste0("selection_matrix           {{", var, "}}")
+  )
+
+  c(ini, selection_block)
+}
+
+
+  
+```
+
+
+
 ## Write run INIs (scenario simulations)
 
 Each scenario run starts from `baseline_stage` with scenario-specific cleared+planted patches and the scenario-specific quanti init file.
@@ -987,41 +1036,55 @@ run_template <- set_ini_param(run_template, "breed_disperse_reduced_matrix_mal",
 
 ini_manifest <- data.table()
 
-for (i in seq_len(nrow(manifest))) {
-  sim  <- manifest$sim_name[i]
-  cfg  <- manifest$configuration[i]
-  p    <- manifest$prop_orientalis[i]
-  rid  <- manifest$run_id[i]
-  seed <- manifest$seed[i]
+for (s in seq_len(nrow(selection_scenarios))) {
+  sel_id  <- selection_scenarios$sel_id[s]
+  sel_opt <- selection_scenarios$sel_opt[s]
+  sel_var <- selection_scenarios$sel_var[s]
+  
+  for (i in seq_len(nrow(manifest))) {
+    sim  <- manifest$sim_name[i]
+    cfg  <- manifest$configuration[i]
+    p    <- manifest$prop_orientalis[i]
+    rid  <- manifest$run_id[i]
+    seed <- manifest$seed[i]
+  
+    # directory grouping
+    run_root <- file.path(OUT$results, sel_id, cfg, sprintf("p%02d", round(100*p)), sprintf("r%02d", rid), "run")
+    dir.create(run_root, showWarnings = FALSE, recursive = TRUE)
+  
+    ini <- run_template
+    ini <- set_ini_param(ini, "root_dir", run_root)
+    ini <- set_ini_param(ini, "filename", paste0(sim, "_", sel_id, "_k", K_VALUE, "_b", B_VALUE))
+    ini <- set_ini_param(ini, "logfile", paste0(sim, "_", sel_id, "_k", K_VALUE, "_b", B_VALUE, "_log"))
 
-  # directory grouping
-  run_root <- file.path(OUT$results, cfg, sprintf("p%02d", round(100*p)), sprintf("r%02d", rid), "run")
-  dir.create(run_root, showWarnings = FALSE, recursive = TRUE)
+    # init (baseline-derived stage matrix + scenario quanti init)
+    ini <- set_ini_param(ini, "quanti_init_freq", paste0("&", manifest$quanti_file[i]))
+    ini <- set_ini_param(ini, "patch_init_stage_size", paste0("&", manifest$stage_file[i]))
+  
+    # add selection if included
+    if (!is.na(SEL_OPT)) {
+      ini <- add_selection_ini(ini, sel_opt, sel_var)
+    }
 
-  ini <- run_template
-  ini <- set_ini_param(ini, "root_dir", run_root)
-  ini <- set_ini_param(ini, "filename", paste0(sim, "_k", K_VALUE, "_b", B_VALUE))
-  ini <- set_ini_param(ini, "logfile",  paste0(sim, "_k", K_VALUE, "_b", B_VALUE, "_log"))
-
-  # init (baseline-derived stage matrix + scenario quanti init)
-  ini <- set_ini_param(ini, "quanti_init_freq", paste0("&", manifest$quanti_file[i]))
-  ini <- set_ini_param(ini, "patch_init_stage_size", paste0("&", manifest$stage_file[i]))
-
-  ini_path <- file.path(DIRS$ini_run, paste0(sim, "_k", K_VALUE, "_b", B_VALUE, ".ini"))
-  writeLines(ini, ini_path)
-
-  ini_manifest <- rbind(
-    ini_manifest,
-    data.table(
-      sim_name = sim,
-      configuration = cfg,
-      prop_orientalis = p,
-      run_id = rid,
-      ini = ini_path,
-      run_root = run_root
+    
+    ini_path <- file.path(DIRS$ini_run, paste0(sim,"_", sel_id, "_k", K_VALUE, "_b", B_VALUE, ".ini"))
+    writeLines(ini, ini_path)
+  
+    ini_manifest <- rbind(
+      ini_manifest,
+      data.table(
+        sim_name = sim,
+        configuration = cfg,
+        prop_orientalis = p,
+        run_id = rid,
+        selection = sel_id,
+        ini = ini_path,
+        run_root = run_root
+      )
     )
-  )
+  }
 }
+
 
 ini_manifest_file <- file.path(OUT$scripts, "ini_manifest.tsv")
 fwrite(ini_manifest, ini_manifest_file, sep = "\t")
