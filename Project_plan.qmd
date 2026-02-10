@@ -273,25 +273,19 @@ Fixed (species-specific) parameters: (but potentially add in the Supp. a little 
     -   20 m radius for the seed falling according to (Wagner S (1999) The initial phase of natural regeneration in mixed ash-beech stands—ecological aspects. Sauerländer)
     -   6m highest in Kutter M, Gratzer G (2006) https://www.researchgate.net/publication/286327613_Current_methods_for_estimation_of_seed_dispersal_of_trees\_-\_An_example_of_seed_dispersal_of_Picea_abies_Abies_alba_and_Fagus_sylvatica);
     -   13-20m in Millerón et al. 2013 (https://doi.org/10.1111/mec.12200 ) --\> other references in dicussion
-
 5.  pollen dispersal distance and pollen shape parameter: 40/50? (need to create spatial structure)
     -   800-1000m and 0.17 in Westergren 2023
     -   41.63m in Oddou-Muratorio 2010
     -   110m and 0.85 in Waldi (previous paper - not converging in Allenwiller)
-
 6.  selfing ( *mating_system 4, + mating_proportion* ): 0.003 from literature
     -   0.0073 in Allenwiller
     -   0.0032 in Wäldi
     -   0.00036 in Westergren 2023
-
 7.  competition model and competition coefficient (regulation_by_competition): 0.005 or 0.01
     -   0.005 in Allenwiller
     -   0.01 in Wäldi
 
-NB: to parametrise the scenario, start from the number of adults in a 1 ha plot and the number of seedlings reported: 
--  Pauline reported a max basal area of approx 0.2-0.3 m^2 per tree, ---> use to calcaulte the b coefficient
--  Allenwiller = 68 adults per ha, Waldi = 34 adults per ha
--   Gratzler et al., 2022 reported about 630 beech seedlings in 1 ha plot
+NB: to parametrise the scenario, start from the number of adults in a 1 ha plot and the number of seedlings reported: - Pauline reported a max basal area of approx 0.2-0.3 m\^2 per tree, ---\> use to calcaulte the b coefficient - Allenwiller = 68 adults per ha, Waldi = 34 adults per ha - Gratzler et al., 2022 reported about 630 beech seedlings in 1 ha plot
 
 Testing parameters:
 
@@ -972,128 +966,56 @@ write.red.dispersal.matrix(connectivity_matrix, rate_matrix,
                            paste0("input_files/disperse/Pollen_connectivity_matrix_d", d, ".txt"), 
                            paste0("input_files/disperse/Pollen_rate_matrix_d", d, ".txt"))
 ```
+
 ### selection
-We want to implement potential selection in two cases: 
 
-1.     O. beech is more adapted to dry climates: fitness is maximal around phenotype O. beech, while drops as the phenotype moves away from that (hybrids may be favoured or disfavoured)
-2.     E. beech is more locally adapted:fitness is maximal around phenotype E. beech, while drops as the phenotype moves away from that (hybrids may be favoured or disfavoured)
+We want to implement potential selection in two cases:
 
-Case 1: selection against E. beech ---> directional selection implemented by stabilizing selection with the optimum at + 1 (O. beech), with fitness declined smoothly toward P1 (z) = -1 (hybrids have an intermediate value). The selection_fitness_model set the fitness of the individual independent from the fitness of the other individuals of the population (--> possible population decline, stronger eco-evo feedback). Selection variance (w^2) is the quadratic of the inverse of the selection strenght, therefore, the smaller, the stronger the selection, the larger, the weaker the selection. 
-If 
--   w^2 = 4, fitness (survival probability) is 0 for European beech = is not surviving, 
--   w^2 = 10, fitness is 0.4 for E beech (60% mortality difference)
--   w^2 = 20, fitness is 0.8 for E beech (20% mortality difference)
+1.  O. beech is more adapted to dry climates: fitness is maximal around phenotype O. beech, while drops as the phenotype moves away from that (hybrids may be favoured or disfavoured):
 
-in the ini file: 
+    selection against E. beech ---\> directional selection implemented by stabilizing selection with the **optimum at + 1 (O. beech)**, with fitness declined smoothly toward P1 (z) = -1 (hybrids have an intermediate value). The selection_fitness_model set the fitness of the individual independent from the fitness of the other individuals of the population (--\> possible population decline, stronger eco-evo feedback).
 
-## LIFE CYCLE EVENTS ##
-quanti_init	    0  # patch-specific init trait values 
-breed_disperse	1  # breeding with backward migration (WF model) --> for overalpping generations 
-seed_disperse	2  # only seed dispersal
-viability_selection 3
-regulation      4
-save_stats      5  # census
-aging_multi     6  # stage transition (after disperse, to save data for both adults and offspring)
-save_files      7  # write summary stats to file
+2.  E. beech is more locally adapted:fitness is maximal around phenotype E. beech, while drops as the phenotype moves away from that (hybrids may be favoured or disfavoured):
 
-## SELECTION ##
-viability_selection        3          ## rank in life cycle
+    The same as Case 1 but selection_local_optima {{-1.0}} (E. beech is the local optima)
+
+*Implementation:*
+
+Selection variance (w\^2) is the quadratic of the inverse of the selection strenght, therefore, the smaller, the stronger the selection, the larger, the weaker the selection.
+
+If
+
+-   w\^2 = 4, fitness (survival probability) is 0 for European beech = is not surviving,
+
+-   w\^2 = 10, fitness is 0.4 for E beech (60% mortality difference)
+
+-   w\^2 = 20, fitness is 0.8 for E beech (20% mortality difference)
+
+in the ini file:
+
+```         
+# LIFE CYCLE EVENTS #
+
+quanti_init 0 
+breed_disperse 1 
+seed_disperse 2 
+viability_selection 3 
+regulation 4 
+save_stats 5 
+aging_multi 6 
+save_files 7 
+
+## ----------------------------
+## SELECTION
+## ----------------------------
+viability_selection        3
+selection_trait_dimension  1
 selection_trait            quant
 selection_model            quadratic
 selection_fitness_model    absolute
-selection_at_stage         {{0}}       ## seedlings only or {{0,1}} for seedlings up to 4 age
-
-selection_local_optima     {{1.0}}     ## optimum = pure Oriental
-selection_variance         {{20}}     ## strength of selection
-
-Case 2. selection against O. beech
-
-The same as Case 1 but 
-
-selection_local_optima     {{-1.0}}    ## optimum = pure European
-selection_variance         {{20}}
-
-Potential Case 3. selection against both pure species = hybrid advantage
-
-selection_local_optima     {{0.0}}     ## hybrids optimal
-selection_variance         {{20}}
-
-
-
-
-## Running Nemo on the cluster
-
-Example of a Cluster slurm file to run one Nemo simulation
-
-This should be changed to run in an array all the .ini simulations
-
-sim_name \<- a,b,c,d ....
-
-./nemoage ./sim_name_burnin.ini ./sim_name.ini
-
-1.  create simulations_list.txt:
-
-beech1 beech2 beech3 mixed1 mixed2 etc.
-
-2.  in the cluster, run the script (for beech and mixed simulations)
-
-```{bash}
-#| eval: false
-#| output: false
-#| echo: true
-#| code-fold: true
-#| code-summary: "Expand for full code"
-
-#!/bin/bash
-
-#SBATCH --job-name=nemo_array
-#SBATCH --output=nemo_%A_%a.out
-#SBATCH --error=nemo_%A_%a.err
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=camilla.stefanini@wsl.ch
-
-#SBATCH --qos=normal
-#SBATCH --time=90:00:00
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=16000
-
-#SBATCH --array=1-5%5    ## 1-(n simulations)%(max parallel jobs)
-
-export LD_LIBRARY_PATH=/home/stefanin/miniforge3/lib:$LD_LIBRARY_PATH
-source /home/stefanin/miniforge3/bin/activate nemo_environment
-
-NEMO="/home/stefanin/nemo/nemo_files/nemoage0.32.6b/nemoage"
-INI_DIR="/home/stefanin/nemo/ini_files"
-
-# get simulation name
-
-SIM_NAME=$(sed -n "${SLURM_ARRAY_TASK_ID}p" sim_list.txt)
-BURNIN_INI="${INI_DIR}/${SIM_NAME}_burnin.ini"
-RUN_INI="${INI_DIR}/${SIM_NAME}.ini"
-
-echo "Running simulation ${SIM_NAME}"
-echo "Burnin file ${BURNIN_INI}"
-echo "Run file ${RUN_INI}"
-
-# burn-in
-
-${NEMO} ${BURNIN_INI}
-if [ $? -ne 0 ]; then
-  echo "Burnin failed for ${SIM_NAME}"
-  exit 1
-fi
-
-# main simulation
-
-${NEMO} ${RUN_INI}
-if [ $? -ne 0 ]; then
-  echo "Simulation failed for ${SIM_NAME}"
-  exit 1
-fi
-
-echo "Finished with ${SIM_NAME}"
-
+selection_at_stage         {{0}}
+selection_local_optima     {{1}}
+selection_matrix         {{20}}
 ```
 
 ## Analyse results of sensitivity analysis
@@ -1517,11 +1439,10 @@ Next question: **within the same configuration and proportion of orientalis, do 
 
 Basically, we want to see if the main results are robust across the K and B values. To do that, we
 
-1.    run the simulations with the combinations of K and B
-2.    plot our main figure x = configuration_oriproportion; y = hybrid_proportions and facet_grid (create different panels) for K and B. We compare the distirbutions of the data with statistical test (ANOVA). 
+1.  run the simulations with the combinations of K and B
+2.  plot our main figure x = configuration_oriproportion; y = hybrid_proportions and facet_grid (create different panels) for K and B. We compare the distirbutions of the data with statistical test (ANOVA).
 
---> are the results consistent? E.g. is the hybrid proportion consistently highest(lowest) in the same configuration x ori_proportion across all k and b values, or is it changing? 
-If the main results are changing for different K and B values, the significantly affect the hybridization. 
+--\> are the results consistent? E.g. is the hybrid proportion consistently highest(lowest) in the same configuration x ori_proportion across all k and b values, or is it changing? If the main results are changing for different K and B values, the significantly affect the hybridization.
 
 ```{r}
 #| label: hybrid proporiton boxplot 2
@@ -1539,44 +1460,192 @@ ggplot(hyb_prop_adults, aes(x = configuration, y = prop_hybrid, group = interact
 
 ```
 
-
 ------------------------------------------------------------------------
 
 ## Analyse results of final simulations
 
-### Hybrid distribution
+Recap of the dimensions of our results: we have
+
+-   3 selection scenarios (neutral, selection against one of the Pure species)
+
+-   4 planting designs/configurations
+
+-   3 proportions of introduced species
+
+-   3 age classes (stage 0 is not considered and likely not even stored by Nemo)
+
+For each selection scenario, we want to assess which planting design maximizes hybridization and its persistence through time, considering each age class.
+
+Expectation: we expect that, regardless the selection scenario
+
+1.  a higher proportion of introduced species will increase hybridization
+2.  a more mixed design will increase hybridization
+
+We will assess the short-term hybridization (2 or 10 years?), mid-term hybridization (100 years?) and long term hybridization (500 or 1000 years?).
 
 ```{r}
-#| label: plot P1 across landscape
+#| label: processing quanti results 2
+#| eval: false
+#| output: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Expand for full code"
+
+library(data.table)
+library(stringr)
+
+# the output is a unique file : Quanti_data_Allenwiller_year2020.RDS
+res_path2 <- "C:/Users/stefanin/Downloads/quanti"
+# res_path2 <- "C:/Users/stefanin/Downloads/WSL-sylvatica-orientalis-hybridization-main/WSL-sylvatica-orientalis-hybridization-main"
+
+# to select all the replicates
+file_pattern <- ".*\\.quanti$"
+
+# to select only 30 replicates
+#file_pattern <- ".*_results_([0-9]{2,3})_((0[1-9])|(1[0-9])|(2[0-9])|(30))\\.quanti$"
+
+quanti_files <- list.files(path = res_path2, recursive = TRUE,full.names = TRUE,include.dirs = TRUE,pattern = file_pattern)
+
+quanti_list <- vector("list", length(quanti_files))
+
+for (i in seq_along(quanti_files)) {
+
+  file <- quanti_files[i]
+  data <- fread(file)
+  ori_proportion <- as.numeric( stringr::str_extract(basename(file), "(?<=_p)\\d+"))
+  configuration <- str_match(basename(file), "^(.*?)_p")[,2]
+  s <- str_match(basename(file), "_r\\d+_(.*?)_k")[,2]
+  k <- as.numeric(sub(".*_k([0-9.]+).*", "\\1", file))
+  b <- as.numeric(sub(".*_b([0-9.]+).*", "\\1", file))
+
+ # generation-- any 3-digit number surrounded by _xxx_
+  generation <- as.numeric( str_extract(basename(file), "(?<=_)\\d{3}(?=_)"))
+ # replicate = last number before .quanti
+  replicate <- as.numeric(str_extract(basename(file), "(?<=_)\\d+(?=\\.quanti$)"))
+
+  data[, `:=`(
+    configuration  = configuration,
+    ori_proportion = ori_proportion,
+    selection = s,
+    k         = k,
+    b         = b,
+    generation = generation,
+    replicate  = replicate
+  )]
+
+  quanti_list[[i]] <- data
+}
+
+# Combine all files into one data.table ad save
+quanti_data_all <- rbindlist(quanti_list, fill = TRUE)
+# saveRDS(quanti_data_all,file = file.path(res_path2, "Quanti_data.RDS"))
+#rm(quanti_files, quanti_list)
+```
+
+### P1 distribution
+
+First we look at the overall distribution of the species phenotype (i.e. P1):
+
+```{r}
+#| label: P1 distribution
+
+library(dplyr)
+library(ggplot2)
 
 quanti_data_all <- readRDS(file.path(res_path2, "Quanti_data.RDS"))
-
-## summarise data per patch = each patch has the average P1 value
-quanti_patch <- quanti_data_all %>%
-  group_by(sim_name, replicate, generation,stage,pop, k,b) %>%
-  summarize(P1 = mean(P1, na.rm = T), .groups = "drop")
-
-## quick look at P1 distirbution
 hist(quanti_data_all$P1)
+```
+
+### Overall hybrid proportions
+
+Then we define a general **hybrid metric which includes all the hybrid classes (F1, F2, BC),** i.e. everything that is not pure. We check the proportion of overall hybrids across the simulation and per patch:
+
+```{r}
+#| label: overall hybrids proportions across years
+
+dt <- copy(quanti_data_all)
+hyb_prop <- dt[,.( N = .N,
+     N_hybrid = sum(P1 > -1 & P1 < 1),
+     prop_hybrids = mean(P1 > -1 & P1 < 1)), 
+  by = .(configuration, ori_proportion,selection,generation, replicate, stage, k, b) ]
+
+
+# plot the proportion of hybrids + SD for each stage across years
+hyb_summary <- hyb_prop[, .(
+  mean_prop = mean(prop_hybrids),
+  sd_prop   = sd(prop_hybrids)
+),
+by = .(configuration, ori_proportion, selection, generation, stage, k, b)]
+
+ggplot(hyb_summary,
+       aes(generation, mean_prop, colour = factor(stage))) +
+  geom_line() +
+  geom_ribbon(aes(ymin = mean_prop - sd_prop,
+                  ymax = mean_prop + sd_prop,
+                  fill = factor(stage)),
+              alpha = 0.25,
+              colour = NA) +
+  facet_grid(configuration + b ~ k + ori_proportion) +
+  theme_bw()
+
+```
+
+Here we can add Jannis P1 heatmap!
+
+To compare the proportion of all hybrids across the designs, for one specific year:
+
+```{r}
+#| label: comparing overall hybrids proportions for one year
+
+## maybe to adjust
+# generation = 100
+ggplot(subset(hyb_summary,generation == 100), 
+       aes(configuration, mean_prop, fill = factor(ori_proportion), group = interaction(configuration, ori_proportion))) +
+  geom_boxplot() +
+  facet_grid(stage  ~ selection) +
+  theme_bw()
+
+
+```
+
+The problem of grouping all the hybrids is that we cannot distinguish F1 from the later generation hybrids, while the problem of summarizing P1 across the landscape is that we cannot distinguish patches with 50% Pure orientalis + 50% pure sylvatica from 100% F1 (for instance).
+
+### Spatial distribution of hybrid proportion 
+
+Here we calculate the proportion of overall hybrids (everything that is not pure) per patch and plot across the landscape.
+
+NB: this is not distinguishing the different hybrid classes.
+
+```{r}
+#| label: overall hybrid proportions per patch
+
+library(dplyr)
+library(ggplot2)
+library(terra)
+
+## proportion of overall hybrids per patch 
+
+hyb_prop_patch <- dt[,.( N = .N,
+     N_hybrid = sum(P1 > -1 & P1 < 1),
+     prop_hybrids = mean(P1 > -1 & P1 < 1)), 
+  by = .(configuration, ori_proportion,selection,generation, replicate, stage, k, b, pop) ]
 
 # importing grid 
-grid <- vect("input_files/grid_4x4m_100x100m.shp")
+grid <- vect("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Input_files/Grid_4x4m_100x100m.shp")
 grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
 # grid dimensions 
 n_rows = dim(grid_r)[1]
 n_cols = dim(grid_r)[2]
 
-### SUBSET FOR STAGE REPLICATE OR OTHER PARAM TO VISUALISE BETTER
-
-## plot the average P1 for one stage and one replicate
-  ggplot(subset(quanti_patch,stage ==2& replicate ==1),
+## check the proportion of hybrids (for one stage and one replicate)
+ggplot(subset(hyb_prop_patch, stage ==1 & replicate ==1),
          aes(x = (pop - 1) %% n_rows + 1, 
              y = n_cols - ((pop - 1) %/% n_cols + 1), 
-             fill = as.numeric(P1))) +
+             fill = as.numeric(prop_hybrids))) +
     geom_raster() +
     scale_fill_viridis_c(option = "viridis", direction = -1) +
-    facet_grid(sim_name+ k +b ~ generation) + 
-    labs(x = "", y = "", fill = "Quantitative trait") +
+    facet_grid(configuration + ori_proportion ~ generation) + 
+    labs(x = "", y = "", fill = "Proportion of hybrids") +
     theme_void() +
     theme(
       aspect.ratio = 1,
@@ -1585,75 +1654,58 @@ n_cols = dim(grid_r)[2]
       panel.spacing.y = unit(0.1, "lines"),
       strip.text = element_text(size = 10))
 
-
 ```
 
-Plotting the trend of average P1 for the whole landscape, for each simulation, and stage, across the generations:
+### Hybrid classes
 
-### Hybrid class
-
-Then we try a simple classification of the hybrids:
-
--   parental species (P1 = -1 or P1 = +1) = 0
-
--   F1 (P1 = 0) = 1
-
-    to try to distinguish between F1 and advanced generation hybrids
-
-ggplot(hyb_classes_1000, aes(x = factor(stage), y = prop, group = interaction(hybrid_class, factor(stage)), fill = factor(hybrid_class)))+geom_boxplot()+ facet_grid(sim_name+b\~ k)
+Below we group the hybrids into discrete classes (but very messy and not informative) - not very good plot + stacked bar chart after summarising across replicates (on average, what fraction of individuals are F1 / BC / etc?)
 
 ```{r}
-#| label: hybrid type
-#| eval: false
-#| output: false
-#| echo: true
-#| code-fold: true
-#| code-summary: "Expand for full code"
 
 ## hybrid classes
 dt[, hybrid_class := fcase(
-  abs(P1) == 1,                "parental", # both -1 and +1
+  P1 == 1,                "Pure orientalis",
+  P1 == -1,                "Pure sylvatica",
   abs(P1) <= 0.2,              "F1", # between 0 and + - 0.2
-  abs(P1) <= 0.8,              "F2 or BC", # 0.6-0.2
+  
+  P1 <= 0.8 & P1 > 0.2,       "F2 or BC orientalis", 
+  P1 >= -0.8 & P1 < -0.2,     "F2 or BC sylvatica", 
   default = "introgressed"
 )]
 
-## summarize 
-hyb_classes_1000 <- dt[generation == generation,
-  .N,
-  by = .(sim_name, replicate, stage, k, b, hybrid_class)
+## proportion per simulation 
+hyb_classes <- dt[,
+  .N,by = .(configuration, ori_proportion,selection,generation, replicate, stage, k, b, hybrid_class)
 ][
   , prop := N / sum(N),
-  by = .(sim_name, replicate, stage, k, b)
+  by = .(configuration,ori_proportion,selection,generation, replicate, stage, k, b)
 ]
 
-## plot for each stage the proportion of classes
-ggplot(hyb_classes_1000, aes(x = factor(stage), y = prop, group = interaction(hybrid_class, factor(stage)), color = factor(hybrid_class), fill = factor(hybrid_class)))+geom_boxplot()+ facet_grid(sim_name+b~ k) 
-
-```
-
-### Hybridization through time
-
-Plotting the average hybridization rate (P1 value) across time for each stage
-
-```{r}
-#| label: hybrid time
-#| eval: false
-#| output: false
-#| echo: true
-#| code-fold: true
-#| code-summary: "Expand for full code"
+## plot for each stage/generation the proportion of classes
+# subset either generation or stage
+ggplot(subset(hyb_classes, stage == 1), 
+       aes(x = factor(generation), y = prop, group = interaction(hybrid_class, factor(generation)), color = factor(hybrid_class), fill = factor(hybrid_class)))+theme_bw()+
+  geom_boxplot()+ 
+  facet_grid(configuration+selection~ k+ori_proportion) 
 
 
-hyb_time <- dt[
-  , .(
-    prop_hybrid = mean(P1 > -1 & P1 < 1)
+### otherwise
+# summarize across replicates -- not very good
+hyb_class_summary <- hyb_classes[
+  ,
+  .(
+    mean_prop = mean(prop),
+    sd_prop   = sd(prop)
   ),
-  by = .
-  
-  (sim_name, replicate, generation, stage, k, b)
+  by = .(configuration, ori_proportion, selection, generation, stage, k, b, hybrid_class)
 ]
 
-ggplot(hyb_time, aes(x = generation, y = prop_hybrid, group = interaction(replicate, factor(stage)), color = factor(stage)))+geom_line()+ facet_grid(sim_name+b~ k) 
-
+ggplot(hyb_class_summary ,
+       aes(x = factor(generation),
+           y = mean_prop,
+           fill = hybrid_class)) +
+  geom_col() +
+  facet_grid(configuration  ~ stage + ori_proportion) +
+  labs(y = "Mean proportion", x = "Year") +
+  theme_bw()
 ```
