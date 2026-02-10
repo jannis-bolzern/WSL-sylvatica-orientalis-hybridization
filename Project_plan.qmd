@@ -1608,6 +1608,8 @@ ggplot(subset(hyb_summary,generation == 100),
 
 ```
 
+NB: this allows to **quantify the difference between scenarios in terms of presence of hybrids.**
+
 The problem of grouping all the hybrids is that we cannot distinguish F1 from the later generation hybrids, while the problem of summarizing P1 across the landscape is that we cannot distinguish patches with 50% Pure orientalis + 50% pure sylvatica from 100% F1 (for instance).
 
 ### Spatial distribution of hybrid proportion 
