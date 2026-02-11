@@ -969,7 +969,7 @@ write.red.dispersal.matrix(connectivity_matrix, rate_matrix,
 
 ### selection
 
-We want to implement potential selection in two cases:
+We want to implement potential selection against one of the two pure species, to reproduce potential cases of differential fitness of the pure species and see if there is any case of extinction. We simulated two cases of selection (or differential fitness):
 
 1.  O. beech is more adapted to dry climates: fitness is maximal around phenotype O. beech, while drops as the phenotype moves away from that (hybrids may be favoured or disfavoured):
 
@@ -1711,3 +1711,4 @@ ggplot(hyb_class_summary ,
   labs(y = "Mean proportion", x = "Year") +
   theme_bw()
 ```
+
