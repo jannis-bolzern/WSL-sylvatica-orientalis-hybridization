@@ -86,17 +86,18 @@ PLANTING_SCHEME <- c(0, 20, 0, 0)  # stage0..stage3
 
 # Burn-in + run settings
 BURNIN_GENS <- 500
-RUN_GENS    <- 500
+RUN_GENS    <- 1000
 K_VALUE     <- 30
 B_VALUE     <- 0.03
 
 # write stats + quanti every 50 generations
-LOG_EVERY <- 50
-LOG_TIMES <- c(2, seq(LOG_EVERY, RUN_GENS, by = LOG_EVERY))  # include generation 2
+#LOG_EVERY <- 50
+#LOG_TIMES <- c(2, seq(LOG_EVERY, RUN_GENS, by = LOG_EVERY))  # include generation 2
+LOG_TIMES <- c(2, 10, 20, 30, 40, 50, 100, 150, 200, 300, 400, 600, 800, 1000)
 
 # NEMO replicates
 NEMO_REPS_BURNIN <- 1
-NEMO_REPS_RUN    <- 30
+NEMO_REPS_RUN    <- 20
 
 # Dispersal (fixed)
 # SEED
@@ -1003,8 +1004,6 @@ add_selection_ini <- function(ini, opt, var) {
   
 ```
 
-
-
 ## Write run INIs (scenario simulations)
 
 Each scenario run starts from `baseline_stage` with scenario-specific cleared+planted patches and the scenario-specific quanti init file.
@@ -1062,7 +1061,7 @@ for (s in seq_len(nrow(selection_scenarios))) {
     ini <- set_ini_param(ini, "patch_init_stage_size", paste0("&", manifest$stage_file[i]))
   
     # add selection if included
-    if (!is.na(SEL_OPT)) {
+    if (!is.na(sel_opt)) {
       ini <- add_selection_ini(ini, sel_opt, sel_var)
     }
 
@@ -1117,4 +1116,12 @@ Move logs from root after running:
 
 ``` bash
 ./scripts/move_logs.sh
+```
+
+Running all simulations in parallel (GNU parallel, adjust -j for number of cores):
+
+``` bash
+mkdir -p logs
+parallel -j "$(nproc)" --halt soon,fail=1 --bar \
+  './nemoage {} > logs/{/.}.log 2>&1' ::: ini_files/run/*_k30_b0.03.ini
 ```

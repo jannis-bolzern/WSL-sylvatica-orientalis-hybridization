@@ -1,61 +1,181 @@
-sim_name	configuration	prop_orientalis	run_id	ini	run_root
-dispersed_p10_r01	dispersed	0.1	1	ini_files/run/dispersed_p10_r01_k30_b0.03.ini	results/dispersed/p10/r01/run
-dispersed_p10_r02	dispersed	0.1	2	ini_files/run/dispersed_p10_r02_k30_b0.03.ini	results/dispersed/p10/r02/run
-dispersed_p10_r03	dispersed	0.1	3	ini_files/run/dispersed_p10_r03_k30_b0.03.ini	results/dispersed/p10/r03/run
-dispersed_p10_r04	dispersed	0.1	4	ini_files/run/dispersed_p10_r04_k30_b0.03.ini	results/dispersed/p10/r04/run
-dispersed_p10_r05	dispersed	0.1	5	ini_files/run/dispersed_p10_r05_k30_b0.03.ini	results/dispersed/p10/r05/run
-one_cluster_p10_r01	one_cluster	0.1	1	ini_files/run/one_cluster_p10_r01_k30_b0.03.ini	results/one_cluster/p10/r01/run
-one_cluster_p10_r02	one_cluster	0.1	2	ini_files/run/one_cluster_p10_r02_k30_b0.03.ini	results/one_cluster/p10/r02/run
-one_cluster_p10_r03	one_cluster	0.1	3	ini_files/run/one_cluster_p10_r03_k30_b0.03.ini	results/one_cluster/p10/r03/run
-one_cluster_p10_r04	one_cluster	0.1	4	ini_files/run/one_cluster_p10_r04_k30_b0.03.ini	results/one_cluster/p10/r04/run
-one_cluster_p10_r05	one_cluster	0.1	5	ini_files/run/one_cluster_p10_r05_k30_b0.03.ini	results/one_cluster/p10/r05/run
-multi_cluster_p10_r01	multi_cluster	0.1	1	ini_files/run/multi_cluster_p10_r01_k30_b0.03.ini	results/multi_cluster/p10/r01/run
-multi_cluster_p10_r02	multi_cluster	0.1	2	ini_files/run/multi_cluster_p10_r02_k30_b0.03.ini	results/multi_cluster/p10/r02/run
-multi_cluster_p10_r03	multi_cluster	0.1	3	ini_files/run/multi_cluster_p10_r03_k30_b0.03.ini	results/multi_cluster/p10/r03/run
-multi_cluster_p10_r04	multi_cluster	0.1	4	ini_files/run/multi_cluster_p10_r04_k30_b0.03.ini	results/multi_cluster/p10/r04/run
-multi_cluster_p10_r05	multi_cluster	0.1	5	ini_files/run/multi_cluster_p10_r05_k30_b0.03.ini	results/multi_cluster/p10/r05/run
-transects_p10_r01	transects	0.1	1	ini_files/run/transects_p10_r01_k30_b0.03.ini	results/transects/p10/r01/run
-transects_p10_r02	transects	0.1	2	ini_files/run/transects_p10_r02_k30_b0.03.ini	results/transects/p10/r02/run
-transects_p10_r03	transects	0.1	3	ini_files/run/transects_p10_r03_k30_b0.03.ini	results/transects/p10/r03/run
-transects_p10_r04	transects	0.1	4	ini_files/run/transects_p10_r04_k30_b0.03.ini	results/transects/p10/r04/run
-transects_p10_r05	transects	0.1	5	ini_files/run/transects_p10_r05_k30_b0.03.ini	results/transects/p10/r05/run
-dispersed_p25_r01	dispersed	0.25	1	ini_files/run/dispersed_p25_r01_k30_b0.03.ini	results/dispersed/p25/r01/run
-dispersed_p25_r02	dispersed	0.25	2	ini_files/run/dispersed_p25_r02_k30_b0.03.ini	results/dispersed/p25/r02/run
-dispersed_p25_r03	dispersed	0.25	3	ini_files/run/dispersed_p25_r03_k30_b0.03.ini	results/dispersed/p25/r03/run
-dispersed_p25_r04	dispersed	0.25	4	ini_files/run/dispersed_p25_r04_k30_b0.03.ini	results/dispersed/p25/r04/run
-dispersed_p25_r05	dispersed	0.25	5	ini_files/run/dispersed_p25_r05_k30_b0.03.ini	results/dispersed/p25/r05/run
-one_cluster_p25_r01	one_cluster	0.25	1	ini_files/run/one_cluster_p25_r01_k30_b0.03.ini	results/one_cluster/p25/r01/run
-one_cluster_p25_r02	one_cluster	0.25	2	ini_files/run/one_cluster_p25_r02_k30_b0.03.ini	results/one_cluster/p25/r02/run
-one_cluster_p25_r03	one_cluster	0.25	3	ini_files/run/one_cluster_p25_r03_k30_b0.03.ini	results/one_cluster/p25/r03/run
-one_cluster_p25_r04	one_cluster	0.25	4	ini_files/run/one_cluster_p25_r04_k30_b0.03.ini	results/one_cluster/p25/r04/run
-one_cluster_p25_r05	one_cluster	0.25	5	ini_files/run/one_cluster_p25_r05_k30_b0.03.ini	results/one_cluster/p25/r05/run
-multi_cluster_p25_r01	multi_cluster	0.25	1	ini_files/run/multi_cluster_p25_r01_k30_b0.03.ini	results/multi_cluster/p25/r01/run
-multi_cluster_p25_r02	multi_cluster	0.25	2	ini_files/run/multi_cluster_p25_r02_k30_b0.03.ini	results/multi_cluster/p25/r02/run
-multi_cluster_p25_r03	multi_cluster	0.25	3	ini_files/run/multi_cluster_p25_r03_k30_b0.03.ini	results/multi_cluster/p25/r03/run
-multi_cluster_p25_r04	multi_cluster	0.25	4	ini_files/run/multi_cluster_p25_r04_k30_b0.03.ini	results/multi_cluster/p25/r04/run
-multi_cluster_p25_r05	multi_cluster	0.25	5	ini_files/run/multi_cluster_p25_r05_k30_b0.03.ini	results/multi_cluster/p25/r05/run
-transects_p25_r01	transects	0.25	1	ini_files/run/transects_p25_r01_k30_b0.03.ini	results/transects/p25/r01/run
-transects_p25_r02	transects	0.25	2	ini_files/run/transects_p25_r02_k30_b0.03.ini	results/transects/p25/r02/run
-transects_p25_r03	transects	0.25	3	ini_files/run/transects_p25_r03_k30_b0.03.ini	results/transects/p25/r03/run
-transects_p25_r04	transects	0.25	4	ini_files/run/transects_p25_r04_k30_b0.03.ini	results/transects/p25/r04/run
-transects_p25_r05	transects	0.25	5	ini_files/run/transects_p25_r05_k30_b0.03.ini	results/transects/p25/r05/run
-dispersed_p40_r01	dispersed	0.4	1	ini_files/run/dispersed_p40_r01_k30_b0.03.ini	results/dispersed/p40/r01/run
-dispersed_p40_r02	dispersed	0.4	2	ini_files/run/dispersed_p40_r02_k30_b0.03.ini	results/dispersed/p40/r02/run
-dispersed_p40_r03	dispersed	0.4	3	ini_files/run/dispersed_p40_r03_k30_b0.03.ini	results/dispersed/p40/r03/run
-dispersed_p40_r04	dispersed	0.4	4	ini_files/run/dispersed_p40_r04_k30_b0.03.ini	results/dispersed/p40/r04/run
-dispersed_p40_r05	dispersed	0.4	5	ini_files/run/dispersed_p40_r05_k30_b0.03.ini	results/dispersed/p40/r05/run
-one_cluster_p40_r01	one_cluster	0.4	1	ini_files/run/one_cluster_p40_r01_k30_b0.03.ini	results/one_cluster/p40/r01/run
-one_cluster_p40_r02	one_cluster	0.4	2	ini_files/run/one_cluster_p40_r02_k30_b0.03.ini	results/one_cluster/p40/r02/run
-one_cluster_p40_r03	one_cluster	0.4	3	ini_files/run/one_cluster_p40_r03_k30_b0.03.ini	results/one_cluster/p40/r03/run
-one_cluster_p40_r04	one_cluster	0.4	4	ini_files/run/one_cluster_p40_r04_k30_b0.03.ini	results/one_cluster/p40/r04/run
-one_cluster_p40_r05	one_cluster	0.4	5	ini_files/run/one_cluster_p40_r05_k30_b0.03.ini	results/one_cluster/p40/r05/run
-multi_cluster_p40_r01	multi_cluster	0.4	1	ini_files/run/multi_cluster_p40_r01_k30_b0.03.ini	results/multi_cluster/p40/r01/run
-multi_cluster_p40_r02	multi_cluster	0.4	2	ini_files/run/multi_cluster_p40_r02_k30_b0.03.ini	results/multi_cluster/p40/r02/run
-multi_cluster_p40_r03	multi_cluster	0.4	3	ini_files/run/multi_cluster_p40_r03_k30_b0.03.ini	results/multi_cluster/p40/r03/run
-multi_cluster_p40_r04	multi_cluster	0.4	4	ini_files/run/multi_cluster_p40_r04_k30_b0.03.ini	results/multi_cluster/p40/r04/run
-multi_cluster_p40_r05	multi_cluster	0.4	5	ini_files/run/multi_cluster_p40_r05_k30_b0.03.ini	results/multi_cluster/p40/r05/run
-transects_p40_r01	transects	0.4	1	ini_files/run/transects_p40_r01_k30_b0.03.ini	results/transects/p40/r01/run
-transects_p40_r02	transects	0.4	2	ini_files/run/transects_p40_r02_k30_b0.03.ini	results/transects/p40/r02/run
-transects_p40_r03	transects	0.4	3	ini_files/run/transects_p40_r03_k30_b0.03.ini	results/transects/p40/r03/run
-transects_p40_r04	transects	0.4	4	ini_files/run/transects_p40_r04_k30_b0.03.ini	results/transects/p40/r04/run
-transects_p40_r05	transects	0.4	5	ini_files/run/transects_p40_r05_k30_b0.03.ini	results/transects/p40/r05/run
+sim_name	configuration	prop_orientalis	run_id	selection	ini	run_root
+dispersed_p10_r01	dispersed	0.1	1	neutral	ini_files/run/dispersed_p10_r01_neutral_k30_b0.03.ini	results/neutral/dispersed/p10/r01/run
+dispersed_p10_r02	dispersed	0.1	2	neutral	ini_files/run/dispersed_p10_r02_neutral_k30_b0.03.ini	results/neutral/dispersed/p10/r02/run
+dispersed_p10_r03	dispersed	0.1	3	neutral	ini_files/run/dispersed_p10_r03_neutral_k30_b0.03.ini	results/neutral/dispersed/p10/r03/run
+dispersed_p10_r04	dispersed	0.1	4	neutral	ini_files/run/dispersed_p10_r04_neutral_k30_b0.03.ini	results/neutral/dispersed/p10/r04/run
+dispersed_p10_r05	dispersed	0.1	5	neutral	ini_files/run/dispersed_p10_r05_neutral_k30_b0.03.ini	results/neutral/dispersed/p10/r05/run
+one_cluster_p10_r01	one_cluster	0.1	1	neutral	ini_files/run/one_cluster_p10_r01_neutral_k30_b0.03.ini	results/neutral/one_cluster/p10/r01/run
+one_cluster_p10_r02	one_cluster	0.1	2	neutral	ini_files/run/one_cluster_p10_r02_neutral_k30_b0.03.ini	results/neutral/one_cluster/p10/r02/run
+one_cluster_p10_r03	one_cluster	0.1	3	neutral	ini_files/run/one_cluster_p10_r03_neutral_k30_b0.03.ini	results/neutral/one_cluster/p10/r03/run
+one_cluster_p10_r04	one_cluster	0.1	4	neutral	ini_files/run/one_cluster_p10_r04_neutral_k30_b0.03.ini	results/neutral/one_cluster/p10/r04/run
+one_cluster_p10_r05	one_cluster	0.1	5	neutral	ini_files/run/one_cluster_p10_r05_neutral_k30_b0.03.ini	results/neutral/one_cluster/p10/r05/run
+multi_cluster_p10_r01	multi_cluster	0.1	1	neutral	ini_files/run/multi_cluster_p10_r01_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p10/r01/run
+multi_cluster_p10_r02	multi_cluster	0.1	2	neutral	ini_files/run/multi_cluster_p10_r02_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p10/r02/run
+multi_cluster_p10_r03	multi_cluster	0.1	3	neutral	ini_files/run/multi_cluster_p10_r03_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p10/r03/run
+multi_cluster_p10_r04	multi_cluster	0.1	4	neutral	ini_files/run/multi_cluster_p10_r04_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p10/r04/run
+multi_cluster_p10_r05	multi_cluster	0.1	5	neutral	ini_files/run/multi_cluster_p10_r05_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p10/r05/run
+transects_p10_r01	transects	0.1	1	neutral	ini_files/run/transects_p10_r01_neutral_k30_b0.03.ini	results/neutral/transects/p10/r01/run
+transects_p10_r02	transects	0.1	2	neutral	ini_files/run/transects_p10_r02_neutral_k30_b0.03.ini	results/neutral/transects/p10/r02/run
+transects_p10_r03	transects	0.1	3	neutral	ini_files/run/transects_p10_r03_neutral_k30_b0.03.ini	results/neutral/transects/p10/r03/run
+transects_p10_r04	transects	0.1	4	neutral	ini_files/run/transects_p10_r04_neutral_k30_b0.03.ini	results/neutral/transects/p10/r04/run
+transects_p10_r05	transects	0.1	5	neutral	ini_files/run/transects_p10_r05_neutral_k30_b0.03.ini	results/neutral/transects/p10/r05/run
+dispersed_p25_r01	dispersed	0.25	1	neutral	ini_files/run/dispersed_p25_r01_neutral_k30_b0.03.ini	results/neutral/dispersed/p25/r01/run
+dispersed_p25_r02	dispersed	0.25	2	neutral	ini_files/run/dispersed_p25_r02_neutral_k30_b0.03.ini	results/neutral/dispersed/p25/r02/run
+dispersed_p25_r03	dispersed	0.25	3	neutral	ini_files/run/dispersed_p25_r03_neutral_k30_b0.03.ini	results/neutral/dispersed/p25/r03/run
+dispersed_p25_r04	dispersed	0.25	4	neutral	ini_files/run/dispersed_p25_r04_neutral_k30_b0.03.ini	results/neutral/dispersed/p25/r04/run
+dispersed_p25_r05	dispersed	0.25	5	neutral	ini_files/run/dispersed_p25_r05_neutral_k30_b0.03.ini	results/neutral/dispersed/p25/r05/run
+one_cluster_p25_r01	one_cluster	0.25	1	neutral	ini_files/run/one_cluster_p25_r01_neutral_k30_b0.03.ini	results/neutral/one_cluster/p25/r01/run
+one_cluster_p25_r02	one_cluster	0.25	2	neutral	ini_files/run/one_cluster_p25_r02_neutral_k30_b0.03.ini	results/neutral/one_cluster/p25/r02/run
+one_cluster_p25_r03	one_cluster	0.25	3	neutral	ini_files/run/one_cluster_p25_r03_neutral_k30_b0.03.ini	results/neutral/one_cluster/p25/r03/run
+one_cluster_p25_r04	one_cluster	0.25	4	neutral	ini_files/run/one_cluster_p25_r04_neutral_k30_b0.03.ini	results/neutral/one_cluster/p25/r04/run
+one_cluster_p25_r05	one_cluster	0.25	5	neutral	ini_files/run/one_cluster_p25_r05_neutral_k30_b0.03.ini	results/neutral/one_cluster/p25/r05/run
+multi_cluster_p25_r01	multi_cluster	0.25	1	neutral	ini_files/run/multi_cluster_p25_r01_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p25/r01/run
+multi_cluster_p25_r02	multi_cluster	0.25	2	neutral	ini_files/run/multi_cluster_p25_r02_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p25/r02/run
+multi_cluster_p25_r03	multi_cluster	0.25	3	neutral	ini_files/run/multi_cluster_p25_r03_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p25/r03/run
+multi_cluster_p25_r04	multi_cluster	0.25	4	neutral	ini_files/run/multi_cluster_p25_r04_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p25/r04/run
+multi_cluster_p25_r05	multi_cluster	0.25	5	neutral	ini_files/run/multi_cluster_p25_r05_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p25/r05/run
+transects_p25_r01	transects	0.25	1	neutral	ini_files/run/transects_p25_r01_neutral_k30_b0.03.ini	results/neutral/transects/p25/r01/run
+transects_p25_r02	transects	0.25	2	neutral	ini_files/run/transects_p25_r02_neutral_k30_b0.03.ini	results/neutral/transects/p25/r02/run
+transects_p25_r03	transects	0.25	3	neutral	ini_files/run/transects_p25_r03_neutral_k30_b0.03.ini	results/neutral/transects/p25/r03/run
+transects_p25_r04	transects	0.25	4	neutral	ini_files/run/transects_p25_r04_neutral_k30_b0.03.ini	results/neutral/transects/p25/r04/run
+transects_p25_r05	transects	0.25	5	neutral	ini_files/run/transects_p25_r05_neutral_k30_b0.03.ini	results/neutral/transects/p25/r05/run
+dispersed_p40_r01	dispersed	0.4	1	neutral	ini_files/run/dispersed_p40_r01_neutral_k30_b0.03.ini	results/neutral/dispersed/p40/r01/run
+dispersed_p40_r02	dispersed	0.4	2	neutral	ini_files/run/dispersed_p40_r02_neutral_k30_b0.03.ini	results/neutral/dispersed/p40/r02/run
+dispersed_p40_r03	dispersed	0.4	3	neutral	ini_files/run/dispersed_p40_r03_neutral_k30_b0.03.ini	results/neutral/dispersed/p40/r03/run
+dispersed_p40_r04	dispersed	0.4	4	neutral	ini_files/run/dispersed_p40_r04_neutral_k30_b0.03.ini	results/neutral/dispersed/p40/r04/run
+dispersed_p40_r05	dispersed	0.4	5	neutral	ini_files/run/dispersed_p40_r05_neutral_k30_b0.03.ini	results/neutral/dispersed/p40/r05/run
+one_cluster_p40_r01	one_cluster	0.4	1	neutral	ini_files/run/one_cluster_p40_r01_neutral_k30_b0.03.ini	results/neutral/one_cluster/p40/r01/run
+one_cluster_p40_r02	one_cluster	0.4	2	neutral	ini_files/run/one_cluster_p40_r02_neutral_k30_b0.03.ini	results/neutral/one_cluster/p40/r02/run
+one_cluster_p40_r03	one_cluster	0.4	3	neutral	ini_files/run/one_cluster_p40_r03_neutral_k30_b0.03.ini	results/neutral/one_cluster/p40/r03/run
+one_cluster_p40_r04	one_cluster	0.4	4	neutral	ini_files/run/one_cluster_p40_r04_neutral_k30_b0.03.ini	results/neutral/one_cluster/p40/r04/run
+one_cluster_p40_r05	one_cluster	0.4	5	neutral	ini_files/run/one_cluster_p40_r05_neutral_k30_b0.03.ini	results/neutral/one_cluster/p40/r05/run
+multi_cluster_p40_r01	multi_cluster	0.4	1	neutral	ini_files/run/multi_cluster_p40_r01_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p40/r01/run
+multi_cluster_p40_r02	multi_cluster	0.4	2	neutral	ini_files/run/multi_cluster_p40_r02_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p40/r02/run
+multi_cluster_p40_r03	multi_cluster	0.4	3	neutral	ini_files/run/multi_cluster_p40_r03_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p40/r03/run
+multi_cluster_p40_r04	multi_cluster	0.4	4	neutral	ini_files/run/multi_cluster_p40_r04_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p40/r04/run
+multi_cluster_p40_r05	multi_cluster	0.4	5	neutral	ini_files/run/multi_cluster_p40_r05_neutral_k30_b0.03.ini	results/neutral/multi_cluster/p40/r05/run
+transects_p40_r01	transects	0.4	1	neutral	ini_files/run/transects_p40_r01_neutral_k30_b0.03.ini	results/neutral/transects/p40/r01/run
+transects_p40_r02	transects	0.4	2	neutral	ini_files/run/transects_p40_r02_neutral_k30_b0.03.ini	results/neutral/transects/p40/r02/run
+transects_p40_r03	transects	0.4	3	neutral	ini_files/run/transects_p40_r03_neutral_k30_b0.03.ini	results/neutral/transects/p40/r03/run
+transects_p40_r04	transects	0.4	4	neutral	ini_files/run/transects_p40_r04_neutral_k30_b0.03.ini	results/neutral/transects/p40/r04/run
+transects_p40_r05	transects	0.4	5	neutral	ini_files/run/transects_p40_r05_neutral_k30_b0.03.ini	results/neutral/transects/p40/r05/run
+dispersed_p10_r01	dispersed	0.1	1	sel_E	ini_files/run/dispersed_p10_r01_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p10/r01/run
+dispersed_p10_r02	dispersed	0.1	2	sel_E	ini_files/run/dispersed_p10_r02_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p10/r02/run
+dispersed_p10_r03	dispersed	0.1	3	sel_E	ini_files/run/dispersed_p10_r03_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p10/r03/run
+dispersed_p10_r04	dispersed	0.1	4	sel_E	ini_files/run/dispersed_p10_r04_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p10/r04/run
+dispersed_p10_r05	dispersed	0.1	5	sel_E	ini_files/run/dispersed_p10_r05_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p10/r05/run
+one_cluster_p10_r01	one_cluster	0.1	1	sel_E	ini_files/run/one_cluster_p10_r01_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p10/r01/run
+one_cluster_p10_r02	one_cluster	0.1	2	sel_E	ini_files/run/one_cluster_p10_r02_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p10/r02/run
+one_cluster_p10_r03	one_cluster	0.1	3	sel_E	ini_files/run/one_cluster_p10_r03_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p10/r03/run
+one_cluster_p10_r04	one_cluster	0.1	4	sel_E	ini_files/run/one_cluster_p10_r04_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p10/r04/run
+one_cluster_p10_r05	one_cluster	0.1	5	sel_E	ini_files/run/one_cluster_p10_r05_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p10/r05/run
+multi_cluster_p10_r01	multi_cluster	0.1	1	sel_E	ini_files/run/multi_cluster_p10_r01_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p10/r01/run
+multi_cluster_p10_r02	multi_cluster	0.1	2	sel_E	ini_files/run/multi_cluster_p10_r02_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p10/r02/run
+multi_cluster_p10_r03	multi_cluster	0.1	3	sel_E	ini_files/run/multi_cluster_p10_r03_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p10/r03/run
+multi_cluster_p10_r04	multi_cluster	0.1	4	sel_E	ini_files/run/multi_cluster_p10_r04_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p10/r04/run
+multi_cluster_p10_r05	multi_cluster	0.1	5	sel_E	ini_files/run/multi_cluster_p10_r05_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p10/r05/run
+transects_p10_r01	transects	0.1	1	sel_E	ini_files/run/transects_p10_r01_sel_E_k30_b0.03.ini	results/sel_E/transects/p10/r01/run
+transects_p10_r02	transects	0.1	2	sel_E	ini_files/run/transects_p10_r02_sel_E_k30_b0.03.ini	results/sel_E/transects/p10/r02/run
+transects_p10_r03	transects	0.1	3	sel_E	ini_files/run/transects_p10_r03_sel_E_k30_b0.03.ini	results/sel_E/transects/p10/r03/run
+transects_p10_r04	transects	0.1	4	sel_E	ini_files/run/transects_p10_r04_sel_E_k30_b0.03.ini	results/sel_E/transects/p10/r04/run
+transects_p10_r05	transects	0.1	5	sel_E	ini_files/run/transects_p10_r05_sel_E_k30_b0.03.ini	results/sel_E/transects/p10/r05/run
+dispersed_p25_r01	dispersed	0.25	1	sel_E	ini_files/run/dispersed_p25_r01_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p25/r01/run
+dispersed_p25_r02	dispersed	0.25	2	sel_E	ini_files/run/dispersed_p25_r02_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p25/r02/run
+dispersed_p25_r03	dispersed	0.25	3	sel_E	ini_files/run/dispersed_p25_r03_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p25/r03/run
+dispersed_p25_r04	dispersed	0.25	4	sel_E	ini_files/run/dispersed_p25_r04_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p25/r04/run
+dispersed_p25_r05	dispersed	0.25	5	sel_E	ini_files/run/dispersed_p25_r05_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p25/r05/run
+one_cluster_p25_r01	one_cluster	0.25	1	sel_E	ini_files/run/one_cluster_p25_r01_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p25/r01/run
+one_cluster_p25_r02	one_cluster	0.25	2	sel_E	ini_files/run/one_cluster_p25_r02_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p25/r02/run
+one_cluster_p25_r03	one_cluster	0.25	3	sel_E	ini_files/run/one_cluster_p25_r03_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p25/r03/run
+one_cluster_p25_r04	one_cluster	0.25	4	sel_E	ini_files/run/one_cluster_p25_r04_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p25/r04/run
+one_cluster_p25_r05	one_cluster	0.25	5	sel_E	ini_files/run/one_cluster_p25_r05_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p25/r05/run
+multi_cluster_p25_r01	multi_cluster	0.25	1	sel_E	ini_files/run/multi_cluster_p25_r01_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p25/r01/run
+multi_cluster_p25_r02	multi_cluster	0.25	2	sel_E	ini_files/run/multi_cluster_p25_r02_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p25/r02/run
+multi_cluster_p25_r03	multi_cluster	0.25	3	sel_E	ini_files/run/multi_cluster_p25_r03_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p25/r03/run
+multi_cluster_p25_r04	multi_cluster	0.25	4	sel_E	ini_files/run/multi_cluster_p25_r04_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p25/r04/run
+multi_cluster_p25_r05	multi_cluster	0.25	5	sel_E	ini_files/run/multi_cluster_p25_r05_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p25/r05/run
+transects_p25_r01	transects	0.25	1	sel_E	ini_files/run/transects_p25_r01_sel_E_k30_b0.03.ini	results/sel_E/transects/p25/r01/run
+transects_p25_r02	transects	0.25	2	sel_E	ini_files/run/transects_p25_r02_sel_E_k30_b0.03.ini	results/sel_E/transects/p25/r02/run
+transects_p25_r03	transects	0.25	3	sel_E	ini_files/run/transects_p25_r03_sel_E_k30_b0.03.ini	results/sel_E/transects/p25/r03/run
+transects_p25_r04	transects	0.25	4	sel_E	ini_files/run/transects_p25_r04_sel_E_k30_b0.03.ini	results/sel_E/transects/p25/r04/run
+transects_p25_r05	transects	0.25	5	sel_E	ini_files/run/transects_p25_r05_sel_E_k30_b0.03.ini	results/sel_E/transects/p25/r05/run
+dispersed_p40_r01	dispersed	0.4	1	sel_E	ini_files/run/dispersed_p40_r01_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p40/r01/run
+dispersed_p40_r02	dispersed	0.4	2	sel_E	ini_files/run/dispersed_p40_r02_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p40/r02/run
+dispersed_p40_r03	dispersed	0.4	3	sel_E	ini_files/run/dispersed_p40_r03_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p40/r03/run
+dispersed_p40_r04	dispersed	0.4	4	sel_E	ini_files/run/dispersed_p40_r04_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p40/r04/run
+dispersed_p40_r05	dispersed	0.4	5	sel_E	ini_files/run/dispersed_p40_r05_sel_E_k30_b0.03.ini	results/sel_E/dispersed/p40/r05/run
+one_cluster_p40_r01	one_cluster	0.4	1	sel_E	ini_files/run/one_cluster_p40_r01_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p40/r01/run
+one_cluster_p40_r02	one_cluster	0.4	2	sel_E	ini_files/run/one_cluster_p40_r02_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p40/r02/run
+one_cluster_p40_r03	one_cluster	0.4	3	sel_E	ini_files/run/one_cluster_p40_r03_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p40/r03/run
+one_cluster_p40_r04	one_cluster	0.4	4	sel_E	ini_files/run/one_cluster_p40_r04_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p40/r04/run
+one_cluster_p40_r05	one_cluster	0.4	5	sel_E	ini_files/run/one_cluster_p40_r05_sel_E_k30_b0.03.ini	results/sel_E/one_cluster/p40/r05/run
+multi_cluster_p40_r01	multi_cluster	0.4	1	sel_E	ini_files/run/multi_cluster_p40_r01_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p40/r01/run
+multi_cluster_p40_r02	multi_cluster	0.4	2	sel_E	ini_files/run/multi_cluster_p40_r02_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p40/r02/run
+multi_cluster_p40_r03	multi_cluster	0.4	3	sel_E	ini_files/run/multi_cluster_p40_r03_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p40/r03/run
+multi_cluster_p40_r04	multi_cluster	0.4	4	sel_E	ini_files/run/multi_cluster_p40_r04_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p40/r04/run
+multi_cluster_p40_r05	multi_cluster	0.4	5	sel_E	ini_files/run/multi_cluster_p40_r05_sel_E_k30_b0.03.ini	results/sel_E/multi_cluster/p40/r05/run
+transects_p40_r01	transects	0.4	1	sel_E	ini_files/run/transects_p40_r01_sel_E_k30_b0.03.ini	results/sel_E/transects/p40/r01/run
+transects_p40_r02	transects	0.4	2	sel_E	ini_files/run/transects_p40_r02_sel_E_k30_b0.03.ini	results/sel_E/transects/p40/r02/run
+transects_p40_r03	transects	0.4	3	sel_E	ini_files/run/transects_p40_r03_sel_E_k30_b0.03.ini	results/sel_E/transects/p40/r03/run
+transects_p40_r04	transects	0.4	4	sel_E	ini_files/run/transects_p40_r04_sel_E_k30_b0.03.ini	results/sel_E/transects/p40/r04/run
+transects_p40_r05	transects	0.4	5	sel_E	ini_files/run/transects_p40_r05_sel_E_k30_b0.03.ini	results/sel_E/transects/p40/r05/run
+dispersed_p10_r01	dispersed	0.1	1	sel_O	ini_files/run/dispersed_p10_r01_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p10/r01/run
+dispersed_p10_r02	dispersed	0.1	2	sel_O	ini_files/run/dispersed_p10_r02_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p10/r02/run
+dispersed_p10_r03	dispersed	0.1	3	sel_O	ini_files/run/dispersed_p10_r03_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p10/r03/run
+dispersed_p10_r04	dispersed	0.1	4	sel_O	ini_files/run/dispersed_p10_r04_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p10/r04/run
+dispersed_p10_r05	dispersed	0.1	5	sel_O	ini_files/run/dispersed_p10_r05_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p10/r05/run
+one_cluster_p10_r01	one_cluster	0.1	1	sel_O	ini_files/run/one_cluster_p10_r01_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p10/r01/run
+one_cluster_p10_r02	one_cluster	0.1	2	sel_O	ini_files/run/one_cluster_p10_r02_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p10/r02/run
+one_cluster_p10_r03	one_cluster	0.1	3	sel_O	ini_files/run/one_cluster_p10_r03_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p10/r03/run
+one_cluster_p10_r04	one_cluster	0.1	4	sel_O	ini_files/run/one_cluster_p10_r04_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p10/r04/run
+one_cluster_p10_r05	one_cluster	0.1	5	sel_O	ini_files/run/one_cluster_p10_r05_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p10/r05/run
+multi_cluster_p10_r01	multi_cluster	0.1	1	sel_O	ini_files/run/multi_cluster_p10_r01_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p10/r01/run
+multi_cluster_p10_r02	multi_cluster	0.1	2	sel_O	ini_files/run/multi_cluster_p10_r02_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p10/r02/run
+multi_cluster_p10_r03	multi_cluster	0.1	3	sel_O	ini_files/run/multi_cluster_p10_r03_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p10/r03/run
+multi_cluster_p10_r04	multi_cluster	0.1	4	sel_O	ini_files/run/multi_cluster_p10_r04_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p10/r04/run
+multi_cluster_p10_r05	multi_cluster	0.1	5	sel_O	ini_files/run/multi_cluster_p10_r05_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p10/r05/run
+transects_p10_r01	transects	0.1	1	sel_O	ini_files/run/transects_p10_r01_sel_O_k30_b0.03.ini	results/sel_O/transects/p10/r01/run
+transects_p10_r02	transects	0.1	2	sel_O	ini_files/run/transects_p10_r02_sel_O_k30_b0.03.ini	results/sel_O/transects/p10/r02/run
+transects_p10_r03	transects	0.1	3	sel_O	ini_files/run/transects_p10_r03_sel_O_k30_b0.03.ini	results/sel_O/transects/p10/r03/run
+transects_p10_r04	transects	0.1	4	sel_O	ini_files/run/transects_p10_r04_sel_O_k30_b0.03.ini	results/sel_O/transects/p10/r04/run
+transects_p10_r05	transects	0.1	5	sel_O	ini_files/run/transects_p10_r05_sel_O_k30_b0.03.ini	results/sel_O/transects/p10/r05/run
+dispersed_p25_r01	dispersed	0.25	1	sel_O	ini_files/run/dispersed_p25_r01_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p25/r01/run
+dispersed_p25_r02	dispersed	0.25	2	sel_O	ini_files/run/dispersed_p25_r02_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p25/r02/run
+dispersed_p25_r03	dispersed	0.25	3	sel_O	ini_files/run/dispersed_p25_r03_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p25/r03/run
+dispersed_p25_r04	dispersed	0.25	4	sel_O	ini_files/run/dispersed_p25_r04_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p25/r04/run
+dispersed_p25_r05	dispersed	0.25	5	sel_O	ini_files/run/dispersed_p25_r05_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p25/r05/run
+one_cluster_p25_r01	one_cluster	0.25	1	sel_O	ini_files/run/one_cluster_p25_r01_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p25/r01/run
+one_cluster_p25_r02	one_cluster	0.25	2	sel_O	ini_files/run/one_cluster_p25_r02_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p25/r02/run
+one_cluster_p25_r03	one_cluster	0.25	3	sel_O	ini_files/run/one_cluster_p25_r03_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p25/r03/run
+one_cluster_p25_r04	one_cluster	0.25	4	sel_O	ini_files/run/one_cluster_p25_r04_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p25/r04/run
+one_cluster_p25_r05	one_cluster	0.25	5	sel_O	ini_files/run/one_cluster_p25_r05_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p25/r05/run
+multi_cluster_p25_r01	multi_cluster	0.25	1	sel_O	ini_files/run/multi_cluster_p25_r01_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p25/r01/run
+multi_cluster_p25_r02	multi_cluster	0.25	2	sel_O	ini_files/run/multi_cluster_p25_r02_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p25/r02/run
+multi_cluster_p25_r03	multi_cluster	0.25	3	sel_O	ini_files/run/multi_cluster_p25_r03_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p25/r03/run
+multi_cluster_p25_r04	multi_cluster	0.25	4	sel_O	ini_files/run/multi_cluster_p25_r04_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p25/r04/run
+multi_cluster_p25_r05	multi_cluster	0.25	5	sel_O	ini_files/run/multi_cluster_p25_r05_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p25/r05/run
+transects_p25_r01	transects	0.25	1	sel_O	ini_files/run/transects_p25_r01_sel_O_k30_b0.03.ini	results/sel_O/transects/p25/r01/run
+transects_p25_r02	transects	0.25	2	sel_O	ini_files/run/transects_p25_r02_sel_O_k30_b0.03.ini	results/sel_O/transects/p25/r02/run
+transects_p25_r03	transects	0.25	3	sel_O	ini_files/run/transects_p25_r03_sel_O_k30_b0.03.ini	results/sel_O/transects/p25/r03/run
+transects_p25_r04	transects	0.25	4	sel_O	ini_files/run/transects_p25_r04_sel_O_k30_b0.03.ini	results/sel_O/transects/p25/r04/run
+transects_p25_r05	transects	0.25	5	sel_O	ini_files/run/transects_p25_r05_sel_O_k30_b0.03.ini	results/sel_O/transects/p25/r05/run
+dispersed_p40_r01	dispersed	0.4	1	sel_O	ini_files/run/dispersed_p40_r01_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p40/r01/run
+dispersed_p40_r02	dispersed	0.4	2	sel_O	ini_files/run/dispersed_p40_r02_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p40/r02/run
+dispersed_p40_r03	dispersed	0.4	3	sel_O	ini_files/run/dispersed_p40_r03_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p40/r03/run
+dispersed_p40_r04	dispersed	0.4	4	sel_O	ini_files/run/dispersed_p40_r04_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p40/r04/run
+dispersed_p40_r05	dispersed	0.4	5	sel_O	ini_files/run/dispersed_p40_r05_sel_O_k30_b0.03.ini	results/sel_O/dispersed/p40/r05/run
+one_cluster_p40_r01	one_cluster	0.4	1	sel_O	ini_files/run/one_cluster_p40_r01_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p40/r01/run
+one_cluster_p40_r02	one_cluster	0.4	2	sel_O	ini_files/run/one_cluster_p40_r02_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p40/r02/run
+one_cluster_p40_r03	one_cluster	0.4	3	sel_O	ini_files/run/one_cluster_p40_r03_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p40/r03/run
+one_cluster_p40_r04	one_cluster	0.4	4	sel_O	ini_files/run/one_cluster_p40_r04_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p40/r04/run
+one_cluster_p40_r05	one_cluster	0.4	5	sel_O	ini_files/run/one_cluster_p40_r05_sel_O_k30_b0.03.ini	results/sel_O/one_cluster/p40/r05/run
+multi_cluster_p40_r01	multi_cluster	0.4	1	sel_O	ini_files/run/multi_cluster_p40_r01_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p40/r01/run
+multi_cluster_p40_r02	multi_cluster	0.4	2	sel_O	ini_files/run/multi_cluster_p40_r02_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p40/r02/run
+multi_cluster_p40_r03	multi_cluster	0.4	3	sel_O	ini_files/run/multi_cluster_p40_r03_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p40/r03/run
+multi_cluster_p40_r04	multi_cluster	0.4	4	sel_O	ini_files/run/multi_cluster_p40_r04_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p40/r04/run
+multi_cluster_p40_r05	multi_cluster	0.4	5	sel_O	ini_files/run/multi_cluster_p40_r05_sel_O_k30_b0.03.ini	results/sel_O/multi_cluster/p40/r05/run
+transects_p40_r01	transects	0.4	1	sel_O	ini_files/run/transects_p40_r01_sel_O_k30_b0.03.ini	results/sel_O/transects/p40/r01/run
+transects_p40_r02	transects	0.4	2	sel_O	ini_files/run/transects_p40_r02_sel_O_k30_b0.03.ini	results/sel_O/transects/p40/r02/run
+transects_p40_r03	transects	0.4	3	sel_O	ini_files/run/transects_p40_r03_sel_O_k30_b0.03.ini	results/sel_O/transects/p40/r03/run
+transects_p40_r04	transects	0.4	4	sel_O	ini_files/run/transects_p40_r04_sel_O_k30_b0.03.ini	results/sel_O/transects/p40/r04/run
+transects_p40_r05	transects	0.4	5	sel_O	ini_files/run/transects_p40_r05_sel_O_k30_b0.03.ini	results/sel_O/transects/p40/r05/run

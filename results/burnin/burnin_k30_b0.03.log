@@ -1,6 +1,6 @@
 # Nemo    v0.32.6b DMI  [06 Mar 2025]
 #
-# simulation started on 04-02-2026 20:29:56
+# simulation started on 10-02-2026 13:08:47
 
 
 filename burnin_k30_b0.03
@@ -23,7 +23,7 @@ quanti_allele_model diallelic_HC
 quanti_allele_value {{0.05}}
 quanti_dir quanti
 quanti_loci 10
-quanti_logtime {{2,50,100,150,200,250,300,350,400,450,500}}
+quanti_logtime {{2,10,20,30,40,50,100,150,200,300,400,600,800,1000}}
 quanti_mutation_rate 0
 quanti_mutation_variance 0
 quanti_output 1
@@ -31,7 +31,7 @@ quanti_traits 1
 
 save_stats 4
 stat pop pop.patch 
-stat_log_time {{2,50,100,150,200,250,300,350,400,450,500}}
+stat_log_time {{2,10,20,30,40,50,100,150,200,300,400,600,800,1000}}
 
 save_files 6
 
@@ -62,5 +62,5 @@ quanti_init_freq &input_files/quanti_init_freq/quanti_init_file_burnin_sylv.txt
 
 #random_seed 9999
 
-# simulation finished 04-02-2026 20:30:02
-# CPU time used: 00:00:05s
+# simulation finished 10-02-2026 13:08:52
+# CPU time used: 00:00:04s

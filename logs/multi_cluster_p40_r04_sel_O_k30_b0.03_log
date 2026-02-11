@@ -1,0 +1,6 @@
+--- N E M O ---
+    LOGFILE
+
+
+| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
+| multi_cluster_p40_r04_sel_O_k30_b0.03   | 10-02-2026 14:09:43 | 10-02-2026 14:17:26 |   00:07:05 |        20 |   00:00:21 |     1000 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/sel_O/multi_cluster/p40/r04/run/ ".quanti":results/sel_O/multi_cluster/p40/r04/run/quanti/ ".txt":results/sel_O/multi_cluster/p40/r04/run/

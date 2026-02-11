@@ -1,0 +1,6 @@
+--- N E M O ---
+    LOGFILE
+
+
+| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
+| one_cluster_p10_r02_sel_O_k30_b0.03     | 10-02-2026 14:10:22 | 10-02-2026 14:17:56 |   00:06:57 |        20 |   00:00:20 |     1000 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/sel_O/one_cluster/p10/r02/run/ ".quanti":results/sel_O/one_cluster/p10/r02/run/quanti/ ".txt":results/sel_O/one_cluster/p10/r02/run/

@@ -1,0 +1,6 @@
+--- N E M O ---
+    LOGFILE
+
+
+| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
+| multi_cluster_p25_r02_neutral_k30_b0.03 | 10-02-2026 13:54:40 | 10-02-2026 14:02:18 |   00:06:51 |        20 |   00:00:20 |     1000 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/neutral/multi_cluster/p25/r02/run/ ".quanti":results/neutral/multi_cluster/p25/r02/run/quanti/ ".txt":results/neutral/multi_cluster/p25/r02/run/

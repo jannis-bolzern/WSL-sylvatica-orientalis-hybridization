@@ -1,0 +1,6 @@
+--- N E M O ---
+    LOGFILE
+
+
+| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
+| dispersed_p25_r01_sel_E_k30_b0.03       | 10-02-2026 13:38:47 | 10-02-2026 13:46:34 |   00:07:08 |        20 |   00:00:21 |     1000 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/sel_E/dispersed/p25/r01/run/ ".quanti":results/sel_E/dispersed/p25/r01/run/quanti/ ".txt":results/sel_E/dispersed/p25/r01/run/
