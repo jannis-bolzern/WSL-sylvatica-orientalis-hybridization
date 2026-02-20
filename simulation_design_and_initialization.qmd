@@ -44,6 +44,7 @@ chmod +x ./nemoage
 #| label: control
 #| echo: true
 
+
 # Template (must exist)
 TEMPLATE_INI <- "ini_files/templates/nemoage_template.ini"
 stopifnot(file.exists(TEMPLATE_INI))
@@ -86,18 +87,17 @@ PLANTING_SCHEME <- c(0, 20, 0, 0)  # stage0..stage3
 
 # Burn-in + run settings
 BURNIN_GENS <- 500
-RUN_GENS    <- 1000
+RUN_GENS    <- 500
 K_VALUE     <- 30
 B_VALUE     <- 0.03
 
 # write stats + quanti every 50 generations
-#LOG_EVERY <- 50
-#LOG_TIMES <- c(2, seq(LOG_EVERY, RUN_GENS, by = LOG_EVERY))  # include generation 2
-LOG_TIMES <- c(2, 10, 20, 30, 40, 50, 100, 150, 200, 300, 400, 600, 800, 1000)
+LOG_EVERY <- 50
+LOG_TIMES <- c(2, seq(LOG_EVERY, RUN_GENS, by = LOG_EVERY))  # include generation 2
 
 # NEMO replicates
 NEMO_REPS_BURNIN <- 1
-NEMO_REPS_RUN    <- 20
+NEMO_REPS_RUN    <- 30
 
 # Dispersal (fixed)
 # SEED
@@ -818,7 +818,47 @@ plot_grid_binary_gg <- function(conf_dt, coords_df, title = NULL) {
 #| label: generate-scenarios
 #| echo: true
 
+# function to keep total number of sylvatica per stage identical across all simulations with the same prop_orientalis 
+refill_sylvatica_to_baseline <- function(
+  plant_mat,
+  baseline_syl_totals,
+  conf_dt,
+  seed = NULL
+) {
+
+  if (!is.null(seed)) set.seed(seed)
+
+  out <- plant_mat
+
+  S_ids <- conf_dt$patchID[conf_dt$patch_value == "S"]
+
+  # count ONLY sylvatica (i.e., only S patches)
+  current_syl_totals <- colSums(out[S_ids, , drop = FALSE])
+
+  deficits <- baseline_syl_totals - current_syl_totals
+
+  for (s in seq_len(ncol(out))) {
+
+    deficit <- deficits[s]
+
+    if (deficit <= 0) next   # we never remove sylvatica
+
+    add_to <- sample(S_ids, size = deficit, replace = TRUE)
+    tab <- table(add_to)
+
+    out[as.integer(names(tab)), s] <-
+      out[as.integer(names(tab)), s] + as.integer(tab)
+  }
+
+  out
+}
+
+# tot number of syl from the burnin for each age class
+baseline_syl_totals <- colSums(baseline_stage)
+
+
 manifest <- data.table()
+summary_list <- list()
 
 for (p in PROP_LEVELS) {
   nO_target <- p * n_patches
@@ -854,7 +894,42 @@ for (p in PROP_LEVELS) {
       write.matrix.nemo(q_mat, q_file)
 
       # run stage init (baseline + clearing + planting)
-      plant_mat <- build_patch_init_stage_size_from_baseline(conf, baseline_stage, scheme = PLANTING_SCHEME)
+      plant_mat_raw <- build_patch_init_stage_size_from_baseline(conf, baseline_stage,scheme = PLANTING_SCHEME) ## CHANGED
+      plant_mat <- refill_sylvatica_to_baseline(plant_mat_raw,baseline_syl_totals, conf, seed = seed + 999) ## CHANGED
+      
+      ## check
+      S_ids <- conf$patchID[conf$patch_value == "S"]
+      if (!all(colSums(plant_mat[S_ids, , drop = FALSE]) == baseline_syl_totals)) {
+        stop("Sylvatica totals do not match baseline AFTER refill in ", sim_name)
+      }
+      
+      ## summary table check 
+      # identify patch types
+      S_ids <- conf$patchID[conf$patch_value == "S"]
+      O_ids <- conf$patchID[conf$patch_value == "O"]
+      
+      # count individuals per species per stage
+      syl_counts <- colSums(plant_mat[S_ids, , drop = FALSE])
+      ori_counts <- colSums(plant_mat[O_ids, , drop = FALSE])
+      
+      summary_list[[sim_name]] <- data.table(
+        sim_name = sim_name,
+        configuration = cfg,
+        prop_orientalis = p,
+        run_id = r,
+      
+        syl_stage0 = syl_counts[1],
+        syl_stage1 = syl_counts[2],
+        syl_stage2 = syl_counts[3],
+        syl_stage3 = syl_counts[4],
+      
+        ori_stage0 = ori_counts[1],
+        ori_stage1 = ori_counts[2],
+        ori_stage2 = ori_counts[3],
+        ori_stage3 = ori_counts[4]
+      )
+
+      # write final file
       stage_file <- file.path(DIRS$stage, paste0("patch_init_stage_size_", sim_name, ".txt"))
       write.matrix.nemo(plant_mat, stage_file)
 
@@ -877,6 +952,14 @@ for (p in PROP_LEVELS) {
     }
   }
 }
+
+
+# store the final numbers in a summary table
+summary_dt <- rbindlist(summary_list)
+summary_file <- file.path(OUT$input, "initial_population_summary.csv")
+fwrite(summary_dt, summary_file)
+message("Wrote summary file: ", summary_file)
+
 
 manifest_file <- file.path(OUT$input, "manifest_scenarios.tsv")
 fwrite(manifest, manifest_file, sep = "\t")
@@ -1004,6 +1087,8 @@ add_selection_ini <- function(ini, opt, var) {
   
 ```
 
+
+
 ## Write run INIs (scenario simulations)
 
 Each scenario run starts from `baseline_stage` with scenario-specific cleared+planted patches and the scenario-specific quanti init file.
@@ -1061,7 +1146,7 @@ for (s in seq_len(nrow(selection_scenarios))) {
     ini <- set_ini_param(ini, "patch_init_stage_size", paste0("&", manifest$stage_file[i]))
   
     # add selection if included
-    if (!is.na(sel_opt)) {
+    if (!is.na(SEL_OPT)) {
       ini <- add_selection_ini(ini, sel_opt, sel_var)
     }
 
@@ -1116,12 +1201,4 @@ Move logs from root after running:
 
 ``` bash
 ./scripts/move_logs.sh
-```
-
-Running all simulations in parallel (GNU parallel, adjust -j for number of cores):
-
-``` bash
-mkdir -p logs
-parallel -j "$(nproc)" --halt soon,fail=1 --bar \
-  './nemoage {} > logs/{/.}.log 2>&1' ::: ini_files/run/*_k30_b0.03.ini
 ```
