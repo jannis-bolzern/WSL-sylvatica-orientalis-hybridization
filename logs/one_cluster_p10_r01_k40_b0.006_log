@@ -1,6 +1,0 @@
---- N E M O ---
-    LOGFILE
-
-
-| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
-| one_cluster_p10_r01_k40_b0.006          | 06-02-2026 00:07:42 | 06-02-2026 00:13:37 |   00:05:53 |        30 |   00:00:11 |      500 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":supplementary/results/one_cluster/p10/r01/k40_b0.006/run/ ".quanti":supplementary/results/one_cluster/p10/r01/k40_b0.006/run/quanti/ ".txt":supplementary/results/one_cluster/p10/r01/k40_b0.006/run/

@@ -1,6 +1,0 @@
---- N E M O ---
-    LOGFILE
-
-
-| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
-| burnin_k40_b0.04                        | 06-02-2026 10:29:20 | 06-02-2026 10:29:25 |   00:00:04 |         1 |   00:00:04 |      500 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":supplementary/results/burnin/k40_b0.04/ ".quanti":supplementary/results/burnin/k40_b0.04/quanti/ ".txt":supplementary/results/burnin/k40_b0.04/

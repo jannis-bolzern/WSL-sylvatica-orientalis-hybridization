@@ -1,6 +1,0 @@
---- N E M O ---
-    LOGFILE
-
-
-| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
-| transects_p10_r01_k20_b0.03             | 06-02-2026 02:37:39 | 06-02-2026 02:39:41 |   00:02:01 |        30 |   00:00:04 |      500 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":supplementary/results/transects/p10/r01/k20_b0.03/run/ ".quanti":supplementary/results/transects/p10/r01/k20_b0.03/run/quanti/ ".txt":supplementary/results/transects/p10/r01/k20_b0.03/run/

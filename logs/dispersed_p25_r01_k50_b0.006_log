@@ -1,6 +1,0 @@
---- N E M O ---
-    LOGFILE
-
-
-| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
-| dispersed_p25_r01_k50_b0.006            | 06-02-2026 05:06:45 | 06-02-2026 05:13:13 |   00:06:27 |        30 |   00:00:12 |      500 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":supplementary/results/dispersed/p25/r01/k50_b0.006/run/ ".quanti":supplementary/results/dispersed/p25/r01/k50_b0.006/run/quanti/ ".txt":supplementary/results/dispersed/p25/r01/k50_b0.006/run/

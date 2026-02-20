@@ -1,6 +1,0 @@
---- N E M O ---
-    LOGFILE
-
-
-| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
-| transects_p10_r05_burnin                | 26-01-2026 02:06:55 | 26-01-2026 02:06:58 |   00:00:02 |         1 |   00:00:02 |       20 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/transects/p10/r05/burnin/ ".quanti":results/transects/p10/r05/burnin/quanti/ ".txt":results/transects/p10/r05/burnin/ ".bin":results/transects/p10/r05/burnin/store/

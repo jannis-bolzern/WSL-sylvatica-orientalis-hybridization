@@ -1,6 +1,0 @@
---- N E M O ---
-    LOGFILE
-
-
-| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
-| dispersed_p10_r01_burnin                | 03-02-2026 09:39:21 | 03-02-2026 09:39:27 |   00:00:05 |         1 |   00:00:05 |      500 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/dispersed/p10/r01/burnin/ ".quanti":results/dispersed/p10/r01/burnin/quanti/ ".txt":results/dispersed/p10/r01/burnin/ ".bin":results/dispersed/p10/r01/burnin/store/

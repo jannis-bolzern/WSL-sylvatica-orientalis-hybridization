@@ -1,6 +1,0 @@
---- N E M O ---
-    LOGFILE
-
-
-| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
-| multi_cluster_p40_r01_burnin            | 26-01-2026 08:00:08 | 26-01-2026 08:00:11 |   00:00:02 |         1 |   00:00:02 |       20 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":results/multi_cluster/p40/r01/burnin/ ".quanti":results/multi_cluster/p40/r01/burnin/quanti/ ".txt":results/multi_cluster/p40/r01/burnin/ ".bin":results/multi_cluster/p40/r01/burnin/store/

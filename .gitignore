@@ -4,5 +4,5 @@
 .Ruserdata
 
 nemoage
-results
-supplementary/results
+output/simulations
+manuscript/supplementary/parameterization/parameterization_runs

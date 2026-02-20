@@ -1,7 +1,0 @@
---- N E M O ---
-    LOGFILE
-
-
-| basename                                |      start time     |      stop time      | e-time CPU | repl done | rpl e-time | mean gen | version               | hostname             | output files 
-| burnin_k30_b0.06                        | 05-02-2026 20:45:07 | 05-02-2026 20:45:10 |   00:00:03 |         1 |   00:00:03 |      500 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":supplementary/results/burnin/k30_b0.06/ ".quanti":supplementary/results/burnin/k30_b0.06/quanti/ ".txt":supplementary/results/burnin/k30_b0.06/
-| burnin_k30_b0.06                        | 06-02-2026 10:28:53 | 06-02-2026 10:28:57 |   00:00:03 |         1 |   00:00:03 |      500 |  0.32.6b DMI [06 Mar 2025] | -                    | ".log":supplementary/results/burnin/k30_b0.06/ ".quanti":supplementary/results/burnin/k30_b0.06/quanti/ ".txt":supplementary/results/burnin/k30_b0.06/
