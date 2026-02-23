@@ -1,5 +1,13 @@
 #!/usr/bin/env Rscript
 
+### the script: 
+# reads one quanti file
+# filters only adult stage
+# computes mean P1 per patch
+# returns summarized patch-level data
+# ?
+
+
 suppressPackageStartupMessages({
   library(data.table)
   library(ggplot2)
