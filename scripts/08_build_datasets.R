@@ -1,18 +1,18 @@
 
 
 ### the script: 
-# reads all quanti files from the results
+# reads all demographics and quanti files output of the simulations (except the burnin)
 # reads the metadata from file names and folder names
 # keep only relevant columns
-# save all the results into a unique Quanti_data.R object
+# save all the results into single /output/analysis/Demographic_data.RDS /output/analysis/Quanti_data.RDS objects
+
+
+## NB output folders are already present
 
 ######## demographic results ##########
 
 library(data.table)
 library(stringr)
-
-### NB FIRST REMOVE THE EXISTING RESULTS
-
 
 ## parse metadata from filename
 parse_demo_metadata <- function(path) {
@@ -40,7 +40,7 @@ parse_demo_metadata <- function(path) {
 }
 
 ## get demographic files
-res_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Results/"
+res_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/output/simulations"
 file_pattern <- "*.txt$"
 
 demo_files <- list.files(
@@ -115,7 +115,7 @@ ggplot(gen_check, aes(sim_id, generation, fill=sim_id))+ geom_bar(stat= "identit
 
 
 ## save master file
-saveRDS(combined_pop_data,file = file.path(res_path, "Demographic_data_per_simulation.RDS"))
+saveRDS(combined_pop_data,"output/analysis/Demographic_data.RDS")
 
 rm(combined_pop_data, combined_list, demo_data, demo_files)
 
@@ -148,7 +148,7 @@ parse_quanti_metadata <- function(path) {
 }
 
 # get quanti files
-res_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Results/"
+res_path <-  "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/output/simulations"
 
 quanti_files <- list.files(
   path = res_path,
@@ -209,4 +209,4 @@ gen_check <- aggregate(generation ~ sim_id + replicate,data = quanti_data,FUN = 
 ggplot(gen_check, aes(sim_id, generation, fill=sim_id))+ geom_bar(stat= "identity") +guides(color= "none", fill="none")+facet_wrap(~replicate)
 
 # save master file
-saveRDS(quanti_data, "Quanti_data.rds")
+saveRDS(quanti_data, "output/analysis/Quanti_data.rds")
