@@ -1,12 +1,23 @@
 #!/usr/bin/env Rscript
-
-### the script: 
-# reads one quanti file
-# filters only adult stage
-# computes mean P1 per patch
-# returns summarized patch-level data
-# ?
-
+# ------------------------------------------------------------------------------
+# 07_qc_spacial_outcomes.R
+#
+# Purpose:
+#   Spatial QC and communication plots: baseline adult structure after burn-in,
+#   planting locations, and adult P1 maps over time for selected scenarios.
+#
+# Dependencies:
+#   sources 00_control_panel.R
+#   requires completed simulations
+#
+# Inputs:
+#   - Burn-in demographic output (.txt) for baseline adults
+#   - Scenario configs_txt and quanti outputs (*.quanti) from results/
+#
+# Outputs:
+#   PNG maps (baseline adults, planting overlays, P1 maps by time) and
+#   summary tables (output/qc/spacial_outcomes/).
+# ------------------------------------------------------------------------------
 
 suppressPackageStartupMessages({
   library(data.table)

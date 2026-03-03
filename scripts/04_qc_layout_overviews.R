@@ -1,4 +1,22 @@
 #!/usr/bin/env Rscript
+# ------------------------------------------------------------------------------
+# 04_qc_layout_overviews.R
+#
+# Purpose:
+#   Visual QC of planting layouts: overview panels of Orientalis planting
+#   patches for each configuration x proportion across biological replicates.
+#
+# Dependencies:
+#   sources 00_control_panel.R
+#   requires scenario configs_txt from 03_run_inputs_inis_from_burnin.R
+#
+# Inputs:
+#   input_files/configs_txt/*.txt
+#   grid shapefile for patch coordinates.
+#
+# Outputs:
+#   PNG overview figures (output/qc/layout_overviews/)
+# ------------------------------------------------------------------------------
 
 suppressPackageStartupMessages({
   library(data.table)

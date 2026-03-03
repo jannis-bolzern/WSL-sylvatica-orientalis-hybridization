@@ -1,6 +1,22 @@
-# 00_control_panel.R — single place to change parameters
+#!/usr/bin/env Rscript
+# ------------------------------------------------------------------------------
+# 00_control_panel.R
 #
-# Usage: source("scripts/00_control_panel.R")
+# Purpose:
+#   Central configuration for the full simulation pipeline.
+#
+# Used by: 
+#   01_burnin_inputs_and_ini.R, 03_run_inputs_inis_from_burnin.R,
+#   04_qc_layout_overviews.R, 07_qc_spacial_outcomes.R
+#
+# Inputs:
+#   Template INI path,
+#   Nemo-age binary path
+#
+# Outputs:
+#   Creates required folder structure; creates global constants for
+#   downstream scripts.
+# ------------------------------------------------------------------------------
 
 suppressPackageStartupMessages({
   library(data.table)

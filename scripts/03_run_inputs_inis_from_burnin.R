@@ -1,12 +1,33 @@
 #!/usr/bin/env Rscript
-# 02_generate_run_inis_from_burnin.R
-# - (re)loads/creates the grid
-# - reads burn-in stage output
-# - creates baseline stage matrix
-# - builds scenario table (neutral + selection)
-# - writes run INI files and run_all.sh helper
+# ------------------------------------------------------------------------------
+# 03_run_inputs_inis_from_burnin.R
 #
-# IMPORTANT: run scripts/01_generate_burnin_inputs_and_inis.R and finish the burn-in first.
+# Purpose:
+#   Build scenario inputs and run INIs from a completed burn-in:
+#   (i) extract baseline patch demography from burn-in .txt,
+#   (ii) generate planting layouts (S/O patch maps),
+#   (iii) create scenario init matrices (clear + plant on baseline),
+#   (iv) write run INIs for neutral / sel_E / sel_O.
+#
+# Dependencies:
+#   sources 00_control_panel.R
+#   sources project_helpers.R
+#   requires burn-in to be executed first
+#
+# Inputs:
+#   - Burn-in demographic output (.txt) at baseline generation
+#   - Nemo-age template INI; dispersal matrices from input_files/disperse/
+#   - Parameters from control panel
+#
+# Outputs:
+#   - input_files/configs_txt/<scenario>.txt
+#   - input_files/quanti_init_freq/quanti_init_file_<scenario>.txt
+#   - input_files/patch_init_stage_size/patch_init_stage_size_<scenario>.txt
+#   - ini_files/run/*.ini (all scenario x selection combinations)
+#   - manifests (scenario list + ini list)
+#   - scripts/05_run_all.sh
+#   - scripts/06_move_logs.sh 
+# ------------------------------------------------------------------------------
 
 source("scripts/00_control_panel.R")
 source("scripts/functions/project_helpers.R")

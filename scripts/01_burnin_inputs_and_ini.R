@@ -1,9 +1,26 @@
 #!/usr/bin/env Rscript
-# 01_generate_burnin_inputs_and_inis.R
-# - creates grid + dispersal matrices
-# - writes burn-in input files (quanti + stage matrices)
-# - writes burn-in INI
-# - writes a bash helper to run the burn-in
+# ------------------------------------------------------------------------------
+# 01_burnin_inputs_and_ini.R
+#
+# Purpose:
+#   Prepare and write all files needed for the Sylvatica-only burn-in:
+#   grid, dispersal matrices, burn-in init matrices, and burn-in INI.
+#
+# Dependencies:
+#   sources 00_control_panel.R
+#   sources project_helpers.R
+#
+# Inputs:
+#   Nemo-age template INI; grid parameters; dispersal kernel parameters.
+#
+# Outputs:
+#   - input_files/grid/*.shp
+#   - input_files/disperse/*Seed*_d*.txt and *Pollen*_d*.txt
+#   - input_files/quanti_init_freq/quanti_init_file_burnin_sylv.txt
+#   - input_files/patch_init_stage_size/patch_init_stage_size_burnin_sylv.txt
+#   - ini_files/burnin/*.ini
+#   - scripts/02_run_burnin.sh
+# ------------------------------------------------------------------------------
 
 source("scripts/00_control_panel.R")
 source("scripts/functions/project_helpers.R")
