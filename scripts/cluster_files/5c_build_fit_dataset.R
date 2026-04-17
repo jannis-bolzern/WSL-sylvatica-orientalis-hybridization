@@ -183,7 +183,7 @@ saveRDS(fit_data_summary,file.path(res_path, "Fit_data_summary_replicates.RDS") 
 ################# summarize patch level
 
 # subset only some years 
-fit_data_subset <- fit_data[year %% 100 == 0]
+fit_data_subset <- fit_data[year %in% c(50,100,500, 1000)]
 
 # W per simulation and replicate and patch (across all individuals) = 1 row x sim replicate x year x age_class x patch
 fit_data_median_patch <- fit_data_subset[,.( 
@@ -209,7 +209,6 @@ fit_data_median_patch_summary <- fit_data_median_patch[, .(
 by = .(configuration, proportion_orientalis, selection_type,selection_strength, year, age_class, run, pop)]
 
 rm(fit_data_median_patch)
-
 
 
 # reorder proportion orientalis 

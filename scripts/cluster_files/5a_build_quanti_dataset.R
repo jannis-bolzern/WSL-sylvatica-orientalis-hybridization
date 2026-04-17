@@ -138,8 +138,6 @@ quanti_data <-quanti_data[, c("configuration","ID","selection","selection_type")
 colnames(quanti_data)
 setcolorder(quanti_data, c("sim_id", "config_label","proportion_orientalis","cost","selection_label","selection_strength","run", "replicate","year", "stage",     "age", "pop", "P1"))
 colnames(quanti_data)<-  c("sim_id", "configuration","proportion_orientalis","cost","selection_type","selection_strength","run", "replicate","year", "age_class", "age", "pop" ,"P1")
-
-
 quanti_data[, year := as.numeric(year)]
 quanti_data[, proportion_orientalis := factor(proportion_orientalis)]
 
@@ -177,7 +175,7 @@ quanti_data_genot_quantiles <- quanti_data_genot[, .(
 ),
 by = .(configuration,proportion_orientalis,cost,selection_type, selection_strength,age_class, year)]
 
-saveRDS(quanti_data_genot_quantiles, (file.path(res_path, "Genot_proportions_quantiles_replicates.RDS")))
+saveRDS(quanti_data_genot_quantiles, (file.path(res_path, "Genot_proportions_summary_replicates.RDS")))
 
 
 ##########################################################################################################
@@ -215,7 +213,7 @@ by = .(configuration, proportion_orientalis, selection_type,selection_strength, 
 quanti_data_patch_summary[, proportion_orientalis :=  factor(proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(proportion_orientalis))))))]
 
 
-saveRDS(quanti_data_patch_summary,file.path(res_path, "Hyb_proportions_patch_quantile_replicates.RDS") )
+saveRDS(quanti_data_patch_summary,file.path(res_path, "Hyb_proportions_patch_summary_replicates.RDS") )
 
 
 
