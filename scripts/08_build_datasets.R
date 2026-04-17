@@ -159,7 +159,7 @@ config_map <- c(
 )
 quanti_data[, config_label := config_map[as.character(configuration)]]
 
-# simulation ID (not including replicate)
+# simulation ID
 quanti_data$sim_id <- with(quanti_data,paste(configuration,proportion_orientalis,selection_type,selection_strength,run,sep = "_"))
 
 # tidy up cols
@@ -167,7 +167,6 @@ quanti_data <-quanti_data[, c("configuration","ID","selection","selection_type",
 colnames(quanti_data)
 setcolorder(quanti_data, c("sim_id", "config_label","proportion_orientalis","cost","selection_label","selection_strength","run", "replicate","year", "stage",     "age", "pop", "P1"))
 colnames(quanti_data)<-  c("sim_id", "configuration","proportion_orientalis","cost","selection_type","selection_strength","run", "replicate","year", "age_class", "age", "pop" ,"P1")
-
 quanti_data[, year := as.numeric(year)]
 quanti_data[, proportion_orientalis := factor(proportion_orientalis)]
 
@@ -212,10 +211,10 @@ saveRDS(quanti_data_genot_meanrep, (file.path(res_path, "Genot_proportions_summa
 ######## summarise patch level
 
 # subset only some years 
-quanti_data_subset <- quanti_data[year %% 100 == 0]
+quanti_data_subset <- quanti_data[year %in% c(50,100,500, 1000)]
 
 # hybrid proportions and HI values per simulation and replicate and patch (across all individuals) = 1 row x sim replicate x year x age_class x patch
-quanti_data_median_patch <- quanti_data_subset[,.( 
+quanti_data_patch <- quanti_data_subset[,.( 
   N = .N,
   N_hybrid = sum(P1 > -1 & P1 < 1),
   prop_hybrids = mean(P1 > -1 & P1 < 1),
@@ -225,10 +224,11 @@ by = .(configuration, proportion_orientalis, selection_type, selection_strength,
 gc()
 
 ## ---> to check for variability within patch (maybe not needed)
-saveRDS(quanti_data_median_patch,file.path(res_path, "Hyb_proportions_patch.RDS") )
+saveRDS(quanti_data_patch,file.path(res_path, "Hyb_proportions_patch.RDS") )
+
 
 # summarize across run and then replicates per patch
-quanti_data_median_patch_quant <- quanti_data_median_patch[, .(
+quanti_data_patch_summary <- quanti_data_patch[, .(
   q10_hyb = quantile(prop_hybrid, 0.1, na.rm = TRUE),
   q50_hyb = quantile(prop_hybrid, 0.5, na.rm = TRUE),
   q90_hyb = quantile(prop_hybrid, 0.9, na.rm = TRUE)
@@ -236,9 +236,9 @@ quanti_data_median_patch_quant <- quanti_data_median_patch[, .(
 by = .(configuration, proportion_orientalis, selection_type,selection_strength, year, age_class, cost)]
 
 # reorder proportion orientalis 
-quanti_data_median_patch_quant[, proportion_orientalis :=  factor(proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(proportion_orientalis))))))]
+quanti_data_patch_summary[, proportion_orientalis :=  factor(proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(proportion_orientalis))))))]
 
-saveRDS(quanti_data_median_patch_quant,file.path(res_path, "Hyb_proportions_patch_summary_replicates.RDS") )
+saveRDS(quanti_data_patch_summary,file.path(res_path, "Hyb_proportions_patch_summary_replicates.RDS") )
 
 
 ####### DEMOGRAPHIC FILES ######
@@ -423,7 +423,7 @@ parse_fit_metadata <- function(path) {
   run            <- sub(".*\\/(r[0-9]+)\\/.*", "\\1", path)
   sel_full       <- str_match(bn, "_r\\d+_(.*?)_k")[,2]
   sel_type       <- ifelse(sel_full == "neutral","neutral",str_extract(sel_full, "^(sel_[EO]|heterosis)"))
-  sel_strength   <- ifelse(sel_full == "neutral",NA,str_extract(sel_full, "(min|low|mid|high)$"))
+  sel_strength   <- ifelse(sel_full == "neutral",NA,str_extract(sel_full, "(low|mid|high)$"))
   
   data.table(
     configuration = configuration,
@@ -481,7 +481,7 @@ fit_data <- merge(
 fit_data[, sim_id := paste(configuration, proportion_orientalis,selection_type,selection_strength, run, sep = "_")]
 # convert to factors
 fit_data[, selection_type := factor(selection_type, levels = c("neutral", "sel_E", "sel_O", "heterosis"))]
-fit_data[, selection_strength := factor(selection_strength, levels = c("min", "low", "mid", "high"))]
+fit_data[, selection_strength := factor(selection_strength, levels = c( "low", "mid", "high"))]
 fit_data[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects"))]
 
 # make sure is numeric
@@ -575,7 +575,7 @@ saveRDS(fit_data_summary,file.path(res_path, "Fit_data_summary_replicates.RDS") 
 ################# summarize patch level
 
 # subset only some years 
-fit_data_subset <- fit_data[year %% 100 == 0]
+fit_data_subset <- fit_data[year %in% c(50,100,500, 1000)]
 
 # W per simulation and replicate and patch (across all individuals) = 1 row x sim replicate x year x age_class x patch
 fit_data_median_patch <- fit_data_subset[,.( 
