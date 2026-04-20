@@ -7,6 +7,7 @@ library(stringr)
 
 res_path <- "/home/stefanin/nemo/nemo_files/nemoage0.32.6b/results/"
 
+
 ####### QUANTI FILES
 
 parse_quanti_metadata <- function(path) {
@@ -214,6 +215,38 @@ quanti_data_patch_summary[, proportion_orientalis :=  factor(proportion_oriental
 
 
 saveRDS(quanti_data_patch_summary,file.path(res_path, "Hyb_proportions_patch_summary_replicates.RDS") )
+
+############################### spatial patterns of % orientalis genotype
+
+
+
+# select only some years (otherwise too slow)
+quanti_data_subset <- quanti_data[year %in% c(50,100,500, 1000)]
+
+## median P1 per patch (across individuals)
+p1_patch <- quanti_data_subset[, .(
+  med_p1 = median(P1), 
+  q25_p1= quantile(P1, 0.25),
+  q75_p1 = quantile(P1, 0.75)
+),
+by = .(configuration, proportion_orientalis, selection_type,selection_strength, year, age_class, cost, pop, run, replicate)]
+
+# summarise per patch across replicates 
+p1_patch_summary <- p1_patch[, .(
+  mean_p1 = mean(med_p1),
+  sd_p1   = sd(med_p1),
+  q10_p1 = quantile(med_p1, 0.1, na.rm = TRUE),
+  q50_p1 = quantile(med_p1, 0.5, na.rm = TRUE),
+  q90_p1 = quantile(med_p1, 0.9, na.rm = TRUE)
+),
+by = .(configuration, proportion_orientalis, selection_type,selection_strength, year, age_class, cost, pop)]
+
+
+# reorder proportion orientalis 
+p1_patch_summary[, proportion_orientalis :=  factor(proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(proportion_orientalis))))))]
+p1_patch_summary$selection_type <- factor(p1_patch_summary$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
+
+saveRDS(p1_patch_summary,file.path(res_path, "Orientalis_genot_patch_summary_replicates.RDS") )
 
 
 

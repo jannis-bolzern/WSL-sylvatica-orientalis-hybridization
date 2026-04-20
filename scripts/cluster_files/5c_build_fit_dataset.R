@@ -216,3 +216,4 @@ fit_data_median_patch_summary[, proportion_orientalis :=  factor(proportion_orie
 
 
 saveRDS(fit_data_median_patch_summary,file.path(res_path, "W_median_patch_summary_replicates.RDS") )
+
