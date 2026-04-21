@@ -3,14 +3,16 @@
 # loads all the results from Quanti_data.R object and process the dataset
 # create different plots
 
-
 library(data.table)
 library(stringr)
 library(ggplot2)
 library(terra)
 library(ggh4x)
+library(ggpubr)
 
 res_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/output/analysis"
+#dir.create("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Figures_manuscript")
+fig_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Figures_manuscript"
 
 ######## plotting settings ###############
 
@@ -20,53 +22,45 @@ prop_ori_palette <- c(
   "0.4" = "#311B92"   
 )
 
-config_oriprop_palette <- c(
-  # Dispersed – Blue family
-  "Dispersed_0.1" = "#0072B2",
-  "Dispersed_0.25" = "#56B4E9",
-  "Dispersed_0.4" = "#B3D9F2",
-  
-  # Multiple clusters – Orange family
-  "Multiple clusters_0.1" = "#D55E00",
-  "Multiple clusters_0.25" = "#E69F00",
-  "Multiple clusters_0.4" = "#F6C667",
-  
-  # Single cluster – Purple family
-  "Single cluster_0.1" = "#6A3D9A",
-  "Single cluster_0.25" = "#9E77CF",
-  "Single cluster_0.4" = "#D4B9F2",
-  
-  # Transects – Teal family
-  "Transects_0.1" = "#009E73",
-  "Transects_0.25" = "#4CC7A1",
-  "Transects_0.4" = "#A6E3CF"
-)
-
+## order colol by cost
 config_palette <- c(
-  "Dispersed" = "#56B4E9",
+  "Dispersed" = "#d7191c",
   "Multiple clusters" = "#E69F00",
-  "Single cluster" = "#9E77CF",
-  "Transects" = "#4CC7A1"
+  "Transects" = "#abd9e9",
+  "Single cluster" = "#2c7bb6"
 )
 
-######## demographic results (TO UPDATE) ###########
 
-dt <- readRDS(file.path(res_path, "Demographic_data.RDS"))
+theme_fig <- theme(
+  axis.text.x = element_text(hjust = 0.5),
+  strip.text = element_text(size = 15),
+  strip.background = element_blank(),
+  axis.title = element_text(size = 16),
+  axis.text  = element_text(size = 10),
+  legend.title = element_text(size = 12),
+  legend.text  = element_text(size = 10),
+  plot.title = element_text(size = 16, hjust = 0.5),
+  panel.grid = element_blank(),
+  panel.background = element_blank(), 
+  axis.line = element_line(linewidth = 0.3, colour = "black"),
+  axis.ticks = element_line(linewidth = 0.3),
+  axis.ticks.length = unit(1.5, "mm"),
+  legend.key = element_blank(),
+  legend.position = "right"
+)
 
-# add label for stage
-nemo_stage <- c("pop.tot" = "Total Population","a0.tot" = "Stage 0", "a1.tot" = "Stage 1", "a2.tot" = "Stage 2", "a3.tot" = "Stage 3")
-dt$nemo_stage <- nemo_stage[dt$stage]
-selection_label <- c( neutral = "Neutral",  sel_E   = "S. vs E. beech", sel_O   = "S. vs O. beech")
-dt$selection_label <- selection_label[dt$selection]
-configuration_label <- c(dispersed = "Dispersed",multi_cluster = "Multiple clusters",one_cluster   = "Single cluster",transects   = "Transects")
-dt$config_label <- configuration_label[dt$configuration]
-colnames(dt)[3] <- "year"
-dt$run_rep <- paste0(dt$run,"_",dt$replicate)
 
-# demographic trends average simulation
-ggplot(subset(dt, nemo_stage!= "Total Population"), aes(x = year, y = N_stage, group = interaction(nemo_stage, run_rep), col = nemo_stage)) +
+
+######## demographic results ###########
+dt1 <- readRDS(file.path(res_path, "Demo_data_processed.RDS"))
+dt1$replicate2 <- paste0(dt1$run, "_",dt1$replicate)
+
+dt1$selection_type <- factor(dt1$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
+
+############################### demographic trends average simulation 
+ggplot(subset(dt1, age_class!= "Total Population"), aes(x = year, y = N_stage, group = interaction(age_class, replicate2), col = age_class)) +
   geom_line(linewidth = 0.2, alpha = 0.8) +
-  facet_grid(config_label ~ selection_label, scales="free_y") +
+  facet_nested(configuration+proportion_orientalis ~ selection_type+selection_strength, scales="free_y") +
   labs( y = "Number of individuals",
         color = "Nemo Stage"
   ) +
@@ -74,17 +68,17 @@ ggplot(subset(dt, nemo_stage!= "Total Population"), aes(x = year, y = N_stage, g
   theme_bw()
 
 ggsave(
-  "Figures_presentations/Demographic_plot.jpg",
+  "Figures_presentations/Demographic_allstages.jpg",
   plot = last_plot(),   # or assign your plot to an object and use plot = p
-  width = 8,
-  height = 5,
+  width = 15,
+  height = 13,
   units = "in"
 )
 
 # only adults
-ggplot(subset(dt, nemo_stage== "Stage 3"), aes(x = year, y = N_stage, group = interaction(nemo_stage, run_rep), col = nemo_stage)) +
+ggplot(subset(dt1, age_class== "Stage 3"), aes(x = year, y = N_stage, group = interaction(age_class, replicate2), col = age_class)) +
   geom_line(linewidth = 0.2, alpha = 0.8) +
-  facet_grid(config_label ~ selection_label, scales="free_y") +
+  facet_nested(configuration+proportion_orientalis ~ selection_type+selection_strength, scales="free_y") +
   labs( y = "Number of individuals",
         color = "Nemo Stage"
   ) +
@@ -92,428 +86,133 @@ ggplot(subset(dt, nemo_stage== "Stage 3"), aes(x = year, y = N_stage, group = in
   theme_bw()
 
 ggsave(
-  "Figures_presentations/Demographic_plot_adults.jpg",
+  paste0(fig_path,"/Demographic_plot_adults.jpg"),
   plot = last_plot(),   # or assign your plot to an object and use plot = p
-  width = 8,
-  height = 5,
+  width = 15,
+  height = 13,
   units = "in"
 )
 
+############################### compare n adults after 100 years ("biomass production")
 
-######## summarize across individuals and across replicates ############
-dt <- readRDS(file.path(res_path, "Quanti_fit_data_fitness.RDS"))
+dt1_sub <- subset(dt1,  year==100 & age_class %in% "Stage 3")
 
-## summarizing procedure: median (individual HI within replicate) → then mean across replicates
-hist(dt$P1)
-hist(dt$W)
+### plot the mean number of adults 
 
-## median across individuals of each scenario and each age class (skewed distributions)
-dt_median <- dt[,.( 
-  N = .N,
-  N_hybrid = sum(P1 > -1 & P1 < 1),
-  prop_hybrids = mean(P1 > -1 & P1 < 1),
-  med_HI = median(1 - abs(P1)),  
-  q25_HI = quantile(1 - abs(P1), 0.25),
-  q75_HI = quantile(1 - abs(P1), 0.75),
-  med_W = median(W), 
-  q25_W = quantile(W, 0.25),
-  q75_W = quantile(W, 0.75)
-),
-by = .(configuration, Proportion_orientalis, selection, year, sim_id, age_class, cost) ]
-
-gc()
-
-# summarize across replicates 
-dt_meanrep <- dt_median[, .(
-  mean_prop = mean(prop_hybrids),
-  sd_prop   = sd(prop_hybrids),
-  mean_HI = mean(med_HI),  ## mean of medians
-  sd_HI = sd(med_HI), 
-  mean_W = mean(med_W),   
-  sd_W   = sd(med_W) 
-),
-by = .(configuration, Proportion_orientalis, selection, year, age_class, cost)]
-dt_meanrep$config_prop <- paste0(dt_meanrep$configuration, "_",dt_meanrep$Proportion_orientalis)
-
-
-## median values at the population level across age classes
-dt_median_pop <- dt[, .(
-  N = .N,
-  N_hybrid = sum(P1 > -1 & P1 < 1),
-  prop_hybrids = mean(P1 > -1 & P1 < 1),
-  med_HI = median(1 - abs(P1)),  
-  q25_HI = quantile(1 - abs(P1), 0.25),
-  q75_HI = quantile(1 - abs(P1), 0.75),
+ggplot(dt1_sub, 
+       aes(factor(configuration), N_stage, 
+           fill = configuration,group = configuration)) +
+  geom_boxplot() +
+  scale_fill_manual(values = config_palette, name = "Configuration") +
+  scale_color_manual(values = config_palette, name = "Configuration") +
   
-  med_W = median(W),
-  q25_W = quantile(W, 0.25),
-  q75_W = quantile(W, 0.75)
-  
-),
-by = .(configuration, Proportion_orientalis, selection, year, sim_id, cost)]
-
-# mean across replicates 
-dt_pop_meanrep <- dt_median_pop[, .(
-  
-  mean_prop = mean(prop_hybrids),
-  sd_prop   = sd(prop_hybrids),
-  mean_HI = mean(med_HI),  ## mean of medians
-  sd_HI = sd(med_HI), 
-  mean_W = mean(med_W),   
-  sd_W   = sd(med_W) 
-),
-by = .(configuration, Proportion_orientalis, selection, year, cost)]
-
-######## plot P1 across time -- Jannis plot (TO DO) ############
-
-######## plot HI and W over time across parameters ########
+  facet_nested( proportion_orientalis ~ selection_type+selection_strength ) +
+  stat_compare_means(aes(group = configuration), method = "kruskal.test"  ,  label = "p.signif", 
+                     hide.ns = TRUE,  label.y = 70) +
+  labs(x="Configuration", y="Mean N adults (year 100)")+
+  theme_bw(base_size = 12) +
+  guides(fill = "none", color = "none")+ theme( axis.text.x = element_text( hjust = 1,angle = 90))
 
 
-# plot the HI over time across parameters
-ggplot(dt_meanrep,
-       aes(year, mean_HI, colour = factor(age_class), group = factor(age_class))) +
-  geom_line() +
-  geom_ribbon(aes(ymin = mean_HI - sd_HI,
-                  ymax = mean_HI + sd_HI,
-                  fill = factor(age_class)), alpha = 0.1,  colour = NA) +
-  facet_nested( Proportion_orientalis ~ selection+configuration ) +
-  labs(x = "Year", y = "Mean HI")+
-  theme_bw()+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 1))
+rm(dt1_sub)
 
+######## fitness results ########
+dt2 <- readRDS(file.path(res_path, "Fit_data_processed.RDS"))
+dt2_summary <- readRDS(file.path(res_path, "Fit_data_summary_replicates.RDS") )
 
+dt2$selection_type <- factor(dt2$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
+dt2_summary$selection_type <- factor(dt2_summary$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
 
-# plot the HI over time combining age classes (as there is no difference)
-ggplot(dt_meanrep,
-       aes(year, mean_HI,
-           colour = Proportion_orientalis,
+###############################  W over time
+
+ggplot(dt2_summary,
+       aes(year,  q50_W,
+           colour = proportion_orientalis,
            linetype = factor(age_class),
-           group = interaction(Proportion_orientalis, age_class))) +
+           fill= proportion_orientalis,
+           group = interaction(proportion_orientalis, age_class))) +
   scale_colour_manual(values = prop_ori_palette, name = "Proportion Oriental b.") +
   geom_line() +
   scale_linetype_manual(values = c("solid", "dashed", "dotted"), name = "Age class") +
-  geom_ribbon(aes(ymin = mean_HI - sd_HI,
-                  ymax = mean_HI + sd_HI,
-                  fill = factor(Proportion_orientalis),
-                  group = interaction(Proportion_orientalis, age_class)),
-              alpha = 0.2, colour = NA) +
-  scale_fill_manual(values = prop_ori_palette) +
-  scale_y_continuous(limits=c(0,1))+
-  guides(fill = "none") +
-  labs(x = "Year", y = "Mean HI")+
-  facet_grid(selection ~ configuration) +
-  theme_bw()+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 1))
-
-
-# plot the W over time 
-ggplot(dt_meanrep,
-       aes(year,  mean_W,
-           colour = Proportion_orientalis,
-           linetype = factor(age_class),
-           group = interaction(Proportion_orientalis, age_class))) +
-  scale_colour_manual(values = prop_ori_palette, name = "Proportion Oriental b.") +
-  geom_line() +
-  scale_linetype_manual(values = c("solid", "dashed", "dotted"), name = "Age class") +
-  geom_ribbon(aes(ymin = mean_W - sd_W,
-                  ymax = mean_W + sd_W,
-                  fill = factor(Proportion_orientalis),
-                  group = interaction(Proportion_orientalis, age_class)),
-              alpha = 0.2, colour = NA) +
+  geom_ribbon(aes(ymin = q10_W, ymax = q90_W),alpha = 0.1,colour = NA) +
   scale_fill_manual(values = prop_ori_palette) +
   scale_y_continuous(limits=c(0.6,1))+
   guides(fill = "none") +
   labs(x = "Year", y = "Median W")+
-  facet_grid(selection ~ configuration) +
-  theme_bw()+
-  theme(axis.text.x = element_text(angle = 90))
-
-
-
-######## line plot configurations across time ############
-
-### median HI
-ggplot(dt_meanrep, aes(year, mean_HI,
-                        colour =configuration,
-                        group  =interaction(configuration, Proportion_orientalis),  
-                        linetype = factor(Proportion_orientalis))) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = mean_HI - sd_HI,
-                  ymax = mean_HI + sd_HI,
-                  fill = factor(configuration)
-                ),
-              alpha = 0.1,
-              colour = NA) +
-  scale_colour_manual(values = config_palette, name = "Configuration") +
-  scale_fill_manual(values = config_palette) +
-  scale_linetype_manual(values = c("solid", "dashed", "dotted"), name = "Proportion Oriental b.") +
-  labs(x = "Year", y = "Mean HI")+
-  facet_grid(age_class~ selection) +
-  guides(fill="none")+
+  facet_nested(configuration  ~ selection_type + selection_strength) +
   theme_bw()
 
-# zoom first years
-ggplot(subset(dt_meanrep,year<=100), aes(year, mean_HI,
-                         colour =configuration,
-                         group  =interaction(configuration, Proportion_orientalis),  
-                         linetype = factor(Proportion_orientalis))) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = mean_HI - sd_HI,
-                  ymax = mean_HI + sd_HI,
-                  fill = factor(configuration)
-  ),
-  alpha = 0.1,
-  colour = NA) +
-  scale_colour_manual(values = config_palette, name = "Configuration") +
-  scale_fill_manual(values = config_palette) +
-  scale_linetype_manual(values = c("solid", "dashed", "dotted"), name = "Proportion Oriental b.") +
-  labs(x = "Year", y = "Mean HI")+
-  facet_grid(age_class~ selection) +
-  guides(fill="none")+
-  theme_bw()
+############################### W line plot configurations across time
 
-### median W
-ggplot(dt_meanrep, aes(year, mean_W,
+ggplot(dt2_summary, aes(year, q50_W,
                        colour =configuration,
-                       group  =interaction(configuration, Proportion_orientalis),  
-                       linetype = factor(Proportion_orientalis))) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = mean_W - sd_W,
-                  ymax = mean_W + sd_W,
-                  fill = factor(configuration)
-  ),
-  alpha = 0.1,
-  colour = NA) +
+                       fill= configuration,
+                       group  =interaction(configuration, proportion_orientalis),  
+                       linetype = factor(proportion_orientalis))) +
+  geom_line(size = 1, alpha = 0.5) +
+  geom_ribbon(aes(ymin = q10_W, ymax = q90_W),alpha = 0.1,colour = NA) +
   scale_colour_manual(values = config_palette, name = "Configuration") +
   scale_fill_manual(values = config_palette) +
   scale_linetype_manual(values = c("solid", "dashed", "dotted"), name = "Proportion Oriental b.") +
   labs(x = "Year", y = "Mean W")+
-  facet_grid(age_class~ selection) +
+  facet_nested(age_class~ selection_type + selection_strength) +
   guides(fill="none")+
   theme_bw()
 
 ## zoom first years
 
-ggplot(subset(dt_meanrep, year <= 100), aes(as.numeric(year), mean_W,
-                                                  colour =configuration,
-                                                  group  =interaction(configuration, Proportion_orientalis),  
-                                                  linetype = factor(Proportion_orientalis))) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = mean_W - sd_W,
-                  ymax = mean_W + sd_W,
-                  fill = factor(configuration)
-  ),
-  alpha = 0.1,
-  colour = NA) +
+ggplot(subset(dt2_summary,year <=100), 
+              aes(year, q50_W,
+                        colour =configuration,
+                        fill= configuration,
+                        group  =interaction(configuration, proportion_orientalis),  
+                        linetype = factor(proportion_orientalis))) +
+  geom_line(size = 1, alpha = 0.5) +
+  geom_ribbon(aes(ymin = q10_W, ymax = q90_W),alpha = 0.1,colour = NA) +
   scale_colour_manual(values = config_palette, name = "Configuration") +
   scale_fill_manual(values = config_palette) +
   scale_linetype_manual(values = c("solid", "dashed", "dotted"), name = "Proportion Oriental b.") +
   labs(x = "Year", y = "Mean W")+
-  facet_grid(age_class~ selection) +
+  facet_nested(age_class~ selection_type + selection_strength) +
   guides(fill="none")+
   theme_bw()
 
+############################### W for year 100
 
-######## HI and W for one specific year across simulations ###############
-
-dt_median_sub <- subset(dt_median, year %in% c(50, 100,1000))
-
-ggplot(dt_median_sub, 
-       aes(Proportion_orientalis, med_HI, fill = configuration, group = interaction(configuration, Proportion_orientalis))) +
-  geom_violin() +
-  geom_point(data = subset(dt_pop_meanrep, year %in% c(50, 100,1000)),
-             aes(x = Proportion_orientalis,
-                 y = mean_HI,
-                 group = interaction(configuration, Proportion_orientalis)),
-             colour = "black",
-             size = 2,
-             position = position_dodge(width = 0.9)) +
-  scale_fill_manual(values = config_palette, name = "Configuration") +
-  facet_grid( selection ~year  ) +
-  theme_bw()+
-  labs(x="Proportion of Oriental beech", y="Mean HI")
-
-### check the results in numbers
-HI_summary <- dt_median_sub[, .(
-  mean_HI = mean(med_HI)
-), by = .(year, configuration,Proportion_orientalis,selection)]
-
-# rank configuration from highest to lowest HI
-HI_summary[order(year, selection, Proportion_orientalis, -mean_HI)]
-# is the pattern consistent? 
-HI_summary[, .SD[which.max(mean_HI)], by = .(year,selection,Proportion_orientalis)]
-
-
-
-ggplot(dt_median_sub, 
-       aes(Proportion_orientalis, med_W, fill = configuration, group = interaction(configuration, Proportion_orientalis))) +
-  geom_violin() +
-  geom_point(data = subset(dt_pop_meanrep, year %in% c(50, 100,1000)),
-             aes(x = Proportion_orientalis,
-                 y = mean_W,
-                 group = interaction(configuration, Proportion_orientalis)),
-             colour = "black",
-             size = 2,
-             position = position_dodge(width = 0.9)) +
-  scale_fill_manual(values = config_palette, name = "Configuration") +
-  facet_grid( selection ~year , scales = "free_y" ) +
-  scale_y_continuous(limits = c(0.6, 1))+
-  theme_bw()+
-  labs(x="Proportion of Oriental beech", y="Mean W")
-
-
-
-## chekc restuls for fitness
-W_summary <- dt_median_sub[, .(
-  mean_W = mean(med_W)
-), by = .(year, configuration,Proportion_orientalis,selection)]
-
-# rank configuration from highest to lowest HI
-W_summary[order(year, selection, Proportion_orientalis, -mean_W)]
-# is the pattern consistent? 
-W_summary[, .SD[which.max(mean_W)], by = .(year,selection,Proportion_orientalis)]
-
-######## pure and hybrid proportions across time ####
-dt_pures <- dt[, .(
-  N = .N,
-  N_orientalis = sum(P1 == 1),
-  N_sylvatica  = sum(P1 == -1),
-  N_hybrid     = sum(P1 > -1 & P1 < 1),
-  
-  prop_orientalis = mean(P1 == 1),
-  prop_sylvatica  = mean(P1 == -1),
-  prop_hybrid     = mean(P1 > -1 & P1 < 1)
-),
-
-by = .(configuration, Proportion_orientalis, selection, cost, year, run, replicate, age_class)]
-
-
-## plot
-# add label for stage
-nemo_stage <- c("1" = "Stage 1", "2" = "Stage 2", "3" = "Stage 3")
-dt_pures$nemo_stage <- nemo_stage[dt_pures$age_class]
-dt_pures$run_rep <- paste0(dt_pures$run,"_",dt_pures$replicate)
-
-# collapse simulation replicates (also mean across all runs)
-dt_pures_medrep <- dt_pures[, .(
-
-  med_prop_ori = median(prop_orientalis),
-  q25_prop_ori = quantile(prop_orientalis, 0.25),
-  q75_prop_ori = quantile(prop_orientalis, 0.75),
-  med_prop_syl = median(prop_sylvatica),
-  q25_prop_syl = quantile(prop_sylvatica, 0.25),
-  q75_prop_syl = quantile(prop_sylvatica, 0.75),
-  med_prop_hyb = median(prop_hybrid),
-  q25_prop_hyb = quantile(prop_hybrid, 0.25),
-  q75_prop_hyb = quantile(prop_hybrid, 0.75)
-),
-by = .(configuration, Proportion_orientalis, selection, year, age_class,cost)]
-
-dt_pures_medrep$config_prop <- paste0(dt_pures_medrep$configuration, "_",dt_pures_medrep$Proportion_orientalis)
-
-# reshape 
-dt_pures_long <- melt(
-  dt_pures_medrep,
-  id.vars = c("configuration", "Proportion_orientalis",
-              "selection", "cost", "year", "age_class"),
-  measure = patterns(med_prop = "^med_", q25 = "^q25_", q75 = "^q75_"),
-  variable.name = "Genotype"
-)
-
-dt_pures_long[, Genotype := c("orientalis","sylvatica","hybrid")[Genotype]]
-
-dt_pures_long[, Genotype := factor(Genotype,levels = c("orientalis", "sylvatica", "hybrid"))]
-my_cols <- c(
-  orientalis = "#482173FF", 
-  sylvatica  = "#ffcc00",  
-  hybrid     = "#25858EFF" 
-)
-
-ggplot(dt_pures_long,
-       aes(x = year,
-           y = med_prop,
-           colour = Genotype,
-           fill = Genotype,
-           linetype= factor(age_class),
-           group = interaction(Genotype, age_class))) +
-  geom_line() +
-  scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
-  
-  geom_ribbon(aes(ymin = q25,
-                  ymax = q75),
-              alpha = 0.2,
-              colour = NA) +
-  scale_colour_manual(values = my_cols) +
-  scale_fill_manual(values = my_cols) +
-  labs(x = "Year", y = "Proportion")+
-  facet_nested( Proportion_orientalis  ~  selection +configuration) +
-  theme_bw()
-
-## zoom into the first years for each class
-ggplot(subset(dt_pures_long,year<= 50&age_class ==1),
-       aes(x = year,y = med_prop,colour = Genotype,fill = Genotype,linetype= factor(age_class),
-           group = interaction(Genotype, age_class))) +
-  geom_line() +
-  scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
-  geom_ribbon(aes(ymin = q25,
-                  ymax = q75),
-              alpha = 0.2,colour = NA) +
-  scale_colour_manual(values = my_cols) +
-  scale_fill_manual(values = my_cols) +
-  facet_nested( Proportion_orientalis  ~  selection +configuration) +
-  theme_bw()
-
-ggplot(subset(dt_pures_long,year<= 50&age_class ==2),
-       aes(x = year,y = med_prop,colour = Genotype,fill = Genotype,linetype= factor(age_class),
-           group = interaction(Genotype, age_class))) +
-  geom_line() +
-  scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
-  geom_ribbon(aes(ymin = q25,
-                  ymax = q75),
-              alpha = 0.2,colour = NA) +
-  scale_colour_manual(values = my_cols) +
-  scale_fill_manual(values = my_cols) +
-  facet_nested( Proportion_orientalis  ~  selection +configuration) +
-  theme_bw()
-
-ggplot(subset(dt_pures_long,year<= 50&age_class ==3),
-       aes(x = year,y = med_prop,colour = Genotype,fill = Genotype,linetype= factor(age_class),
-           group = interaction(Genotype, age_class))) +
-  geom_line() +
-  scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
-  geom_ribbon(aes(ymin = q25,
-                  ymax = q75),
-              alpha = 0.2,colour = NA) +
-  scale_colour_manual(values = my_cols) +
-  scale_fill_manual(values = my_cols) +
-  facet_nested( Proportion_orientalis  ~  selection +configuration) +
-  theme_bw()
-
-######## spatial patterns of HI and W: replicates variability at patch level (TO DO) ########
-
-dt <- readRDS(file.path(res_path, "Quanti_fit_data_fitness.RDS"))
-
-# hybrid proportions and HI values per simulation and replicate and patch (across all individuals) = 1 row x sim replicate x year x age_class x patch
-dt_median_patch <- dt[,.( 
-  N = .N,
-  N_hybrid = sum(P1 > -1 & P1 < 1),
-  prop_hybrids = mean(P1 > -1 & P1 < 1),
-  med_HI = median(1 - abs(P1)),  
-  q25_HI = quantile(1 - abs(P1), 0.25),
-  q75_HI = quantile(1 - abs(P1), 0.75),
+## ALL AGE CLASSES POOLED
+dt2_median <- dt2[,.( 
   med_W = median(W), 
-  q25_W = quantile(W, 0.25),
-  q75_W = quantile(W, 0.75)
+  q25_W = quantile(W, 0.25, na.rm = T),
+  q75_W = quantile(W, 0.75, na.rm = T)
 ),
-by = .(configuration, Proportion_orientalis, selection, year, sim_id,pop, age_class, cost) ]
+by = .(sim_id, configuration, proportion_orientalis, selection_type,selection_strength, year, age_class, run, replicate) ]
 
-gc()
+ggplot(subset(dt2_median,  year==100),
+       aes(configuration, med_W, fill = configuration, group = interaction(configuration))) +
+  geom_violin() +
+  geom_point(data = subset(dt2_summary,  year==100),
+             aes(x = configuration,
+                 y = q50_W,
+                 group = interaction(configuration)),
+             colour = "black",
+             size = 2,
+             position = position_dodge(width = 0.9)) +
+  scale_fill_manual(values = config_palette, name = "Configuration") +
+  #stat_compare_means(aes(group = configuration), method = "kruskal.test"  ,  label = "p.signif", hide.ns = TRUE,  label.y = 0.7) +
+  facet_nested( proportion_orientalis ~ selection_type+selection_strength ) +
+  theme_bw()+
+  labs(x="Configuration", y="Median W")+
+  theme( axis.text.x = element_text( hjust = 1,angle = 90))
 
-# compute SD across replicates for each patch, for HI and W
-dt_median_patch_SD <- dt_median_patch[, .(
-  sd_HI = sd(med_HI, na.rm = TRUE), 
+
+############################### spatial patterns of W: replicates variability at patch level (TO DO)
+            
+dt2_median_patch <-  readRDS(file.path(res_path, "W_median_patch.RDS") )
+            
+# compute SD across replicates for each patch
+dt2_median_patch_SD <- dt2_median_patch[, .(
   sd_W = sd(med_W, na.rm = TRUE)
-), by = .(configuration, Proportion_orientalis, selection, year, age_class, pop, W)]
+), by = .(configuration, proportion_orientalis, selection_type, selection_strength, year,age_class, pop)]
 
 # map the SD per patch for each age_class for year 150  and year 1000
 grid <- vect("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/input/input_files/Grid_4x4m_100x100m.shp")
@@ -521,65 +220,33 @@ grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
 n_rows = dim(grid_r)[1]
 n_cols = dim(grid_r)[2]
 
-ggplot(subset(dt_median_patch_SD,age_class ==1& year == 150),
+ggplot(subset(dt2_median_patch_SD,age_class ==1& year == 100),
        aes(x = (pop - 1) %% n_rows + 1,
            y = n_cols - ((pop - 1) %/% n_cols + 1),
-           fill = sd_HI)) +
+           fill = sd_W)) +
   geom_raster() +
   scale_fill_viridis_c(option = "magma", na.value = "white") +
-  facet_grid(configuration ~selection + Proportion_orientalis) +
+  facet_nested(configuration + proportion_orientalis~ selection_type+selection_strength ) +
   theme_void() +
-  labs(title = "SD of HI per patch for year 150")+
+  labs(title = "SD of W per patch for year 100")+
   theme(aspect.ratio = 1,
         legend.position = "bottom")
 
-ggplot(subset(dt_hi_meanpatch_sdrep, age_class ==2& year == 1000),
+
+ggplot(subset(dt2_median_patch_SD, age_class ==2& year == 1000),
        aes(x = (pop - 1) %% n_rows + 1,
            y = n_cols - ((pop - 1) %/% n_cols + 1),
-           fill = sd_HI)) +
+           fill = sd_W)) +
   geom_raster() +
   scale_fill_viridis_c(option = "magma", na.value = "white") +
-  facet_grid(configuration ~selection + Proportion_orientalis) +
+  facet_nested(configuration + proportion_orientalis~ selection_type+selection_strength ) +
   theme_void() +
   labs(title = "SD of HI per patch for year 1000")+
   theme(aspect.ratio = 1,
         legend.position = "bottom")
 
 
-## compute median+quantile across patches SD(HI)
-sdHI_summary <- dt_hi_meanpatch_sdrep[
-  !is.na(sd_HI),
-  .(
-    med_patch_sd = median(sd_HI),
-    q25_patch_sd = quantile(sd_HI, 0.25),
-    q75_patch_sd = quantile(sd_HI, 0.75),
-    max_patch_sd = max(sd_HI)
-  ),
-  by = .(configuration, Proportion_orientalis, selection, year, age_class)]
-
-ggplot(sdHI_summary,
-       aes(x = year,
-           y = med_patch_sd,
-           group = interaction(factor(age_class), Proportion_orientalis),
-           color = factor(Proportion_orientalis), linetype = factor(age_class))) +
-  scale_linetype_manual(values = c("solid", "dashed", "dotted"), name = "Age class") +
-  scale_color_manual(values = prop_ori_palette,  name = "Proportion of Oriental b.") +
-  scale_fill_manual(values = prop_ori_palette) +
-  
-  geom_ribbon(aes(ymin = q25_patch_sd,
-                  ymax = q75_patch_sd,
-                  fill = factor(Proportion_orientalis)),
-              alpha = 0.1,
-              color = NA) +
-  labs(y = "Median SD HI per patch + IQR")+
-  guides(fill = "none")+
-  geom_line() +
-  theme_bw() +
-  facet_grid(configuration ~ selection)
-
-
-
-sdW_summary <- dt_w_meanpatch_sdrep[
+sdW_summary <- dt2_median_patch_SD[
   !is.na(sd_W),
   .(
     med_patch_sd = median(sd_W),
@@ -608,133 +275,32 @@ ggplot(sdW_summary,
   theme_bw() +
   facet_grid(configuration ~ selection)
 
-
-######## spatial patterns of HI: median HI ########
-
-dt <- readRDS(file.path(res_path, "Quanti_fit_data_fitness.RDS"))
-
-# select only year 2, 100 and 1000 (otherwise too slow)
-dt_sub <- subset(dt, year %in% c(10,50, 150,1000))
+rm(dt2_median_patch_SD) 
 
 
-# hybrid proportions and HI values per simulation and replicate and patch (across all individuals) = 1 row x sim replicate x year x age_class x patch
-dt_median_patch <- dt_sub[,.( 
-  N = .N,
-  N_hybrid = sum(P1 > -1 & P1 < 1),
-  prop_hybrids = mean(P1 > -1 & P1 < 1),
-  med_HI = median(1 - abs(P1)),  
-  q25_HI = quantile(1 - abs(P1), 0.25),
-  q75_HI = quantile(1 - abs(P1), 0.75),
-  med_W = median(W), 
-  q25_W = quantile(W, 0.25),
-  q75_W = quantile(W, 0.75)
-),
-by = .(configuration, Proportion_orientalis, selection, year, sim_id,pop, age_class, cost) ]
-
-gc()
-
-
-# median HI across replicates per patch
-dt_median_patch_mean_rep <- dt_median_patch[, .(
-  med_HI = median(mean_HI, na.rm = TRUE)
-), by = .(configuration, Proportion_orientalis, cost, selection, year, age_class, pop)]
-
-
-# reorder proportion orientalis 
-dt_hi_meanpatch_medrep_sub[, Proportion_orientalis :=  factor(Proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(Proportion_orientalis))))))]
-
-## SPATIAL DISTRIBUTION FOR SEEDLINGS
-ggplot(subset(dt_hi_meanpatch_medrep_sub, age_class == 1),
-       aes(x = (pop - 1) %% n_rows + 1,
-           y = n_cols - ((pop - 1) %/% n_cols + 1),
-           fill = med_HI)) +
-  geom_raster() +
-  scale_fill_viridis_c(option = "viridis", direction = -1) +
-  facet_nested(
-    Proportion_orientalis + configuration ~ selection + year
-  ) +
-  theme(
-    ggh4x.facet.nestline = element_line(size = 1),
-    strip.background = element_rect(fill = "grey90"),
-    #aspect.ratio = 1,
-    legend.position = "bottom",
-    panel.spacing.x = unit(0.1, "lines"),
-    panel.spacing.y = unit(0.1, "lines"),
-    strip.text = element_text(size = 10)
-  )+
-  labs(x = "", y = "", fill = "HI") +
-  theme_void() +
-  labs(title = "Spatial distribution of median HI for seedlings") 
-
-## SPATIAL DISTRIBUTION FOR YOUNG ADULTS
-ggplot(subset(dt_hi_meanpatch_medrep_sub, age_class == 2),
-       aes(x = (pop - 1) %% n_rows + 1,
-           y = n_cols - ((pop - 1) %/% n_cols + 1),
-           fill = med_HI)) +
-  geom_raster() +
-  scale_fill_viridis_c(option = "viridis", direction = -1) +
-  facet_nested(
-    Proportion_orientalis + configuration ~ selection + year
-  ) +
-  theme(
-    ggh4x.facet.nestline = element_line(size = 1),
-    strip.background = element_rect(fill = "grey90"),
-    #aspect.ratio = 1,
-    legend.position = "bottom",
-    panel.spacing.x = unit(0.1, "lines"),
-    panel.spacing.y = unit(0.1, "lines"),
-    strip.text = element_text(size = 10)
-  )+
-  labs(x = "", y = "", fill = "HI") +
-  theme_void() +
-  labs(title = "Spatial distribution of median HI for juveniles") 
-
-## SPATIAL DISTRIBUTION FOR ADULTS
-ggplot(subset(dt_hi_meanpatch_medrep_sub, age_class == 3),
-       aes(x = (pop - 1) %% n_rows + 1,
-           y = n_cols - ((pop - 1) %/% n_cols + 1),
-           fill = med_HI)) +
-  geom_raster() +
-  scale_fill_viridis_c(option = "viridis", direction = -1) +
-  facet_nested(
-    Proportion_orientalis + configuration ~ selection + year
-  ) +
-  theme(
-    ggh4x.facet.nestline = element_line(size = 1),
-    strip.background = element_rect(fill = "grey90"),
-    #aspect.ratio = 1,
-    legend.position = "bottom",
-    panel.spacing.x = unit(0.1, "lines"),
-    panel.spacing.y = unit(0.1, "lines"),
-    strip.text = element_text(size = 10)
-  )+
-  labs(x = "", y = "", fill = "HI") +
-  theme_void() +
-  labs(title = "Spatial distribution of median HI for adults") 
-
-
-######## spatial patterns of W: median W ########
-
-# median HI across replicates per patch
-dt_w_meanpatch_medrep <- dt_w_meanpatch[, .(
-  med_W = median(mean_W, na.rm = TRUE)
-), by = .(configuration, Proportion_orientalis, cost, selection, year, pop)]
+############################### spatial patterns of W: mean W across replicates 
+dt2_median_patch <-  readRDS(file.path(res_path, "W_median_patch.RDS") )
+dt2_median_patch_summary  <- readRDS(file.path(res_path, "W_median_patch_summary_replicates.RDS") )
 
 # select only year 2, 100 and 1000
-dt_w_meanpatch_medrep_sub <- subset(dt_w_meanpatch_medrep, year %in% c(10,50, 150,1000))
+dt2_median_patch_summary_sub <- subset(dt2_median_patch_summary, year %in% c(100, 500))
 
 # reorder proportion orientalis 
-dt_w_meanpatch_medrep_sub[, Proportion_orientalis :=  factor(Proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(Proportion_orientalis))))))]
+dt2_median_patch_summary_sub[, proportion_orientalis :=  factor(proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(proportion_orientalis))))))]
+dt2_median_patch_summary_sub$selection_type <- factor(dt2_median_patch_summary_sub$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
 
-## SPATIAL DISTRIBUTION FOR whole population
-ggplot(dt_w_meanpatch_medrep_sub,
+
+######  t = 100
+
+## SPATIAL DISTRIBUTION FOR SEEDLINGS
+ggplot(subset(dt2_median_patch_summary_sub, age_class == 1& year==100),
        aes(x = (pop - 1) %% n_rows + 1,
            y = n_cols - ((pop - 1) %/% n_cols + 1),
-           fill = med_W)) +
+           fill = q50_W)) +
   geom_raster() +
-  scale_fill_viridis_c(option = "viridis", direction = -1) +
+  scale_fill_viridis_c(option = "magma") +
   facet_nested(
-    Proportion_orientalis + configuration ~ selection + year
+    proportion_orientalis + configuration ~ selection_type + selection_strength + year
   ) +
   theme(
     ggh4x.facet.nestline = element_line(size = 1),
@@ -745,73 +311,1048 @@ ggplot(dt_w_meanpatch_medrep_sub,
     panel.spacing.y = unit(0.1, "lines"),
     strip.text = element_text(size = 10)
   )+
-  labs(x = "", y = "", fill = "w") +
+  labs(x = "", y = "", fill = "Median W") +
   theme_void() +
-  labs(title = "Spatial distribution of median w") 
+  labs(title = "Spatial distribution of W SEEDLINGS at t = 100") 
 
-######## plot cost versus mean HI ######
-
-stage_label <- c("1" = "Seedlings", "2" = "Juveniles", "3" = "Adults")
-dt_meanrep$stage_label <- stage_label[dt_meanrep$age_class]
-dt_meanrep$stage_label <- factor(dt_meanrep$stage_label,levels = c("Adults", "Juveniles", "Seedlings"))
-
-rng <- range(dt_meanrep$cost)
-breaks <- seq(rng[1], rng[2], length.out = 4)
-breaks
-
-
-ggplot(subset(dt_meanrep,year==150),  aes(mean_HI, cost, 
-                                            color = configuration, 
-                                            group = interaction(configuration, Proportion_orientalis)))+ 
-  geom_point(aes(size = Proportion_orientalis))+ 
-  scale_color_manual(values = config_palette, name = "Configuration")+
-  scale_y_continuous(
-    breaks = (breaks[-1] + breaks[-length(breaks)]) / 2,
-    labels = c("Low", "Medium", "High")
+## SPATIAL DISTRIBUTION FOR ADULTS
+ggplot(subset(dt2_median_patch_summary_sub, age_class == 3& year==100),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = q50_W)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "magma") +
+  facet_nested(
+    proportion_orientalis + configuration ~ selection_type + selection_strength + year
+  ) +
+  theme(
+    ggh4x.facet.nestline = element_line(size = 1),
+    strip.background = element_rect(fill = "grey90"),
+    #aspect.ratio = 1,
+    legend.position = "bottom",
+    panel.spacing.x = unit(0.1, "lines"),
+    panel.spacing.y = unit(0.1, "lines"),
+    strip.text = element_text(size = 10)
   )+
-  labs(title = "Cost versus HI after 150 years for the three target age classes", y = "Estimated cost", x = "Mean HI")+
-  facet_grid(stage_label ~ selection, scales = "free_x")+
+  labs(x = "", y = "", fill = "Median W") +
+  theme_void() +
+  labs(title = "Spatial distribution of W ADULTS at t = 100") 
+
+######  t = 500
+
+## SPATIAL DISTRIBUTION FOR SEEDLINGS
+ggplot(subset(dt2_median_patch_summary_sub, age_class == 1& year==500),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = q50_W)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "magma") +
+  facet_nested(
+    proportion_orientalis + configuration ~ selection_type + selection_strength + year
+  ) +
+  theme(
+    ggh4x.facet.nestline = element_line(size = 1),
+    strip.background = element_rect(fill = "grey90"),
+    #aspect.ratio = 1,
+    legend.position = "bottom",
+    panel.spacing.x = unit(0.1, "lines"),
+    panel.spacing.y = unit(0.1, "lines"),
+    strip.text = element_text(size = 10)
+  )+
+  labs(x = "", y = "", fill = "Median W") +
+  theme_void() +
+  labs(title = "Spatial distribution of W SEEDLINGS at t = 500") 
+
+## SPATIAL DISTRIBUTION FOR ADULTS
+ggplot(subset(dt2_median_patch_summary_sub, age_class == 3& year==500),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = q50_W)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "magma") +
+  facet_nested(
+    proportion_orientalis + configuration ~ selection_type + selection_strength + year
+  ) +
+  theme(
+    ggh4x.facet.nestline = element_line(size = 1),
+    strip.background = element_rect(fill = "grey90"),
+    #aspect.ratio = 1,
+    legend.position = "bottom",
+    panel.spacing.x = unit(0.1, "lines"),
+    panel.spacing.y = unit(0.1, "lines"),
+    strip.text = element_text(size = 10)
+  )+
+  labs(x = "", y = "", fill = "Median W") +
+  theme_void() +
+  labs(title = "Spatial distribution of W ADULTS at t = 500") 
+            
+
+######## quanti results ############
+
+dt3 <- readRDS(file.path(res_path, "Quanti_data_processed.RDS"))
+dt3$selection_type <- factor(dt3$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
+
+hist(dt3$P1)
+gc()
+
+###############################  pure and hybrid proportions across time 
+
+
+dt3_prop <- dt3[,.( 
+  prop_orientalis = mean(P1 > 0.9),
+  prop_sylvatica  = mean(P1 < -0.9),
+  prop_hybrid     = mean(P1 >= -0.9 & P1 <= 0.9)
+),
+by = .(configuration, proportion_orientalis, cost, selection_type,selection_strength, year, age_class, run, replicate) ]
+
+
+dt3_genot_long <- dt3_prop %>%
+  tidyr::pivot_longer(
+    cols = starts_with("prop_"),
+    names_to = c(".value", "Genotype"),
+    names_pattern = "(prop)_(.*)"
+  )
+
+my_cols1 <- c(
+  orientalis = "#482173FF", 
+  sylvatica  = "#ffcc00",  
+  hybrid     = "#25858EFF" 
+)
+
+dt3_genot_long$replicate2<- paste0(dt3_genot_long$run, "_",dt3_genot_long$replicate)
+
+# one line per replicate
+ggplot(dt3_genot_long, 
+       aes(x = year,
+           y = prop,
+           color =factor(Genotype),
+           linetype= factor(configuration),
+           group = interaction(replicate2, configuration, Genotype))) +
+  geom_line() +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted", "longdash")) +
+  
+  scale_colour_manual(values = my_cols1) +
+  scale_fill_manual(values = my_cols1) +
+  labs(x = "Year", y = "Proportion")+
+  facet_nested(proportion_orientalis  ~  selection_type + selection_strength) +
   theme_bw()
 
 
-ggplot(subset(dt_meanrep,year==1000),  aes(mean_HI, cost, 
-                                             color = configuration, 
-                                             group = interaction(configuration, Proportion_orientalis)))+ 
-  geom_point(aes(size = Proportion_orientalis))+ 
-  theme_bw()+
-  scale_y_continuous(
-    breaks = (breaks[-1] + breaks[-length(breaks)]) / 2,
-    labels = c("Low", "Medium", "High")
-  )+
-  scale_color_manual(values = config_palette, name = "Configuration")+
-  labs(title = "Cost versus HI after 1000 years for the three target age classes", y = "Estimated cost", x = "Mean HI")+
-  facet_grid(stage_label ~ selection, scales = "free_x")
+# summarize across replicates using quantiles
+dt3_prop_quant <- dt3_prop[, .(
+  
+  q10_ori = quantile(prop_orientalis, 0.1, na.rm = TRUE),
+  q50_ori = quantile(prop_orientalis, 0.5, na.rm = TRUE),
+  q90_ori = quantile(prop_orientalis, 0.9, na.rm = TRUE),
+  
+  q10_syl = quantile(prop_sylvatica, 0.1, na.rm = TRUE),
+  q50_syl = quantile(prop_sylvatica, 0.5, na.rm = TRUE),
+  q90_syl = quantile(prop_sylvatica, 0.9, na.rm = TRUE),
+  
+  q10_hyb = quantile(prop_hybrid, 0.1, na.rm = TRUE),
+  q50_hyb = quantile(prop_hybrid, 0.5, na.rm = TRUE),
+  q90_hyb = quantile(prop_hybrid, 0.9, na.rm = TRUE)
+  
+),
+by = .(configuration, proportion_orientalis, cost,selection_type, selection_strength,age_class, year)]
 
-######## plot cost versus mean W ######
 
-ggplot(subset(dt_meanrep,year==150),  aes(mean_W, cost, 
-                                            color = configuration, 
-                                            group = interaction(configuration, Proportion_orientalis)))+ 
-  geom_point(aes(size = Proportion_orientalis))+ 
-  theme_bw()+
-  scale_y_continuous(
-    breaks = (breaks[-1] + breaks[-length(breaks)]) / 2,
-    labels = c("Low", "Medium", "High")
-  )+
-  scale_color_manual(values = config_palette, name = "Configuration")+
-  labs(title = "Cost versus W after 150 years", y = "Estimated cost", x = "Fitness (W)")+
-  facet_grid(stage_label ~ selection)
+dt3_genot_quant_long <- dt3_prop_quant %>%
+  tidyr::pivot_longer(
+    cols = starts_with("q"),
+    names_to = c("quantile", "Genotype"),
+    names_pattern = "(q[0-9]+)_(.*)"
+  )
 
-ggplot(subset(dt_meanrep,year==1000),  aes(mean_W, cost, 
-                                             color = configuration, 
-                                             group = interaction(configuration, Proportion_orientalis)))+ 
-  geom_point(aes(size = Proportion_orientalis))+ 
+# get the ribbons
+dt3_genot_quant_wide <- dt3_genot_quant_long %>%
+  tidyr::pivot_wider(
+    names_from = quantile,
+    values_from = value
+  )
+
+my_cols2 <- c(
+  ori = "#482173FF", 
+  syl  = "#ffcc00",  
+  hyb     = "#25858EFF" 
+)
+
+########### GOOD FIGURE
+
+dt3_genot_quant_wide$selection_type <- factor(dt3_genot_quant_wide$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
+
+
+ggplot(dt3_genot_quant_wide,
+       aes(x = year,
+           y = q50,
+           colour = Genotype,
+           fill = Genotype,
+           linetype = factor(configuration),
+           group = interaction(Genotype, configuration))) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = q10, ymax = q90),alpha = 0.1,colour = NA) +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted", "longdash")) +
+  scale_colour_manual(values = my_cols2) +
+  scale_fill_manual(values = my_cols2) +
+  labs(x = "Year", y = "Proportion") +
+  facet_nested(proportion_orientalis ~ selection_type + selection_strength) +
+  theme_fig
+
+
+
+ggsave(
+  paste0(fig_path,"/Genotypes_trend.png"),
+  plot = last_plot(),   # or assign your plot to an object and use plot = p
+  width = 20,
+  height = 5,
+  units = "in"
+)
+
+## only adults and mid selection 
+
+ggplot(subset(dt3_genot_quant_wide,selection_strength %in% c("mid", NA) & age_class ==3),
+       aes(x = year,
+           y = q50,
+           colour = Genotype,
+           fill = Genotype,
+           linetype = factor(configuration),
+           group = interaction(Genotype, configuration))) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = q10, ymax = q90),alpha = 0.1,colour = NA) +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted", "longdash")) +
+  scale_colour_manual(values = my_cols2) +
+  scale_fill_manual(values = my_cols2) +
+  labs(x = "Year", y = "Proportion") +
+  facet_nested(proportion_orientalis ~ selection_type + selection_strength) +
+  theme_bw()
+
+
+
+## ADULTS ONLY, ZOOM IN THE FIRST YEARS
+ggplot(subset(dt3_genot_quant_wide, year <= 150& age_class==3), 
+       aes(x = year,
+           y = q50,
+           colour = Genotype,
+           fill = Genotype,
+           linetype = factor(configuration),
+           group = interaction(Genotype, configuration))) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = q10, ymax = q90),alpha = 0.1,colour = NA) +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted", "longdash")) +
+  scale_colour_manual(values = my_cols2) +
+  scale_fill_manual(values = my_cols2) +
+  labs(x = "Year", y = "Proportion") +
+  facet_nested(proportion_orientalis ~ selection_type + selection_strength) +
+  theme_bw()
+
+
+
+###############################   HI/hyb proportions over time - line plot configurations
+
+### mean hybriud proporitons IN ADULTS
+ggplot(subset(dt3_genot_quant_wide,age_class=="3"& Genotype=="hyb"),  aes(year, q50,
+                        colour =configuration,fill=configuration,
+                        group  =interaction(configuration, proportion_orientalis),  
+                        )) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = q10, ymax = q90),alpha = 0.1,colour = NA) +
+  scale_colour_manual(values = config_palette, name = "Configuration") +
+  scale_fill_manual(values = config_palette) +
+  labs(x = "Year", y = "Hybrid proportions")+
+  facet_nested(proportion_orientalis~ selection_type + selection_strength) +
+  guides(fill="none")+
+  theme_bw()
+
+
+############################### hyb_proportions for year 100
+
+ggplot(subset(dt3_prop,year==100&age_class==3), 
+       aes(configuration, prop_hybrid, fill = configuration, group = interaction(configuration))) +
+  geom_violin() +
+  stat_summary(fun.y=median, geom="point", size=2, color="black")+
+  scale_fill_manual(values = config_palette, name = "Configuration") +
+  #stat_compare_means(aes(group = configuration), method = "kruskal.test"  ,  label = "p.signif", hide.ns = TRUE,  label.y = 0.7) +
+  facet_nested( proportion_orientalis ~ selection_type+selection_strength ) +
   theme_bw()+
-  scale_y_continuous(
-    breaks = (breaks[-1] + breaks[-length(breaks)]) / 2,
-    labels = c("Low", "Medium", "High")
+  labs(x="Configuration", y="Mean Hybrid proportions")+
+  theme( axis.text.x = element_text( hjust = 1,angle = 90))
+
+
+###################################### time to reach X % hybrids
+
+##  hybrid proportion within replicate
+dt3_prop <- dt3[,.( 
+  prop_orientalis = mean(P1 > 0.9),
+  prop_sylvatica  = mean(P1 < -0.9),
+  prop_hybrid     = mean(P1 >= -0.9 & P1 <= 0.9)
+),
+by = .(configuration, proportion_orientalis, cost, selection_type,selection_strength, year, age_class, run, replicate) ]
+
+
+# select only adults
+dt3_prop_adults <- dt3_prop[age_class == 3]
+# remove 1000 years?
+dt3_prop_adults <- dt3_prop_adults[year<1000]
+
+setorder(dt3_prop_adults,
+         configuration, proportion_orientalis,selection_type, selection_strength,run, replicate, year)
+
+# function to extract first crossing time
+get_time_to_threshold_full <- function(dt, threshold, label) {
+  
+  # all replicate IDs
+  all_reps <- unique(dt[, .(
+    configuration, proportion_orientalis,selection_type, selection_strength,run, replicate
+  )])
+  
+  # first crossing
+  t_cross <- dt[prop_hybrid >= threshold,
+                .SD[1],
+                by = .(configuration, proportion_orientalis,selection_type, selection_strength,run, replicate)]
+  
+  # merge back
+  t_full <- merge(all_reps, t_cross,
+                  by = c("configuration", "proportion_orientalis","selection_type", "selection_strength","run", "replicate"),
+                  all.x = TRUE)
+  
+  # remove replicates when not reached
+  t_full[, time_to_threshold := ifelse(is.na(year), NA, year)]
+  t_full[, reached := !is.na(year)]
+  t_full[, threshold := label]
+  
+  return(t_full)
+}
+
+t10_full <- get_time_to_threshold_full(dt3_prop_adults, 0.1, "10%")
+t30_full <- get_time_to_threshold_full(dt3_prop_adults, 0.3, "30%")
+t50_full <- get_time_to_threshold_full(dt3_prop_adults, 0.5, "50%")
+
+t_cross_full <- rbind(t30_full, t50_full)
+
+ggplot(t_cross_full,
+  #subset(t_cross_full,threshold=="50%"), 
+       aes(x = factor(proportion_orientalis),
+           y = time_to_threshold,
+           fill = configuration,color = configuration,
+           alpha = proportion_orientalis,
+           group = interaction(proportion_orientalis, configuration))) +
+  geom_boxplot(position = position_dodge(preserve = "single")) +
+  #geom_violin(trim=T)+
+  stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), method = "kruskal.test"  ,  label = "p.signif", hide.ns = TRUE) +
+  facet_nested(threshold ~ selection_type + selection_strength) +
+  scale_fill_manual(values = config_palette, name = "Configuration") +
+  scale_color_manual(values = config_palette, name = "Configuration") +
+  labs(x = "Proportion of Oriental beech introduced",
+       y = "Time to reach hybrid threshold (years)") +
+  guides(alpha="none")+
+  theme_bw()
+
+  
+
+
+
+##################################### spatial patterns of HI: replicates variability at patch level (computationally intensive!!!) -- TO DO
+
+dt3_median_patch<- readRDS(file.path(res_path, "Hyb_proportions_patch.RDS") )
+dt3_median_patch$selection_type <- factor(dt3_median_patch$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
+
+# compute SD across replicates for each patch
+dt3_median_patch_SD <- dt3_median_patch[, .(
+  sd_HI = sd(med_HI, na.rm = TRUE)
+), by = .(configuration, proportion_orientalis, selection_type, selection_strength,year, age_class, cost,pop)]
+
+# map the SD per patch for each age_class for year 100  and year 1000
+grid <- vect("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/input/input_files/Grid_4x4m_100x100m.shp")
+grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
+n_rows = dim(grid_r)[1]
+n_cols = dim(grid_r)[2]
+
+ggplot(subset(dt3_median_patch_SD,age_class ==1& year == 100),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = sd_HI)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "magma", na.value = "white") +
+  facet_nested(configuration + proportion_orientalis~ selection_type+selection_strength ) +
+  theme_void() +
+  labs(title = "SD of HI per patch for year 100")+
+  theme(aspect.ratio = 1,
+        legend.position = "bottom")
+
+
+ggplot(subset(dt3_median_patch_SD, age_class ==2& year == 1000),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = sd_HI)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "magma", na.value = "white") +
+  facet_nested(configuration + proportion_orientalis~ selection_type+selection_strength ) +
+  theme_void() +
+  labs(title = "SD of HI per patch for year 1000")+
+  theme(aspect.ratio = 1,
+        legend.position = "bottom")
+
+
+## compute median+quantile across patches SD(HI)
+sdHI_summary <- dt3_median_patch_SD[
+  !is.na(sd_HI),
+  .(
+    med_patch_sd = median(sd_HI),
+    q25_patch_sd = quantile(sd_HI, 0.25),
+    q75_patch_sd = quantile(sd_HI, 0.75),
+    max_patch_sd = max(sd_HI)
+  ),
+  by = .(configuration, proportion_orientalis, selection, year, age_class)]
+
+ggplot(sdHI_summary,
+       aes(x = year,
+           y = med_patch_sd,
+           group = interaction(factor(age_class), proportion_orientalis),
+           color = factor(proportion_orientalis), linetype = factor(age_class))) +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted"), name = "Age class") +
+  scale_color_manual(values = prop_ori_palette,  name = "Proportion of Oriental b.") +
+  scale_fill_manual(values = prop_ori_palette) +
+  
+  geom_ribbon(aes(ymin = q25_patch_sd,
+                  ymax = q75_patch_sd,
+                  fill = factor(proportion_orientalis)),
+              alpha = 0.1,
+              color = NA) +
+  labs(y = "Median SD HI per patch + IQR")+
+  guides(fill = "none")+
+  geom_line() +
+  theme_bw() +
+  facet_grid(configuration ~  selection_type+selection_strength)
+
+
+
+############################### spatial patterns of hybrid proportions
+
+# map the SD per patch for each age_class for year 100  and year 1000
+grid <- vect("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/input/input_files/Grid_4x4m_100x100m.shp")
+grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
+n_rows = dim(grid_r)[1]
+n_cols = dim(grid_r)[2]
+
+
+dt3_median_patch<- readRDS(file.path(res_path, "Hyb_proportions_patch.RDS") )            
+
+dt3_median_patch_summary <- dt3_median_patch[, .(
+  q10_hyb = quantile(prop_hybrid, 0.1, na.rm = TRUE),
+  q50_hyb = quantile(prop_hybrid, 0.5, na.rm = TRUE),
+  q90_hyb = quantile(prop_hybrid, 0.9, na.rm = TRUE)
+),
+by = .(configuration, proportion_orientalis, selection_type,selection_strength, year, age_class, cost, pop)]
+
+
+
+
+# select only year 100 and 1000 (otherwise too slow)
+dt3_median_patch_mean_rep_sub <- subset(dt3_median_patch_summary, year %in% c(100, 500))
+
+dt3_median_patch_mean_rep_sub$selection_type <- factor(dt3_median_patch_mean_rep_sub$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
+dt3_median_patch_mean_rep_sub[, proportion_orientalis :=  factor(proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(proportion_orientalis))))))]
+
+
+######  t = 100
+
+## SPATIAL DISTRIBUTION FOR SEEDLINGS
+ggplot(subset(dt3_median_patch_mean_rep_sub, age_class == 1& year==100),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = q50_hyb)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "viridis", direction = -1) +
+  facet_nested(
+    proportion_orientalis + configuration ~ selection_type + selection_strength + year
+  ) +
+  theme(
+    ggh4x.facet.nestline = element_line(size = 1),
+    strip.background = element_rect(fill = "grey90"),
+    #aspect.ratio = 1,
+    legend.position = "bottom",
+    panel.spacing.x = unit(0.1, "lines"),
+    panel.spacing.y = unit(0.1, "lines"),
+    strip.text = element_text(size = 10)
   )+
-  scale_color_manual(values = config_palette, name = "Configuration")+
-  labs(title = "Cost versus Median W after 1000 years", y = "Estimated cost", x = "Fitness (W)")+
-  facet_grid(stage_label ~ selection)
+  labs(x = "", y = "", fill = "Median hybrid proportion") +
+  theme_void() +
+  labs(title = "Spatial distribution of hybrid SEEDLINGS at t = 100") 
+
+## SPATIAL DISTRIBUTION FOR ADULTS
+ggplot(subset(dt3_median_patch_mean_rep_sub, age_class == 3& year==100),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = q50_hyb)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "viridis", direction = -1) +
+  facet_nested(
+    proportion_orientalis + configuration ~ selection_type + selection_strength + year
+  ) +
+  theme(
+    ggh4x.facet.nestline = element_line(size = 1),
+    strip.background = element_rect(fill = "grey90"),
+    #aspect.ratio = 1,
+    legend.position = "bottom",
+    panel.spacing.x = unit(0.1, "lines"),
+    panel.spacing.y = unit(0.1, "lines"),
+    strip.text = element_text(size = 10)
+  )+
+  labs(x = "", y = "", fill = "Median hybrid proportion") +
+  theme_void() +
+  labs(title = "Spatial distribution of hybrid ADULTS at t = 100") 
+
+######  t = 500
+
+## SPATIAL DISTRIBUTION FOR SEEDLINGS
+ggplot(subset(dt3_median_patch_mean_rep_sub, age_class == 1& year==500),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = q50_hyb)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "viridis", direction = -1) +
+  facet_nested(
+    proportion_orientalis + configuration ~ selection_type + selection_strength + year
+  ) +
+  theme(
+    ggh4x.facet.nestline = element_line(size = 1),
+    strip.background = element_rect(fill = "grey90"),
+    #aspect.ratio = 1,
+    legend.position = "bottom",
+    panel.spacing.x = unit(0.1, "lines"),
+    panel.spacing.y = unit(0.1, "lines"),
+    strip.text = element_text(size = 10)
+  )+
+  labs(x = "", y = "", fill = "Median hybrid proportion") +
+  theme_void() +
+  labs(title = "Spatial distribution of hybrid SEEDLINGS at t = 500") 
+
+## SPATIAL DISTRIBUTION FOR ADULTS
+ggplot(subset(dt3_median_patch_mean_rep_sub, age_class == 3& year==500),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = q50_hyb)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "viridis", direction = -1) +
+  facet_nested(
+    proportion_orientalis + configuration ~ selection_type + selection_strength + year
+  ) +
+  theme(
+    ggh4x.facet.nestline = element_line(size = 1),
+    strip.background = element_rect(fill = "grey90"),
+    #aspect.ratio = 1,
+    legend.position = "bottom",
+    panel.spacing.x = unit(0.1, "lines"),
+    panel.spacing.y = unit(0.1, "lines"),
+    strip.text = element_text(size = 10)
+  )+
+  labs(x = "", y = "", fill = "Median hybrid proportion") +
+  theme_void() +
+  labs(title = "Spatial distribution of hybrid ADULTS at t = 500") 
+
+############################### spatial patterns of % orientalis genotype
+
+dt <- readRDS(file.path(res_path, "Orientalis_genot_patch_summary_replicates.RDS") )
+
+######  t = 100
+# map the SD per patch for each age_class for year 100  and year 1000
+grid <- vect("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/input/input_files/Grid_4x4m_100x100m.shp")
+grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
+n_rows = dim(grid_r)[1]
+n_cols = dim(grid_r)[2]
+
+# rescale p1 value from 0 to 1 in the plot
+
+## SPATIAL DISTRIBUTION FOR SEEDLINGS
+ggplot(subset(dt, age_class == 1& year==100),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = (q50_p1 + 1) / 2)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "viridis", direction = -1) +
+  facet_nested(
+    proportion_orientalis + configuration ~ selection_type + selection_strength 
+  ) +
+  theme(
+    ggh4x.facet.nestline = element_line(size = 1),
+    strip.background = element_rect(fill = "grey90"),
+    aspect.ratio = 1,
+    legend.position = "bottom",
+    panel.spacing.x = unit(0.1, "lines"),
+    panel.spacing.y = unit(0.1, "lines"),
+    strip.text = element_text(size = 20)
+  )+
+  labs(x = "", y = "", fill = "Proportion of Oriental beech ancestry") +
+  theme_void() +
+  labs(title = "SEEDLINGS at t = 100") 
+
+## SPATIAL DISTRIBUTION FOR ADULTS
+ggplot(subset(dt, age_class == 3& year==100),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = (q50_p1 + 1) / 2)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "viridis", direction = -1) +
+  facet_nested(
+    proportion_orientalis + configuration ~ selection_type + selection_strength 
+  ) +
+  theme(
+    ggh4x.facet.nestline = element_line(size = 1),
+    strip.background = element_rect(fill = "grey90"),
+    aspect.ratio = 1,
+    legend.position = "bottom",
+    panel.spacing.x = unit(0.1, "lines"),
+    panel.spacing.y = unit(0.1, "lines"),
+    strip.text = element_text(size = 20)
+  )+
+  labs(x = "", y = "", fill = "Proportion of Oriental beech ancestry") +
+  theme_void() +
+  labs(title = "ADULTS at t = 100") 
+
+######  t = 500
+
+## SPATIAL DISTRIBUTION FOR SEEDLINGS
+ggplot(subset(dt, age_class == 1& year==500),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = (q50_p1 + 1) / 2)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "viridis", direction = -1) +
+
+  facet_nested(
+    proportion_orientalis + configuration ~ selection_type + selection_strength 
+  ) +
+  theme(
+    ggh4x.facet.nestline = element_line(size = 1),
+    strip.background = element_rect(fill = "grey90"),
+    aspect.ratio = 1,
+    legend.position = "bottom",
+    panel.spacing.x = unit(0.1, "lines"),
+    panel.spacing.y = unit(0.1, "lines"),
+    strip.text = element_text(size = 15)
+  )+
+  labs(x = "", y = "", fill = "Proportion of Oriental beech ancestry") +
+  theme_void() +
+  labs(title = "SEEDLINGS at t = 500") 
+
+## SPATIAL DISTRIBUTION FOR ADULTS
+ggplot(subset(dt, age_class == 3& year==500),
+       aes(x = (pop - 1) %% n_rows + 1,
+           y = n_cols - ((pop - 1) %/% n_cols + 1),
+           fill = (q50_p1 + 1) / 2)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "viridis", direction = -1) +
+  facet_nested(
+    proportion_orientalis + configuration ~ selection_type + selection_strength 
+  ) +
+  theme(
+    ggh4x.facet.nestline = element_line(size = 1),
+    strip.background = element_rect(fill = "grey90"),
+    aspect.ratio = 1,
+    legend.position = "bottom",
+    panel.spacing.x = unit(0.1, "lines"),
+    panel.spacing.y = unit(0.1, "lines"),
+    strip.text = element_text(size = 15)
+  )+
+  labs(x = "", y = "", fill = "Proportion of Oriental beech ancestry") +
+  theme_void() +
+  labs(title = "ADULTS at t = 500") 
+
+
+############## combined variables ##########
+
+dt1 <- readRDS(file.path(res_path, "Demo_data_processed.RDS"))
+dt2 <- readRDS(file.path(res_path, "Fit_data_processed.RDS")) ## individual-level data
+dt3 <- readRDS(file.path(res_path, "Quanti_data_processed.RDS"))  ## individual-level data
+
+dt1$replicate2 <- paste0(dt1$run, "_", dt1$replicate)
+
+# compute hybrid proportion per replicate
+dt3$replicate2 <- paste0(dt3$run, "_", dt3$replicate)
+dt3_prop <- dt3[, .(
+  prop_hybrid = mean(P1 >= -0.9 & P1 <= 0.9)
+), by = .(configuration, proportion_orientalis,selection_type, selection_strength, year, age_class, replicate2)]
+
+# keep adults only and reorder
+dt3_prop <- dt3_prop[age_class == 3 & year < 1000]
+setorder(dt3_prop,configuration, proportion_orientalis,selection_type, selection_strength,replicate2, year)
+
+## check 
+ggplot(dt3_prop, 
+       aes(year,  prop_hybrid,
+           colour =configuration,fill=configuration, 
+           group = interaction(configuration, replicate2)
+       )
+)+  
+  
+  geom_line() +
+  guides(fill = "none") +
+  labs(x = "Year", y = "NW per replicate")+
+  facet_nested(proportion_orientalis  ~ selection_type + selection_strength) +
+  theme_bw()
+
+
+####################################### plot time to reach X % NW and X % hybrids
+
+## compute the time to threshold but after the initial fluctuation: 
+get_time_to_threshold <- function(dt, var, threshold, label, min_year = 0) {
+  
+  all_reps <- unique(dt[, .(
+    configuration, proportion_orientalis,selection_type, selection_strength,replicate2
+  )])
+  
+  # apply filter for transient removal
+  dt_sub <- dt[year >= min_year]
+  
+  t_cross <- dt_sub[get(var) >= threshold,
+                    .SD[1],
+                    by = .(configuration, proportion_orientalis,selection_type, selection_strength,replicate2)]
+  
+  t_full <- merge(all_reps, t_cross,
+                  by = c("configuration", "proportion_orientalis","selection_type", "selection_strength", "replicate2"),
+                  all.x = TRUE)
+  
+  t_full[, value := year]   # still absolute time
+  t_full[, metric := label]
+  
+  return(t_full[, .(configuration, proportion_orientalis,selection_type, selection_strength,replicate2, value, metric)])
+}
+
+t_hyb <- get_time_to_threshold(dt3_prop, "prop_hybrid", 0.5, "Time to 50% hybrids",min_year = 75)
+
+
+# median fitness
+dt2$replicate2 <- paste0(dt2$run, "_", dt2$replicate)
+dt2_median <- dt2[, .(
+  W = median(W)
+), by = .(configuration, proportion_orientalis,selection_type, selection_strength,year, age_class, replicate2)]
+
+# adults only
+dt1_ad <- dt1[age_class == "Stage 3"]
+dt2_ad <- dt2_median[age_class == 3]
+
+# merge N and W and compute productivity NW
+dt_prod <- merge(
+  dt1_ad[, .(configuration, proportion_orientalis,selection_type, selection_strength,replicate2, year, N_stage)],
+  dt2_ad[, .(configuration, proportion_orientalis,selection_type, selection_strength,replicate2, year, W)],
+  by = c("configuration", "proportion_orientalis","selection_type", "selection_strength","replicate2", "year")
+)
+
+dt_prod[, NW := N_stage * W]
+
+
+## check productivity per scenario along years
+# median across replciates
+dt_prod_median <-dt_prod[, .(
+    NW_median = median(NW)
+  ), by = .(configuration, proportion_orientalis,selection_type, selection_strength,year)]
+
+ggplot(subset(dt_prod_median, year <= 100), 
+       aes(year,  NW_median,
+           colour =configuration,fill=configuration, 
+           #group = interaction(configuration, replicate2)
+           )
+       )+  
+  
+  geom_line() +
+  guides(fill = "none") +
+  labs(x = "Year", y = "NW per replicate")+
+  facet_nested(proportion_orientalis  ~ selection_type + selection_strength) +
+  theme_bw()
+
+
+
+# get final year NW
+dt_final_NW <- dt_prod[, .SD[which.max(year)], 
+                       by = .(configuration, proportion_orientalis,selection_type, selection_strength,replicate2)]
+
+dt_final_NW <- dt_final_NW[, .(
+  configuration, proportion_orientalis,selection_type, selection_strength,replicate2,NW_final = NW
+)]
+
+dt_prod <- merge(dt_prod, dt_final_NW,
+                 by = c("configuration", "proportion_orientalis","selection_type", "selection_strength","replicate2"))
+dt_prod[, NW_rel := NW / NW_final]
+
+## set as NA the cases where productivity is 0 (if any)
+dt_prod[NW_final == 0, NW_rel := NA]
+
+t_prod <- get_time_to_threshold(dt_prod, "NW_rel", 0.8, "Time to 80% of final productivity",  min_year = 75)
+
+# combine
+dt_final <- rbindlist(list(t_hyb,t_prod))
+dt_final[, metric := factor(metric,
+                            levels = c("Time to 50% hybrids",
+                                       "Time to 80% of final productivity")
+)]
+dt_final$selection_type <- factor(dt_final$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
+
+
+## plot 
+ggplot(dt_final,
+       aes(x = factor(proportion_orientalis),
+           y = value,
+           fill = configuration,
+           color = configuration,
+           alpha = proportion_orientalis,
+           group = interaction(proportion_orientalis, configuration))) +
+  geom_boxplot(outlier.shape = NA,  position = position_dodge(width = 0.8, preserve = "single")) +
+  scale_y_continuous( limits = c(0, 700), breaks = seq(0, 700, by = 50))+
+  stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), 
+                     method = "kruskal.test",  label = "p.signif", hide.ns = TRUE) +
+  scale_fill_manual(values = config_palette) +
+  scale_color_manual(values = config_palette) +
+  facet_nested(metric ~ selection_type + selection_strength,scales = "free") +
+  
+  labs(x = "Proportion of Oriental beech introduced",
+       y = "Time (years)") +
+  guides(color = "none", alpha = "none") +
+  theme_bw() +
+  theme(axis.text.x = element_text(hjust = 0.5))
+
+## subset only MID selection
+ggplot(subset(dt_final,selection_strength %in% c("mid",NA)), 
+       aes(x = factor(proportion_orientalis),
+           y = value,
+           fill = configuration,
+           color = configuration,
+           alpha = proportion_orientalis,
+           group = interaction(proportion_orientalis, configuration))) +
+  #geom_violin(trim = T)+
+  geom_boxplot(outlier.shape = NA,  position = position_dodge(width = 0.7, preserve = "single")) +
+  scale_y_continuous( limits = c(0, 700), breaks = seq(0, 700, by = 50))+
+  stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), 
+                     method = "kruskal.test",  label = "p.signif", hide.ns = TRUE, label.y = 600) +
+  scale_fill_manual(values = config_palette) +
+  scale_color_manual(values = config_palette) +
+  facet_nested(metric ~ selection_type + selection_strength,scales = "free") +
+  labs(x = "Proportion of Oriental beech introduced",
+       y = "Time (years)") +
+  guides(color = "none", alpha = "none") +
+  theme_bw() +
+  theme(axis.text.x = element_text(hjust = 0.5))
+
+
+
+####################################### plot NW and hybrid % at year X
+
+## define year
+y <- 500
+
+dt1_sub <- subset(dt1,age_class=="Stage 3" & year==y)
+dt2_sub <- subset(dt2_median, age_class==3 & year==y)
+dt3_sub <- subset(dt3_prop, age_class==3 & year==y)
+
+
+## create a combined metric N adults * W
+dt_merged <- Reduce(function(x, y) merge(x, y,
+                                         by = c("configuration", "proportion_orientalis","selection_type", "selection_strength","replicate2")),
+                    list(
+                      dt1_sub[, .(configuration, proportion_orientalis,selection_type, selection_strength,replicate2, N_stage)],
+                      dt2_sub[, .(configuration, proportion_orientalis,selection_type, selection_strength,replicate2, W = W)],
+                      dt3_sub[, .(configuration, proportion_orientalis,selection_type, selection_strength,replicate2, Hyb_proportion = prop_hybrid)]
+                    ))
+
+dt_merged[, NW := N_stage*W]
+
+# reshape
+dt_long <- melt(dt_merged,
+                measure.vars = c("N_stage", "W", "Hyb_proportion", "NW"),
+                variable.name = "metric",
+                value.name = "value")
+
+dt_long$selection_type <- factor(dt_long$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
+
+
+## add the neutral data range as a shaded color background in the other facests: 
+
+# extrreact the neutral ranges
+
+neutral_ranges <- dt_long[
+  selection_type == "Neutral" & metric %in% c("Hyb_proportion", "NW"),
+  .(
+    ymin = quantile(value,0.1, na.rm = TRUE),
+    ymax = quantile(value,0.9, na.rm = TRUE)
+  ),
+  by = .(metric, proportion_orientalis)
+]
+neutral_ranges[, x := as.numeric(factor(proportion_orientalis))]
+neutral_ranges[, `:=`(xmin = x-0.4,xmax = x+0.4 )]
+
+# FIGURE S3 --> add t = 
+
+ggplot(subset(dt_long,metric%in%c("Hyb_proportion","NW")& selection_type != "Neutral"),
+       aes(x = factor(proportion_orientalis),
+           y = value,
+           fill = configuration,
+           color = configuration,
+           alpha = proportion_orientalis,
+           group = interaction(proportion_orientalis, configuration))) +
+  geom_rect(
+    data = neutral_ranges,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill = "grey60",
+    alpha = 0.2
+  ) +
+  geom_boxplot() +
+  scale_fill_manual(values = config_palette) +
+  scale_color_manual(values = config_palette) +
+  stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), method = "kruskal.test"  ,  label = "p.signif", hide.ns = TRUE) +
+  facet_nested(metric ~ selection_type + selection_strength,scales = "free_y") +
+  labs(x = "Proportion of Oriental beech introduced", y = NULL) +
+  guides(color = "none", alpha = "none") +
+  theme_fig+
+  theme(panel.background = element_rect(fill = "white", colour = "black"), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        
+        strip.text = element_text(),
+        legend.key = element_rect(colour = "white"),
+        legend.key.spacing.y = unit(0.4, 'cm'), 
+        strip.background = element_rect(colour = "white", fill = "white"), 
+        plot.title = element_text(hjust = 0.5))
+
+
+# FIGURE MAIN - only selection against E beech?
+
+
+ ggplot(subset(dt_long,metric%in%c("Hyb_proportion","NW")&selection_type=="European b. selected against"),
+        aes(x = factor(proportion_orientalis),
+            y = value,
+            fill = configuration,
+            color = configuration,
+            alpha = proportion_orientalis,
+            group = interaction(proportion_orientalis, configuration))) +
+   geom_rect(
+     data = neutral_ranges,
+     aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+     inherit.aes = FALSE,
+     fill = "grey60",
+     alpha = 0.2
+   ) +
+   geom_boxplot() +
+   scale_fill_manual(values = config_palette) +
+   scale_color_manual(values = config_palette) +
+   stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), method = "kruskal.test"  ,  label = "p.signif", hide.ns = TRUE) +
+   facet_nested(metric ~ selection_type + selection_strength,scales = "free_y") +
+   labs(x = "Proportion of Oriental beech introduced", y = NULL) +
+   guides(color = "none", alpha = "none") +
+   theme_fig+
+   theme(panel.background = element_rect(fill = "white", colour = "black"), 
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         
+         strip.text = element_text(),
+         legend.key = element_rect(colour = "white"),
+         legend.key.spacing.y = unit(0.4, 'cm'), 
+         strip.background = element_rect(colour = "white", fill = "white"), 
+         plot.title = element_text(hjust = 0.5))
+       
+
+
+############## pareto optimization ##########
+ 
+ 
+ ## function to calculate pareto frontier for each year
+ 
+ process_year <- function(y) {
+   
+   dt1_sub <- subset(dt1, age_class == "Stage 3" & year == y)
+   dt2_sub <- subset(dt2_median, age_class == 3 & year == y)
+   dt3_sub <- subset(dt3_prop, age_class == 3 & year == y)
+   
+   dt_merged <- Reduce(function(x, y) merge(x, y,
+                                            by = c("configuration", "proportion_orientalis",
+                                                   "selection_type", "selection_strength", "replicate2")),
+                       list(
+                         dt1_sub[, .(configuration, proportion_orientalis, selection_type, selection_strength, replicate2, N_stage)],
+                         dt2_sub[, .(configuration, proportion_orientalis, selection_type, selection_strength, replicate2, W = W)],
+                         dt3_sub[, .(configuration, proportion_orientalis, selection_type, selection_strength, replicate2, Hyb_proportion = prop_hybrid)]
+                       ))
+   
+   dt_merged[, NW := N_stage * W]
+   
+   dt_merged <- merge(
+     dt_merged,
+     cost_table[, .(configuration, proportion_orientalis, cost = estimated_cost)],
+     by = c("configuration", "proportion_orientalis"),
+     all.x = TRUE
+   )
+   
+   dt_merged_summary <- dt_merged[, .(
+     med_NW = median(NW, na.rm = TRUE),
+     med_hyb_prop = median(Hyb_proportion, na.rm = TRUE),
+     med_cost = median(cost)
+   ), by = .(selection_type, selection_strength, configuration, proportion_orientalis)]
+   
+   dt_merged_summary[, dominated := FALSE]
+   
+   dt_merged_summary[, dominated := sapply(1:.N, function(i) {
+     any(
+       med_NW >= med_NW[i] &
+         med_hyb_prop >= med_hyb_prop[i] &
+         med_cost <= med_cost[i] &
+         (med_NW > med_NW[i] |
+            med_hyb_prop > med_hyb_prop[i] |
+            med_cost < med_cost[i])
+     )
+   }), by = .(selection_type, selection_strength)]
+   
+   best_str <- dt_merged_summary[dominated == FALSE]
+   
+   best_str <- best_str %>%
+     dplyr::group_by(selection_type, selection_strength) %>%
+     dplyr::mutate(size_scaled = scales::rescale(med_hyb_prop, to = c(1, 10))) %>%
+     dplyr::ungroup()
+   
+   dt_merged_summary$year <- y
+   best_str$year <- y
+   
+   list(summary = dt_merged_summary, best = best_str)
+ }
+ 
+ ## apply function to selected years and bind
+ years <- c(100, 500)
+ results <- lapply(years, process_year)
+ dt_all   <- rbindlist(lapply(results, `[[`, "summary"))
+ best_all <- rbindlist(lapply(results, `[[`, "best"))
+ 
+ 
+ ## plot results for both years
+ dt_all$selection_type <- factor(dt_all$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
+ best_all$selection_type <- factor(best_all$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
+ 
+ 
+ ggplot(dt_all, aes(x = med_cost, y = med_NW)) +
+   geom_point(color = "black") +
+   geom_point(data = best_all,aes(size = size_scaled, color = configuration ))+
+   geom_line(data = best_all,
+             aes(group = interaction(selection_type, selection_strength)),
+             color = "red") +
+   geom_text(data = best_all,
+             aes(label = proportion_orientalis),
+             vjust = -0.7) +
+   scale_color_manual(values = config_palette) +
+   scale_size_identity(
+     guide = "legend",
+     breaks = c(2, 5, 10),
+     labels = c("low", "medium", "high")
+   ) +
+   labs(y = "Productivity (N x W)",
+        x = "Estimated cost") +
+   
+   facet_nested(year ~ selection_type + selection_strength, scales = "free_x") +
+   
+   theme_fig +
+   theme(
+     panel.background = element_rect(fill = "white", colour = "black"),
+     panel.grid = element_blank(),
+     strip.background = element_rect(colour = "white", fill = "white"),
+     plot.title = element_text(hjust = 0.5)
+   )
+ 
+ 
+ 
+
 
