@@ -417,6 +417,55 @@ dt3$selection_type <- factor(dt3$selection_type, levels = c("Neutral","European 
 hist(dt3$P1)
 gc()
 
+############################### genotype P1 plot (MAYBE FIGURE 2?)
+
+dt <- copy(dt3)
+
+# P1 bins
+dt[, P1_clean := round(P1, 1)]
+
+# Year bins (20-year intervals)
+dt[, year_bin := cut(year,
+                     breaks = seq(0, max(year) + 20, by = 20),
+                     include.lowest = TRUE)]
+
+
+# midpoint of bins for axis label
+dt[, year_mid := floor(year / 20) * 20 + 10]
+
+
+
+# proprotion of individuals in each P1 bin for each replicate
+dt_rep <- dt[, .N, 
+             by = .(configuration,proportion_orientalis,selection_type,selection_strength,age_class,run,replicate,year_mid,P1_clean)]
+dt_rep[, prop := N / sum(N), 
+       by = .(configuration,proportion_orientalis,selection_type,selection_strength,age_class,run,replicate, year_mid)]
+
+#median across replicates
+dt_med <- dt_rep[, .(
+  prop_median = median(prop)
+), by = .(configuration, proportion_orientalis,selection_type,selection_strength,age_class,year_mid, P1_clean)]
+
+## subset only adults and one orientalis proportion, pull together the configurations?
+ggplot(
+  dt_med[age_class == 3 ],
+  aes(x = year_mid, y = P1_clean, alpha = prop_median)
+) +
+  geom_tile(width = 20, height = 0.1, fill = "black")+
+  scale_fill_viridis_c() +
+  facet_nested(proportion_orientalis~ selection_type + selection_strength) +
+  theme_minimal() +
+ theme_fig+
+  labs(
+    x = "Time (years)",
+    y = "(Median) proportion of individuals\nfor each genotype (P1)",
+    fill = "Median proportion"
+  ) +
+  scale_x_continuous(breaks = seq(0, max(dt_med$year_mid), by = 400)) +
+  scale_y_continuous(breaks = c(-1, -0.5, 0, 0.5, 1))
+
+
+
 ###############################  pure and hybrid proportions across time (current Figure 2)
 
 dt3_prop <- dt3[,.( 
