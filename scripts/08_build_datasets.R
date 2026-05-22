@@ -26,7 +26,7 @@ cost_per_seedling <- 2
 seedlings <- data.frame(proportion_orientalis = c("0.1", "0.25", "0.4"),
                         n_seedlings = c(1240, 3120, 5000))
 
-cost_index <- data.frame(configuration = c("one_cluster","transects","multi_cluster","dispersed"),
+cost_index <- data.frame(configuration = c("Single cluster","Transects","Multiple clusters","Dispersed"),
                          cost_multiplier = c(1.00, 1.10,1.25,1.50))
 
 # baseline cost (seedlings only)
@@ -144,10 +144,10 @@ quanti_data <- merge(
 
 ## labels for plotting
 sel_map <- c(
-  heterosis = "Heterosis",
+  heterosis = "Wf1 > Weu = Wori",
   neutral = "Neutral",
-  sel_E   = "European b. selected against",
-  sel_O   = "Oriental b. selected against"
+  sel_E   = "Wori > Wf1 > Weu",
+  sel_O   = "Weu > Wf1 > Wori"
 )
 quanti_data[, selection_label := sel_map[as.character(selection_type)]]
 
@@ -239,6 +239,37 @@ by = .(configuration, proportion_orientalis, selection_type,selection_strength, 
 quanti_data_patch_summary[, proportion_orientalis :=  factor(proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(proportion_orientalis))))))]
 
 saveRDS(quanti_data_patch_summary,file.path(res_path, "Hyb_proportions_patch_summary_replicates.RDS") )
+
+
+# proportion of orientalis ancestry (p1) per patch across replicates
+
+# select only some years (otherwise too slow)
+quanti_data_subset <- quanti_data[year %in% c(50,100,500, 1000)]
+
+## median P1 per patch (across individuals)
+p1_patch <- quanti_data_subset[, .(
+  med_p1 = median(P1), 
+  q25_p1= quantile(P1, 0.25),
+  q75_p1 = quantile(P1, 0.75)
+),
+by = .(configuration, proportion_orientalis, selection_type,selection_strength, year, age_class, cost, pop, run, replicate)]
+
+# summarise per patch across replicates 
+p1_patch_summary <- p1_patch[, .(
+  mean_p1 = mean(med_p1),
+  sd_p1   = sd(med_p1),
+  q10_p1 = quantile(med_p1, 0.1, na.rm = TRUE),
+  q50_p1 = quantile(med_p1, 0.5, na.rm = TRUE),
+  q90_p1 = quantile(med_p1, 0.9, na.rm = TRUE)
+),
+by = .(configuration, proportion_orientalis, selection_type,selection_strength, year, age_class, cost, pop)]
+
+
+# reorder proportion orientalis 
+p1_patch_summary[, proportion_orientalis :=  factor(proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(proportion_orientalis))))))]
+p1_patch_summary$selection_type <- factor(p1_patch_summary$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
+
+saveRDS(p1_patch_summary,file.path(res_path, "Orientalis_genot_patch_summary_replicates.RDS") )
 
 
 ####### DEMOGRAPHIC FILES ######
@@ -355,10 +386,10 @@ saveRDS(combined_pop_data, file = file.path(res_path,"Demo_data_raw.RDS"))
 setDT(combined_pop_data)
 
 sel_map <- c(
-  heterosis = "Heterosis",
+  heterosis = "Wf1 > Weu = Wori",
   neutral = "Neutral",
-  sel_E   = "European b. selected against",
-  sel_O   = "Oriental b. selected against"
+  sel_E   = "Wori > Wf1 > Weu",
+  sel_O   = "Weu > Wf1 > Wori"
 )
 combined_pop_data[, selection_label := sel_map[as.character(selection_type)]]
 
@@ -497,10 +528,10 @@ saveRDS(fit_data, file = file.path(res_path,"Fit_data_raw.RDS"))
 setDT(fit_data)
 
 sel_map <- c(
-  heterosis = "Heterosis",
+  heterosis = "Wf1 > Weu = Wori",
   neutral = "Neutral",
-  sel_E   = "European b. selected against",
-  sel_O   = "Oriental b. selected against"
+  sel_E   = "Wori > Wf1 > Weu",
+  sel_O   = "Weu > Wf1 > Wori"
 )
 fit_data[, selection_label := sel_map[as.character(selection_type)]]
 

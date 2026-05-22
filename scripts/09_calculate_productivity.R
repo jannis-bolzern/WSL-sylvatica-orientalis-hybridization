@@ -62,7 +62,7 @@ dt_merged <- Reduce(function(x, y) merge(x, y,
 # calculate productivity
 dt_merged[, NW := N_stage * W]
 
-## check NW  ---> save for supplementary
+## check NW  
 ggplot(dt_merged,
        aes(year,  NW,
            group = interaction(configuration, replicate2) ))+  
@@ -70,15 +70,6 @@ ggplot(dt_merged,
   labs(x = "Year")+
   facet_nested(proportion_orientalis+ configuration  ~ selection_type + selection_strength) +
   theme_bw()+ theme(strip.text.y = element_text(angle=0))
-
-ggsave(
-  paste0(fig_path,"/NW_trend.png"),
-  plot = last_plot(),   # or assign your plot to an object and use plot = p
-  width = 20,
-  height = 10,
-  units = "in"
-)
-
 
 
 # extract the final value of NW at equilibrium (as the reference == 100% productivity)
