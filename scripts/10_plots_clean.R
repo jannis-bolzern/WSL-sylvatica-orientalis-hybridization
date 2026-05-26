@@ -16,6 +16,14 @@ res_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/output/an
 #dir.create("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Figures_manuscript")
 fig_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Figures_manuscript"
 
+
+## for Evolutionary applications: 
+# figure legends double-spaced on a separate sheet = CAPTION / LEGEND TEXT BELOW THE FIGUREM SUBMITTED SEPARATELY IN THE MANUSCRIPT FILE
+# final size of lettering on figures at least 1.5 mm 
+# capital letters to label figure parts
+# save in PDF format
+# resolution at least 300 dpi
+
 ######## plotting settings ###############
 
 prop_ori_palette <- c(
@@ -32,6 +40,10 @@ config_palette <- c(
   "Single cluster" = "#2c7bb6", 
   "No introduction" = "grey"
 )
+
+# 1 point = 0.3528 mm
+# 1.5 mm = 4.25 pt minimum
+# Use >= 8 pt in final figure to be safe after reduction
 
 
 theme_fig <- theme(
@@ -55,6 +67,29 @@ theme_fig <- theme(
 
 )
 
+theme_fig <- theme_bw(base_size = 10) +
+  theme(
+    axis.title = element_text(size = 11),
+    axis.text  = element_text(size = 9),
+    axis.line = element_line(linewidth = 0.3, colour = "black"),
+    axis.ticks = element_line(linewidth = 0.3),
+    axis.ticks.length = unit(1.5, "mm"),
+    
+    strip.text = element_text(size = 10),
+    strip.background = element_blank(),
+    
+    legend.title = element_text(size = 9),
+    legend.text  = element_text(size = 8),
+    legend.key = element_blank(),
+    
+    plot.title = element_text(size = 11, hjust = 0.5),
+    plot.tag = element_text(size = 14, face = "bold"),
+    
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    plot.background = element_rect(fill = "white", colour = NA)
+  )
+
 
 ######## FIGURE 1A           (starting scenarios) ##########
 
@@ -64,8 +99,8 @@ theme_fig <- theme(
 
 cfg_labels <- c(
   "dispersed" = "Dispersed",
-  "multiple_clusters" = "Multiple clusters",
-  "single_cluster" = "Single clusters",
+  "multi_cluster" = "Multiple clusters",
+  "one_cluster" = "Single cluster",
   "transects" = "Transects"
 )
 
@@ -125,22 +160,28 @@ coords_from_grid <- function(grid) {
   coords[]
 }
 
+
 plot_layout_binary <- function(conf_dt, coords_dt, title = NULL) {
   df <- merge(coords_dt[, .(patchID, x_plot, y_plot)], conf_dt, by = 'patchID', all.x = TRUE)
   df[, patch_value := fifelse(is.na(patch_value), 'S', patch_value)]
   
   ggplot(df, aes(x = x_plot, y = y_plot)) +
-    geom_tile(aes(fill = patch_value), color = 'black', linewidth = 0.15) +
-    coord_equal() +
-    scale_fill_manual(values = c(S = '#ffcc00', O = '#482173FF')) +
-    labs(title = title, x = '', y = '', fill = NULL) +
-    theme_void(base_size = 12) +  ## changed
+    geom_tile(aes(fill = patch_value), color = 'black', linewidth = 0.10) +
+    coord_equal(expand = FALSE) +
+    scale_x_continuous(expand = c(0, 0)) +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_fill_manual(
+      values = c(S = '#ffcc00', O = '#482173FF'),
+      labels = c(S = "European beech", O = "Oriental beech")
+    ) +
+    labs(title = title, x = NULL, y = NULL, fill = NULL) +
+    theme_void(base_size = 9) +
     theme(
-      panel.grid = element_blank(),
-      legend.position = 'none',
-      plot.title = element_text(hjust = 0.5, size = 10),
-      plot.background = element_rect(fill = 'white', color = NA),
-      panel.background = element_rect(fill = 'white', color = NA)
+      legend.position = "none",
+      plot.title = element_text(hjust = 0.5, size = 8),
+      plot.margin = margin(1, 1, 1, 1, "mm"),
+      plot.background = element_rect(fill = "white", color = NA),
+      panel.background = element_rect(fill = "white", color = NA)
     )
 }
 
@@ -168,7 +209,8 @@ groups <- manifest[
   by = .(scenario_key)
 ]
 
-# ---- CREATE PANELS BUT NOT CREATE PNG
+# ---- CREATE PANELS 
+
 plot_list <- list()
 
 for (i in seq_len(nrow(groups))) {
@@ -213,11 +255,9 @@ for (i in seq_len(nrow(groups))) {
 
 plot_list
 
+configs <- c("dispersed", "multi_cluster", "one_cluster", "transects")
+props   <- c(0.10, 0.25, 0.40)
 
-configs <- sort(unique(groups$configuration))
-props   <- sort(unique(groups$prop))
-
-## final plot               
 panel_grid <- list()
 
 for (p in props) {
@@ -225,16 +265,65 @@ for (p in props) {
     
     key <- groups$scenario_key[
       groups$configuration == cfg & groups$prop == p
-    ]
+    ][1]
     
     panel_grid[[paste(cfg, p, sep = "_")]] <- plot_list[[key]]
   }
 }
 
-final_grid <- cowplot::plot_grid(
+layout_grid <- cowplot::plot_grid(
   plotlist = panel_grid,
-  ncol = length(configs)
+  ncol = length(configs),
+  align = "hv",
+  axis = "tblr"
 )
+
+col_labels <- cowplot::plot_grid(
+  plotlist = lapply(configs, function(cfg) {
+    cowplot::ggdraw() +
+      cowplot::draw_label(
+        cfg_labels[[cfg]],
+        size = 10,
+        hjust = 0.5,
+        vjust = 0.5
+      )
+  }),
+  ncol = length(configs),
+  align = "h"
+)
+
+row_labels <- cowplot::plot_grid(
+  plotlist = lapply(props, function(p) {
+    cowplot::ggdraw() +
+      cowplot::draw_label(
+        prop_labels[[sprintf("%.2f", p)]],
+        size = 10,
+        angle = 270,
+        hjust = 0.5,
+        vjust = 0.5
+      )
+  }),
+  ncol = 1,
+  align = "v"
+)
+
+empty_corner <- cowplot::ggdraw()
+
+final_grid <- cowplot::plot_grid(
+  cowplot::plot_grid(
+    col_labels, empty_corner,
+    ncol = 2,
+    rel_widths = c( 1, 0.08)
+  ),
+  cowplot::plot_grid(
+    layout_grid,row_labels,
+    ncol = 2,
+    rel_widths = c(1, 0.08)
+  ),
+  ncol = 1,
+  rel_heights = c(0.08, 1)
+)
+
 final_grid
 
 
@@ -294,22 +383,20 @@ beech_cols <- c(
 )
 
 selection <- ggplot(plot_data, aes(stage, W, color = genotype, group = genotype)) +
-  geom_line(linewidth = 0.8) +
-  geom_point(size = 2) +
+  geom_line(linewidth = 0.6) +
+  geom_point(size = 1.6) +
   facet_grid(strength ~ theta_name) +
   scale_y_continuous(limits = c(0.5, 1), breaks = seq(0.5, 1, 0.1)) +
-  scale_color_manual(values = beech_cols)+
+  scale_color_manual(values = beech_cols) +
   labs(
     x = "Age class",
     y = "Fitness (W)",
     color = "Genotype"
   ) +
-  theme_bw(base_size = 12) +
+  theme_fig +
   theme(
-    strip.background =element_blank(),
     axis.text.x = element_text(angle = 35, hjust = 1),
-    legend.position = "right",
-    legend.direction = "vertical"
+    legend.position = "right"
   )
 selection
 
@@ -322,30 +409,41 @@ plot1 <- (
     (selection + theme(plot.margin = margin(t = 0, b = 5))) 
 ) +
   plot_layout(guides = "collect") +
-  plot_annotation(tag_levels = "a") &
+  plot_annotation(tag_levels = "A") &
   theme(
     legend.position = "right",
-    plot.tag = element_text(size = 25, face = "bold")
+    plot.tag = element_text(size = 14, face = "bold")
   )
 plot1
 
 
 ggsave(
-  paste0(fig_path,"/Figure1.png"),
-  plot = last_plot(),   
+  filename = file.path(fig_path, "Figure1.png"),
+  plot = plot1,
   width = 9,
   height = 12,
   units = "in"
 )
 
+ggsave(
+  filename = file.path(fig_path, "Figure1.pdf"),
+  plot = plot1,
+  width = 9,
+  height = 12,
+  units = "in",
+  device = cairo_pdf
+)
 
 ######## SUPP FIGURE 1       (questionnaires plots) ##########
 
 library(readxl)
 library(dplyr)
-library(ggplot2)
 library(forcats)
 library(stringr)
+library(dplyr)
+library(scales)
+library(ggh4x)
+library(tidyr)
 
 path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/questionnaires/"
 file <- file.path(path, "Questionnaire_pag1_summary.xlsx")
@@ -366,126 +464,112 @@ dat_plot <- dat %>%
     respondent_group = factor(respondent_group, levels = c("Forester", "Researcher")),
     answer_label = factor(
       answer_label,
-      levels = c(
-        "Does not apply",
-        "Partially applies",
-        "Assumed",
-        "Applies",
-        "Unknown"
-      )
-    ),
-    question_lab = paste0(question_group, " — ", question)
-  )
-
-p_existing <- dat_plot %>%
-  filter(str_detect(question_type, "existing introductions")) %>%
-  ggplot(
-    aes(
-      x = answer_label,
-      y = question,
-      size = proportion,
-      color = respondent_group
+      levels = c("Does not apply", "Partially applies", "Assumed", "Applies", "Unknown")
     )
-  ) +
-  geom_point(
-    alpha = 0.5,
-    position = position_dodge(width = 0)
-  ) +
-  facet_grid(question_group~ species, scales = "free_y") +
-  scale_size_continuous(
-    range = c(0, 6),
-    limits = c(0, 1),
-    labels = scales::percent
-  ) +
-  labs(
-    x = "Answer category",
-    y = NULL,
-    size = "Proportion",
-    color = "Participant group",
-    title = "a",
-    #subtitle = "Distribution of workshop answers by question, species and participant group"
-  ) +
-  guides(
-    color = guide_legend(nrow = 1),
-    size = guide_legend(nrow = 1)
-  ) +
-  
-  theme_bw() +
-  theme(
-    strip.background = element_blank(),
-    axis.text.x = element_text(angle = 35, hjust = 1),
-    legend.position = "bottom", 
-    legend.box = "vertical"
   )
 
-
-p_existing
-
-
-p_future <- dat_plot %>%
-  filter(str_detect(question_type, "future introductions")) %>%
-  ggplot(
-    aes(
-      x = answer_label,
-      y = fct_rev(fct_inorder(question_lab)),
-      size = proportion,
-      color = respondent_group
-    )
-  ) +
-  geom_point(
-    alpha = 0.5,
-    position = position_dodge(width = 0)
-  ) +
-  facet_grid(question_group~ species, scales = "free_y", labeller = labeller(
-    species = c(
-      "Reasons to introduce more Oriental beech from the Greater Caucasus" = "Oriental beech from\n Greater Caucasus",
-      "Reasons to introduce “other Oriental beeches”, which one?" = "Other Oriental beeches"
-    ))) +
-  scale_size_continuous(
-    range = c(0, 6),
-    limits = c(0, 1),
-    labels = scales::percent
-  ) +
-  labs(
-    x = "Answer category",
-    y = NULL,
-    size = "Proportion",
-    color = "Participant group",
-    title = "b",
-    #subtitle = "Distribution of workshop answers by question, species and participant group"
-  ) +
-  guides(
-    color = guide_legend(nrow = 1),
-    size = guide_legend(nrow = 1)
-  ) +
-  
-  theme_bw() +
-  theme(
-    strip.background = element_blank(),
-    axis.text.x = element_text(angle = 35, hjust = 1),
-    legend.position = "bottom", 
-    legend.box = "vertical"
-  )
-
-p_future
-
-fig_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Figures_manuscript/"
-
-ggsave(paste0(fig_path,"Questionnaire_existing_introductions_answers.png"), p_existing,
-       width = 7, height = 12, dpi = 300)
-
-ggsave(paste0(fig_path,"Questionnaire_future_introductions_answers.png"), p_future,
-       width = 7, height = 12, dpi = 300)
-
-
-
+############ COMPARE FORESTERS AND RESEARHCERS ANSWERS #####
 library(dplyr)
-library(ggplot2)
-library(forcats)
-library(stringr)
-library(scales)
-library(ggh4x)
 library(tidyr)
+library(purrr)
+library(broom)
+
+dat_test <- dat_plot %>%
+  mutate(
+    response_binary = case_when(
+      answer_label %in% c("Applies", "Partially applies") ~ "Positive",
+      answer_label %in% c("Does not apply") ~ "Negative",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(response_binary)) %>%
+  group_by(
+    question_type,
+    question_group,
+    question,
+    species,
+    respondent_group,
+    response_binary
+  ) %>%
+  summarise(
+    n = sum(n),
+    .groups = "drop"
+  )
+
+
+# complete combinations to avoid uncomplete data
+dat_test_complete <- dat_test %>%
+  group_by(
+    question_type,
+    question_group,
+    question,
+    species,
+    respondent_group
+  ) %>%
+  complete(
+    response_binary = c("Positive", "Negative"),
+    fill = list(n = 0)
+  ) %>%
+  ungroup()
+
+## filter valid tests
+results_fisher <- dat_test_complete %>%
+  pivot_wider(
+    names_from = response_binary,
+    values_from = n,
+    values_fill = 0
+  ) %>%
+  group_by(
+    question_type,
+    question_group,
+    question,
+    species
+  ) %>%
+  filter(n_distinct(respondent_group) == 2) %>%
+  group_modify(~{
+    
+    tab <- .x %>%
+      arrange(respondent_group) %>%
+      select(Positive, Negative) %>%
+      as.matrix()
+    
+    # skip empty tables
+    if (sum(tab) == 0) {
+      return(tibble(
+        p_value = NA_real_,
+        odds_ratio = NA_real_
+      ))
+    }
+    
+    test <- fisher.test(tab)
+    
+    tibble(
+      p_value = test$p.value,
+      odds_ratio = unname(test$estimate)
+    )
+  }) %>%
+  ungroup() %>%
+  mutate(
+    p_adjust = p.adjust(p_value, method = "BH")
+  ) %>%
+  arrange(p_adjust)
+
+
+ggplot(results_fisher,
+       aes(
+         x = log2(odds_ratio),
+         y = fct_reorder(question, log2(odds_ratio)),
+         color = p_adjust < 0.05
+       )) +
+  geom_point(size = 3) +
+  geom_vline(xintercept = 0,
+             linetype = "dashed") +
+  facet_grid(question_type ~ species)+
+  labs(
+    x = "Log2 odds ratio\n(Foresters more positive →)",
+    y = NULL
+  ) +
+  theme_bw()
 
 ######### SPLIT RESEARCHERS AND FORESTERS
 
@@ -511,8 +595,6 @@ dat_div <- dat_div %>%
     group_question = respondent_short
   )
 
-
-############ existing introductions
 
 ## set order based on Applies % of researchers
 question_order_existing <- dat_div %>%
@@ -562,6 +644,14 @@ p_existing <- ggplot(
     labels = function(x) scales::percent(abs(x)),
     limits = c(-1, 1)
   ) +
+  scale_fill_manual(
+    values = c(
+      "Applies" = "#009E73",
+      "Partially applies" = "#78C679",
+      "Assumed" = "#0072B2",
+      "Does not apply" = "#CC79A7",
+      "Unknown" = "#999999"
+    ))+
   labs(
     x = "Percentage of answers",
     y = NULL,
@@ -584,50 +674,82 @@ p_existing
 library(tidytext)
 library(tidyr)
 
-dat_div <- dat_plot %>%
+dat_plot <- dat_plot %>%
   mutate(
     answer_side = case_when(
-      answer_label %in% c("Does not apply") ~ -1,
-      answer_label %in% c("Assumed", "Partially applies","Applies", "Unknown") ~ 1
+      answer_label %in% c("Does not apply", "Unknown") ~ -1,
+      answer_label %in% c("Assumed", "Partially applies","Applies") ~ 1
     ),
     prop_div = proportion * answer_side
   )
 
-
-## set order based on Applies % of researchers
-question_order_existing <- dat_div %>%
-  filter(
-    str_detect(question_type, "existing introductions"),
-    answer_label == "Applies"
+dat_existing_sum <- dat_plot %>%
+  filter(str_detect(question_type, "Assessment of the existing introductions based on presentations and your own experience")) %>%
+  group_by(question_type,species,question_group,question_id,question,answer_label
   ) %>%
-  group_by(species, question_group, question) %>%
   summarise(
-    prop_applies = sum(proportion, na.rm = TRUE),
+    n = sum(n, na.rm = TRUE),
     .groups = "drop"
-  )
+  ) %>%
+  group_by(question_type, species, question_group, question_id, question) %>%
+  mutate(
+    proportion = n / sum(n, na.rm = TRUE),
+    answer_side = case_when(
+      answer_label %in% c("Does not apply","Unknown") ~ -1,
+      answer_label %in% c("Assumed", "Partially applies", "Applies") ~ 1
+    ),
+    prop_div = proportion * answer_side
+  ) %>%
+  ungroup()
 
 
-dat_div_existing <- dat_div %>%
-  filter(str_detect(question_type, "existing introductions")) %>%
+question_order_ref <- dat_existing_sum %>%
+  filter(
+    species == "Oriental beech from the Greater Caucasus",
+    answer_label %in% c("Applies", "Partially applies")
+  ) %>%
+  group_by(question_type, question_group, question_id, question) %>%
+  summarise(
+    prop_positive = sum(proportion, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(question_group, desc(prop_positive), question_id)
+
+
+dat_existing_plot <- dat_existing_sum %>%
   left_join(
-    question_order_existing,
-    by = c("species", "question_group", "question")
+    question_order_ref %>%
+      select(question_type, question_group, question_id, prop_positive),
+    by = c("question_type", "question_group", "question_id")
   ) %>%
   mutate(
-    prop_applies = replace_na(prop_applies, 0),
+    prop_positive = replace_na(prop_positive, 0),
+    
     question_ord = reorder_within(
       question,
-      prop_applies,
-      interaction(species, question_group),
-      fun = mean
+      prop_positive,
+      interaction(question_type, question_group),
+      fun = mean,
+      .desc = TRUE
     )
   )
 
+## reorder question group
+dat_existing_plot$question_group <- factor(
+  dat_existing_plot$question_group,
+  levels = unique(
+    dat_plot$question_group[
+      str_detect(dat_plot$question_type, "Assessment of the existing introductions based on presentations and your own experience")
+    ]
+  )
+)
+
+# plot (remove "other")
 p_existing <- ggplot(
-  dat_div_existing %>% filter(answer_label != "Unknown"),
+  subset(dat_existing_plot,question!= "Other"),
   aes(
     x = prop_div,
-    y = fct_rev(question_ord),
+    y = question_ord,
     fill = answer_label
   )
 ) +
@@ -639,11 +761,20 @@ p_existing <- ggplot(
     space = "free_y",
     switch = "y"
   ) +
-  scale_y_reordered() +
+  scale_y_reordered(drop = TRUE)+
   scale_x_continuous(
     labels = function(x) scales::percent(abs(x)),
     limits = c(-1, 1)
   ) +
+  scale_fill_manual(
+    values = c(
+      "Applies" = "#009E73",
+      "Partially applies" = "#78C679",
+      "Assumed" = "#0072B2",
+      "Does not apply" = "#CC79A7",
+      "Unknown" = "#999999"
+    )
+  )+
   labs(
     x = "Percentage of answers",
     y = NULL,
@@ -660,6 +791,136 @@ p_existing <- ggplot(
   )
 
 p_existing
+
+ggsave(
+  paste0(fig_path,"/Questionnaire_existing_introductions_answers.png"),
+  plot = last_plot(),   # or assign your plot to an object and use plot = p
+  width = 10.5,
+  height = 10,
+  units = "in"
+)
+
+
+
+##### future introductions
+dat_future_sum <- dat_plot %>%
+  filter(str_detect(question_type, "Assessment of future introductions" )) %>%
+  group_by(question_type,species,question_group,question_id,question,answer_label
+  ) %>%
+  summarise(
+    n = sum(n, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  group_by(question_type, species, question_group, question_id, question) %>%
+  mutate(
+    proportion = n / sum(n, na.rm = TRUE),
+    answer_side = case_when(
+      answer_label %in% c("Does not apply","Unknown") ~ -1,
+      answer_label %in% c("Assumed", "Partially applies", "Applies") ~ 1
+    ),
+    prop_div = proportion * answer_side
+  ) %>%
+  ungroup()
+
+
+question_order_ref <- dat_future_sum %>%
+  filter(
+    species == "Oriental beech from the Greater Caucasus",
+    answer_label %in% c("Applies", "Partially applies")
+  ) %>%
+  group_by(question_type, question_group, question_id, question) %>%
+  summarise(
+    prop_positive = sum(proportion, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(question_group, desc(prop_positive), question_id)
+
+
+dat_future_plot <- dat_future_sum %>%
+  left_join(
+    question_order_ref %>%
+      select(question_type, question_group, question_id, prop_positive),
+    by = c("question_type", "question_group", "question_id")
+  ) %>%
+  mutate(
+    prop_positive = replace_na(prop_positive, 0),
+    
+    question_ord = reorder_within(
+      question,
+      prop_positive,
+      interaction(question_type, question_group),
+      fun = mean,
+      .desc = TRUE
+    )
+  )
+
+## reorder question group
+dat_future_plot$question_group <- factor(
+  dat_future_plot$question_group,
+  levels = unique(
+    dat_plot$question_group[
+      str_detect(dat_plot$question_type, "Assessment of future introductions")
+    ]
+  )
+)
+
+# plot (remove "other")
+p_future <- ggplot(
+  subset(dat_future_plot,question!= "Other"),
+  aes(
+    x = prop_div,
+    y = question_ord,
+    fill = answer_label
+  )
+) +
+  geom_col(width = 0.75, color = "white", linewidth = 0.2) +
+  geom_vline(xintercept = 0, linewidth = 0.3) +
+  facet_nested(
+    question_group ~ species,
+    scales = "free_y",
+    space = "free_y",
+    switch = "y"
+  ) +
+  scale_y_reordered(drop = TRUE)+
+  scale_x_continuous(
+    labels = function(x) scales::percent(abs(x)),
+    limits = c(-1, 1)
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Applies" = "#009E73",
+      "Partially applies" = "#78C679",
+      "Assumed" = "#0072B2",
+      "Does not apply" = "#CC79A7",
+      "Unknown" = "#999999"
+    )
+  )+
+  labs(
+    x = "Percentage of answers",
+    y = NULL,
+    fill = "Answer category"
+  ) +
+  theme_bw() +
+  theme(
+    strip.background = element_blank(),
+    strip.placement = "outside",
+    strip.text.y.left = element_text(angle = 0, hjust = 1),
+    strip.text.y = element_text(angle = 90),
+    axis.title.y = element_blank(),
+    legend.position = "bottom"
+  )
+
+p_future
+
+ggsave(
+  paste0(fig_path,"/Questionnaire_future_introductions_answers.png"),
+  plot = last_plot(),   # or assign your plot to an object and use plot = p
+  width = 10.5,
+  height = 10,
+  units = "in"
+)
+
+
 
 ######## demographic results ###########
 
