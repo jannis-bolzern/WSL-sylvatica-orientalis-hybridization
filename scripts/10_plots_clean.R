@@ -58,7 +58,7 @@ theme_fig <- theme_bw(base_size = 10) +
     axis.ticks = element_line(linewidth = 0.3),
     axis.ticks.length = unit(1.5, "mm"),
     
-    strip.text = element_text(size = 10),
+    strip.text = element_text(size = 13),
     strip.background = element_blank(),
     
     legend.title = element_text(size = 9),
@@ -1195,6 +1195,7 @@ p1_plot_full <- ggplot(
         "mid" = "Intermediate",
         "high" = "High"
       ),
+      proportion_orientalis = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),
       selection_type = as_labeller(c(
         "Neutral" = "Neutral",
         "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
@@ -1271,7 +1272,7 @@ p1_plot_main <- ggplot(sub,
   )+
   scale_alpha_continuous(
     range = c(0.25, 1),
-    name = "Proportion of individuals",
+    name = "Proportion of individuals", 
     guide = guide_legend(
       override.aes = list(fill = "grey50"),
       title.position = "top" 
@@ -1502,7 +1503,7 @@ genotypes <- ggplot(subset(dt3_genot_quant_wide, age_class ==3& configuration!= 
       "low" = "Low",
       "mid" = "Intermediate",
       "high" = "High"
-    ))
+    ),proportion_orientalis = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%")),
     )+
   theme_fig+
   theme(  
@@ -1530,82 +1531,149 @@ ggsave(
   device = cairo_pdf
 )
 
-######## FIGURE S5       (spatial patterns of % orientalis genotype at t = 100) ###############
 
-dt <- readRDS(file.path(res_path, "Orientalis_genot_patch_summary_replicates.RDS") )
-dt$selection_type <- factor(dt$selection_type, levels = c("Neutral","Wori > Wf1 > Weu","Weu > Wf1 > Wori","Wf1 > Weu = Wori"))
-dt$selection_strength <- as.character(dt$selection_strength)
-dt$selection_strength <- factor(dt$selection_strength,levels = c("low", "mid", "high", " "))
-dt[dt$selection_type=="Neutral","selection_strength"] <- " "
+######## FIGURE S5       (time to reach 80% NW and 50% hybrids) ##################
 
-######  t = 100
+## compute the time to threshold but after the initial fluctuation: 
+get_time_to_threshold <- function(dt, var, threshold, label, min_year = 0) {
+  
+  all_reps <- unique(dt[, .(
+    configuration, proportion_orientalis,selection_type, selection_strength,replicate2
+  )])
+  
+  # apply filter for transient removal
+  dt_sub <- dt[year >= min_year]
+  
+  t_cross <- dt_sub[get(var) >= threshold,
+                    .SD[1],
+                    by = .(configuration, proportion_orientalis,selection_type, selection_strength,replicate2)]
+  
+  t_full <- merge(all_reps, t_cross,
+                  by = c("configuration", "proportion_orientalis","selection_type", "selection_strength", "replicate2"),
+                  all.x = TRUE)
+  
+  t_full[, value := year]   # still absolute time
+  t_full[, metric := label]
+  
+  return(t_full[, .(configuration, proportion_orientalis,selection_type, selection_strength,replicate2, value, metric)])
+}
 
-# map the SD per patch for each age_class for year 100  and year 1000
-grid <- vect("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/input/input_files/Grid_4x4m_100x100m.shp")
-grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
-n_rows = dim(grid_r)[1]
-n_cols = dim(grid_r)[2]
+# read main dataset with all metrics replicate level
+dt <- readRDS(file.path(res_path, "Final_dataset_replicate_level.RDS"))
 
-# rescale p1 value from 0 to 1
+t_hyb <- get_time_to_threshold(dt, "Hyb_proportion", 0.5, "Time to 50% hybrids",min_year = 75)
+t_prod <- get_time_to_threshold(dt, "NW_rel", 0.8, "Time to 80% NW",  min_year = 75)
 
-## SPATIAL DISTRIBUTION FOR ADULTS
-grid_plot <- ggplot(subset(dt, age_class == 3& year==100 & configuration != "No introduction"),
-       aes(x = (pop - 1) %% n_rows + 1,
-           y = n_cols - ((pop - 1) %/% n_cols + 1),
-           fill = (q50_p1 + 1) / 2)) +
-  geom_raster() +
-  scale_fill_viridis_c(option = "viridis", direction = -1) +
+# combine
+dt_final <- rbindlist(list(t_hyb,t_prod))
+dt_final[, metric := factor(metric,levels = c("Time to 50% hybrids","Time to 80% NW"))]
+dt_final$selection_type <- factor(dt_final$selection_type, levels = c("Neutral","Wori > Wf1 > Weu","Weu > Wf1 > Wori","Wf1 > Weu = Wori"))
+dt_final[, selection_strength := as.character(selection_strength)]
+dt_final[, selection_strength := factor(selection_strength,levels = c("low", "mid", "high", NA))]
+dt_final[dt_final$selection_type=="Neutral","selection_strength"] <- "mid"
+
+
+time_hyb <- ggplot(subset(dt_final,metric == "Time to 50% hybrids" & configuration!="No introduction" ),
+                   aes(x = factor(proportion_orientalis),
+                       y = value,
+                       fill = configuration,
+                       group = interaction(proportion_orientalis, configuration)), 
+                   colour = "black") +
+  geom_boxplot(outlier.shape = NA,width=0.4,  position = position_dodge(width = 0.6, preserve = "single")) +
+  stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), 
+                     method = "kruskal.test",  label = "p.signif", hide.ns = TRUE, label.y=600) +
+  scale_fill_manual(values = config_palette, name = "Configuration") +
+  scale_color_manual(values = config_palette) +
+  scale_x_discrete(labels = c("0.1" = "10%","0.25" = "25%", "0.4" = "40%"))+
+  scale_y_continuous( limits = c(0, 700), breaks = seq(0, 700, by = 100),  expand = c(0, 0))+
   facet_nested(
-    proportion_orientalis + configuration ~ selection_type + selection_strength , 
-    labeller = labeller(selection_strength = c(
-      "low" = "Low",
-      "mid" = "Intermediate",
-      "high" = "High"
-    ),
-    selection_type = as_labeller(c(
-      "Neutral" = "Neutral",
-      "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
-      "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
-      "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
-    ), label_parsed)
+    selection_strength ~ selection_type  ,scales = "free",
+    labeller = labeller(
+      selection_strength = c(
+        "low" = "Low",
+        "mid" = "Intermediate",
+        "high" = "High"
+      ),
+      selection_type = as_labeller(c(
+        "Neutral" = "Neutral",
+        "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
+        "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
+        "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
+      ), label_parsed)
     )
-  )+theme_void()+
-  theme(
-    ggh4x.facet.nestline = element_line(size = 1),
-    panel.background = element_rect(fill = "white"),
-    panel.spacing.x = unit(0.3, "lines"),
-    panel.spacing.y = unit(0.3, "lines"),
-    strip.text = element_text(size = 9),
-    strip.background = element_rect(fill = "white"),
-    #plot.background = element_blank(),
-    aspect.ratio = 1,
-    legend.position = "bottom",
-,
-    axis.title = element_text(size = 11),
-
-    legend.title = element_text(size = 9),
-    legend.text  = element_text(size = 8),
-    legend.key = element_blank(),
-    
   )+
-  labs(x = "", y = "", fill = "Proportion of Oriental beech ancestry") 
-grid_plot
+  
+  labs(x = "Introduction Intensity",
+       y = "Years") +
+  guides() +
+  theme_fig+ 
+  theme(panel.grid.major = element_line(color="grey80"))
+time_hyb
+
+
+time_nw <-  ggplot(subset(dt_final,metric == "Time to 80% NW" & configuration!="No introduction" ),
+                   aes(x = factor(proportion_orientalis),
+                       y = value,
+                       fill = configuration,
+                       group = interaction(proportion_orientalis, configuration)), 
+                   colour = "black") +
+  geom_boxplot(outlier.shape = NA,width=0.4,  position = position_dodge(width = 0.6, preserve = "single")) +
+  
+  scale_y_continuous(limits = c(0, 700), breaks = seq(0, 700, by = 100),  expand = c(0, 0))+
+  stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), 
+                     method = "kruskal.test",  label = "p.signif", hide.ns = TRUE, label.y=600) +
+  scale_fill_manual(values = config_palette, name = "Configuration") +
+  scale_x_discrete(labels = c("0.1" = "10%","0.25" = "25%", "0.4" = "40%"))+
+  scale_color_manual(values = config_palette) +
+  facet_nested(
+    selection_strength ~ selection_type  ,scales = "free",
+    labeller = labeller(
+      selection_strength = c(
+        "low" = "Low",
+        "mid" = "Intermediate",
+        "high" = "High"
+      ),
+      selection_type = as_labeller(c(
+        "Neutral" = "Neutral",
+        "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
+        "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
+        "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
+      ), label_parsed)
+    )
+  )+    
+  labs(x = "Introduction Intensity",
+       y = "Years") +
+  guides(color = "none") +
+  theme_fig+ 
+  theme(panel.grid.major = element_line(color="grey80"))
+time_nw
+
+
+time <- (time_hyb / time_nw) +
+  plot_layout(guides = "collect", heights = c(1, 1)) +
+  plot_annotation(tag_levels = "A") &
+  theme(
+    legend.position = "right",
+    plot.tag = element_text(size = 14, face = "bold")
+  )
+time
+
 
 ggsave(
   filename = file.path(fig_path, "FigureS5.png"),
-  plot = grid_plot,   
-  width =12,
-  height = 10,
-  units = "in",
+  plot = time, 
+  width =10,
+  height = 9,
+  units = "in", 
   dpi = 600
 )
 
 ggsave(
   filename = file.path(fig_path, "FigureS5.pdf"),
-  plot = grid_plot,
-  width =12,
-  height = 10,
-  units = "in",
+  plot = time, 
+  width =10,
+  height = 9,
+  units = "in", 
   device = cairo_pdf
 )
 
@@ -1702,8 +1770,8 @@ hybprop_trend_syl <- ggplot(subset(non_neutral,age_class=="3"& Genotype=="hyb"&s
   
   scale_colour_manual(values = config_palette, name = "Configuration") +
   scale_fill_manual(values = config_palette) +
-  scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9), name = "Introduction Intensity")+
-  scale_linewidth_manual(values = c( "0.1" = 0.5,"0.25" = 0.8, "0.4" = 1.25), name = "Introduction Intensity" )+
+  scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9), labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity")+
+  scale_linewidth_manual(values = c( "0.1" = 0.5,"0.25" = 0.8, "0.4" = 1.20), labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity" )+
   scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   
@@ -1743,8 +1811,8 @@ hybprop_trend_supp <- ggplot(subset(non_neutral,Genotype=="hyb"&selection_type%i
   geom_vline(xintercept=100, linetype="dashed")+
   scale_colour_manual(values = config_palette, name = "Configuration") +
   scale_fill_manual(values = config_palette) +
-  scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9), name = "Introduction Intensity")+
-  scale_linewidth_manual(values = c( "0.1" = 0.5,"0.25" = 0.8, "0.4" = 1.25), name = "Introduction Intensity" )+
+  scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9), labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity")+
+  scale_linewidth_manual(values = c( "0.1" = 0.5,"0.25" = 0.8, "0.4" = 1.20), labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity" )+
   scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   
@@ -1859,8 +1927,8 @@ NW_trend_syl <- ggplot()+
   
   scale_colour_manual(values = config_palette, name = "Configuration") +
   scale_fill_manual(values = config_palette) +
-  scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9), name = "Introduction Intensity")+
-  scale_linewidth_manual(values = c( "0.1" = 0.5,"0.25" = 0.8, "0.4" = 1.25), name = "Introduction Intensity" )+
+  scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9), labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity")+
+  scale_linewidth_manual(values = c( "0.1" = 0.5,"0.25" = 0.8, "0.4" = 1.20), labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity" )+
   scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   
@@ -1896,8 +1964,8 @@ NW_trend_supp <- ggplot()+
   
   scale_colour_manual(values = config_palette, name = "Configuration") +
   scale_fill_manual(values = config_palette) +
-  scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9), name = "Introduction Intensity")+
-  scale_linewidth_manual(values = c( "0.1" = 0.5,"0.25" = 0.8, "0.4" = 1.25), name = "Introduction Intensity" )+
+  scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9), labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity")+
+  scale_linewidth_manual(values = c( "0.1" = 0.5,"0.25" = 0.8, "0.4" = 1.20), labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity" )+
   scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   
@@ -1951,13 +2019,11 @@ neutral_ranges <- dt_long[
 neutral_ranges[, x := as.numeric(factor(proportion_orientalis))]
 neutral_ranges[, `:=`(xmin = x-0.4,xmax = x+0.4 )]
 
-
 # subset orientals favoured
 t100_syl_hyb <- ggplot(subset(dt_long,metric%in%c("Hyb_proportion")&selection_type=="Wori > Wf1 > Weu"& proportion_orientalis != 0),
                        aes(x = factor(proportion_orientalis),
                            y = value,
                            fill = configuration,
-                           alpha = proportion_orientalis,
                            group = interaction(proportion_orientalis, configuration)), 
                        color = "black") +
   geom_rect(
@@ -1969,10 +2035,11 @@ t100_syl_hyb <- ggplot(subset(dt_long,metric%in%c("Hyb_proportion")&selection_ty
   geom_boxplot() +
   scale_fill_manual(values = config_palette, name = "Configuration") +
   scale_color_manual(values = config_palette) +
-  scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9))+
+  scale_alpha_manual(values = c("0.1" = 0.5,"0.25" = 0.7,"0.4" = 0.9))+
+  scale_x_discrete(labels = c("0.1" = "10%","0.25" = "25%","0.4" = "40%"))+
   stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), method = "kruskal.test", label = "p.signif", hide.ns = TRUE, label.y = 0.63) +
   facet_nested(metric ~  selection_strength,scales = "free_y", labeller=labeller(metric=c("Hyb_proportion"="Hybrid proportions"), selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
-  labs(x = "Introduction intensity", y = "Hybrid proportions") +
+  labs(x = "Introduction Intensity", y = "Hybrid proportions") +
   guides(color = "none", alpha = "none") +
   theme_fig+
   theme(panel.background = element_rect(fill = "white", colour = "black"), 
@@ -1993,7 +2060,7 @@ t100_syl_NW <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type=="Wori > W
                       aes(x = factor(proportion_orientalis),
                           y = value,
                           fill = configuration,
-                          alpha = proportion_orientalis,
+                         
                           group = interaction(proportion_orientalis, configuration)), 
                       colour = "black") +
   geom_rect(
@@ -2005,11 +2072,12 @@ t100_syl_NW <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type=="Wori > W
   geom_boxplot() +
   scale_fill_manual(values = config_palette, name = "Configuration") +
   scale_color_manual(values = config_palette) +
-  scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9))+
+  scale_alpha_manual(values = c("0.1" = 0.5,"0.25" = 0.7,"0.4" = 0.9))+
+  scale_x_discrete(labels = c("0.1" = "10%","0.25" = "25%","0.4" = "40%"))+
   
   stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), method = "kruskal.test"  ,  label = "p.signif", hide.ns = TRUE, label.y = 63) +
   facet_nested(metric ~  selection_strength,scales = "free_y", labeller=labeller(metric=c("Hyb_proportion"="Hybrid proportions"),  selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
-  labs(x = "Introduction intensity", y = "Productivity (N x W)") +
+  labs(x = "Introduction Intensity", y = "Productivity (N x W)") +
   guides(color = "none", alpha = "none") +
   theme_fig+
   theme(panel.background = element_rect(fill = "white", colour = "black"), 
@@ -2032,7 +2100,7 @@ t100_supp_hyb <- ggplot(subset(dt_long,metric%in%c("Hyb_proportion")&selection_t
                         aes(x = factor(proportion_orientalis),
                             y = value,
                             fill = configuration,
-                            alpha = proportion_orientalis,
+                           
                             group = interaction(proportion_orientalis, configuration)), 
                         colour = "black") +
   geom_rect(
@@ -2046,6 +2114,7 @@ t100_supp_hyb <- ggplot(subset(dt_long,metric%in%c("Hyb_proportion")&selection_t
   scale_fill_manual(values = config_palette, name = "Configuration") +
   scale_color_manual(values = config_palette) +
   scale_alpha_manual(values = c("0.1" = 0.5,"0.25" = 0.7,"0.4" = 0.9))+
+  scale_x_discrete(labels = c("0.1" = "10%","0.25" = "25%","0.4" = "40%"))+
   
   stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), method = "kruskal.test",  label = "p.signif", hide.ns = TRUE,label.y = 0.63) +
   facet_nested(metric ~ selection_type + selection_strength,scales = "free_y", 
@@ -2059,7 +2128,7 @@ t100_supp_hyb <- ggplot(subset(dt_long,metric%in%c("Hyb_proportion")&selection_t
                                  ), label_parsed)
         )
       )+
-  labs(x = "Introduction intensity", y = "Hybrid proportions") +
+  labs(x = "Introduction Intensity", y = "Hybrid proportions") +
   guides(color = "none", alpha = "none") +
   theme_fig+
   theme(panel.background = element_rect(fill = "white", colour = "black"), 
@@ -2079,7 +2148,7 @@ t100_supp_nw <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type%in% c("We
                        aes(x = factor(proportion_orientalis),
                            y = value,
                            fill = configuration,
-                           alpha = proportion_orientalis,
+                          
                            group = interaction(proportion_orientalis, configuration)), 
                        colour = "black") +
   geom_rect(
@@ -2093,6 +2162,7 @@ t100_supp_nw <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type%in% c("We
   scale_fill_manual(values = config_palette, name = "Configuration") +
   scale_color_manual(values = config_palette) +
   scale_alpha_manual(values = c("0.1" = 0.5,"0.25" = 0.7,"0.4" = 0.9))+
+  scale_x_discrete(labels = c("0.1" = "10%","0.25" = "25%","0.4" = "40%"))+
   
   stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), method = "kruskal.test",  label = "p.signif", hide.ns = TRUE, label.y = 70) +
   facet_nested(metric ~ selection_type + selection_strength,scales = "free_y", 
@@ -2106,7 +2176,7 @@ t100_supp_nw <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type%in% c("We
                                  ), label_parsed)
                )
   )+
-  labs(x = "Introduction intensity", y = "Productivity (N x W)") +
+  labs(x = "Introduction Intensity", y = "Productivity (N x W)") +
   guides(color = "none", alpha = "none") +
   theme_fig+
   theme(panel.background = element_rect(fill = "white", colour = "black"), 
@@ -2178,7 +2248,7 @@ supp_combined
 ggsave(
   filename = file.path(fig_path, "FigureS6.png"),
   plot = supp_combined, 
-  width =18,
+  width =15,
   height = 10,
   units = "in", 
   dpi = 600
@@ -2187,126 +2257,91 @@ ggsave(
 ggsave(
   filename = file.path(fig_path, "FigureS6.pdf"),
   plot = supp_combined, 
-  width =18,
+  width =15,
   height = 10,
   units = "in", 
   device = cairo_pdf
 )
 
-######## FIGURE S7       (time to reach 80% NW and 50% hybrids) ##################
+######## FIGURE S7       (spatial patterns of % orientalis genotype at t = 100) ###############
 
-## compute the time to threshold but after the initial fluctuation: 
-get_time_to_threshold <- function(dt, var, threshold, label, min_year = 0) {
-  
-  all_reps <- unique(dt[, .(
-    configuration, proportion_orientalis,selection_type, selection_strength,replicate2
-  )])
-  
-  # apply filter for transient removal
-  dt_sub <- dt[year >= min_year]
-  
-  t_cross <- dt_sub[get(var) >= threshold,
-                    .SD[1],
-                    by = .(configuration, proportion_orientalis,selection_type, selection_strength,replicate2)]
-  
-  t_full <- merge(all_reps, t_cross,
-                  by = c("configuration", "proportion_orientalis","selection_type", "selection_strength", "replicate2"),
-                  all.x = TRUE)
-  
-  t_full[, value := year]   # still absolute time
-  t_full[, metric := label]
-  
-  return(t_full[, .(configuration, proportion_orientalis,selection_type, selection_strength,replicate2, value, metric)])
-}
+dt <- readRDS(file.path(res_path, "Orientalis_genot_patch_summary_replicates.RDS") )
+dt$selection_type <- factor(dt$selection_type, levels = c("Neutral","Wori > Wf1 > Weu","Weu > Wf1 > Wori","Wf1 > Weu = Wori"))
+dt$selection_strength <- as.character(dt$selection_strength)
+dt$selection_strength <- factor(dt$selection_strength,levels = c("low", "mid", "high", " "))
+dt[dt$selection_type=="Neutral","selection_strength"] <- " "
 
-# read main dataset with all metrics replicate level
-dt <- readRDS(file.path(res_path, "Final_dataset_replicate_level.RDS"))
+######  t = 100
 
-t_hyb <- get_time_to_threshold(dt, "Hyb_proportion", 0.5, "Time to 50% hybrids",min_year = 75)
-t_prod <- get_time_to_threshold(dt, "NW_rel", 0.8, "Time to 80% NW",  min_year = 75)
+# map the SD per patch for each age_class for year 100  and year 1000
+grid <- vect("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/input/input_files/Grid_4x4m_100x100m.shp")
+grid_r <- terra::rast(ext = ext(grid), resolution = 4, crs = "EPSG:3035")
+n_rows = dim(grid_r)[1]
+n_cols = dim(grid_r)[2]
 
-# combine
-dt_final <- rbindlist(list(t_hyb,t_prod))
-dt_final[, metric := factor(metric,levels = c("Time to 50% hybrids","Time to 80% NW"))]
-dt_final$selection_type <- factor(dt_final$selection_type, levels = c("Neutral","Wori > Wf1 > Weu","Weu > Wf1 > Wori","Wf1 > Weu = Wori"))
-dt_final[, selection_strength := as.character(selection_strength)]
-dt_final[, selection_strength := factor(selection_strength,levels = c("low", "mid", "high", NA))]
-dt_final[dt_final$selection_type=="Neutral","selection_strength"] <- " "
+# rescale p1 value from 0 to 1
 
-
-time_1 <- ggplot(subset(dt_final,selection_type %in% c("Neutral", "Wori > Wf1 > Weu")&configuration!="No introduction"),
-       aes(x = factor(proportion_orientalis),
-           y = value,
-           fill = configuration,
-           alpha = proportion_orientalis,
-           group = interaction(proportion_orientalis, configuration)), 
-       colour = "black") +
-  geom_boxplot(outlier.shape = NA,width=0.4,  position = position_dodge(width = 0.6, preserve = "single")) +
-  stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), 
-                     method = "kruskal.test",  label = "p.signif", hide.ns = TRUE, label.y=650) +
-  scale_fill_manual(values = config_palette, name = "Configuration") +
-  scale_color_manual(values = config_palette) +
-  scale_y_continuous( limits = c(0, 700), breaks = seq(0, 700, by = 50),  expand = c(0, 0))+
-  scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9))+
-  facet_nested(metric ~ selection_type + selection_strength,scales = "free",
-               labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
-  labs(x = "Proportion of Oriental beech introduced",
-       y = "Years") +
-  guides(color = "none", alpha = "none", fill = "none") +
-  theme_fig+ theme(ggh4x.facet.nestline = element_line(size = 1))
-time_1
-
-
-time_2 <- ggplot(subset(dt_final,selection_type %in% c("Weu > Wf1 > Wori", "Wf1 > Weu = Wori")),
-                 aes(x = factor(proportion_orientalis),
-                     y = value,
-                     fill = configuration,
-                     alpha = proportion_orientalis,
-                     group = interaction(proportion_orientalis, configuration)), 
-                 colour = "black") +
-  geom_boxplot(outlier.shape = NA,width=0.4,  position = position_dodge(width = 0.6, preserve = "single")) +
-  
-  scale_y_continuous( limits = c(0, 700), breaks = seq(0, 700, by = 50),  expand = c(0, 0))+
-  stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), 
-                     method = "kruskal.test",  label = "p.signif", hide.ns = TRUE, label.y=650) +
-  scale_fill_manual(values = config_palette, name = "Configuration") +
-  scale_color_manual(values = config_palette) +
-  scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9))+
-  facet_nested(metric ~ selection_type + selection_strength,scales = "free",
-               labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
-
-  labs(x = "Proportion of Oriental beech introduced",
-       y = "Years") +
-  guides(color = "none", alpha = "none") +
-  theme_fig+ theme(ggh4x.facet.nestline = element_line(size = 1))
-time_2
-
-
-time <- (time_1 / time_2) +
-  plot_layout(guides = "collect", heights = c(1, 1)) +
+## SPATIAL DISTRIBUTION FOR ADULTS
+grid_plot <- ggplot(subset(dt, age_class == 3& year==100 & configuration != "No introduction"),
+                    aes(x = (pop - 1) %% n_rows + 1,
+                        y = n_cols - ((pop - 1) %/% n_cols + 1),
+                        fill = (q50_p1 + 1) / 2)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "viridis", direction = -1) +
+  facet_nested(
+    proportion_orientalis + configuration ~ selection_type + selection_strength , 
+    labeller = labeller(selection_strength = c(
+      "low" = "Low",
+      "mid" = "Intermediate",
+      "high" = "High"
+    ),proportion_orientalis = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),
+    selection_type = as_labeller(c(
+      "Neutral" = "Neutral",
+      "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
+      "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
+      "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
+    ), label_parsed)
+    )
+  )+theme_void()+
   theme(
-    legend.position = "right",
-  )
-time
-
+    ggh4x.facet.nestline = element_line(size = 1),
+    panel.background = element_rect(fill = "white"),
+    panel.spacing.x = unit(0.3, "lines"),
+    panel.spacing.y = unit(0.3, "lines"),
+    strip.text = element_text(size = 9),
+    strip.background = element_rect(fill = "white"),
+    #plot.background = element_blank(),
+    aspect.ratio = 1,
+    legend.position = "bottom",
+    ,
+    axis.title = element_text(size = 11),
+    
+    legend.title = element_text(size = 9),
+    legend.text  = element_text(size = 8),
+    legend.key = element_blank(),
+    
+  )+
+  labs(x = "", y = "", fill = "Proportion of Oriental beech ancestry") 
+grid_plot
 
 ggsave(
   filename = file.path(fig_path, "FigureS7.png"),
-  plot = time, 
+  plot = grid_plot,   
   width =12,
-  height = 9,
-  units = "in", 
+  height = 10,
+  units = "in",
   dpi = 600
 )
 
 ggsave(
   filename = file.path(fig_path, "FigureS7.pdf"),
-  plot = time, 
+  plot = grid_plot,
   width =12,
-  height = 9,
-  units = "in", 
+  height = 10,
+  units = "in",
   device = cairo_pdf
 )
+
 
 
 ######## FIGURE 4a           (pareto optimization trends) ##########
@@ -2390,9 +2425,7 @@ neutral_area <-  neutral_expanded[
 ]
 
 
-## ONLY EUROPEAN BEECH S (MAIN)
-
-pareto_trend_syl <- ggplot() +
+pareto_A_main <- ggplot() +
   # neutral baseline in all facets
   geom_ribbon(data = neutral_area,
               aes(x = year,
@@ -2423,32 +2456,27 @@ pareto_trend_syl <- ggplot() +
                  y = med_NW,
                  color = configuration,
                  group = interaction(strategy_id, segment_id)),
-             size = 1) +
+             size = 0.7) +
   geom_vline(xintercept = c(100, 500),  linetype= "dashed", color = "black")+
-  scale_x_continuous(breaks = seq(0, 700, by = 100))+
+
   scale_color_manual(values = config_palette, name = "Configuration") +
-  scale_linewidth_manual(values = c( "0.1" = 0.5,"0.25" = 0.8, "0.4" = 1.1),name = "Introduction Intensity" )+
+  scale_linewidth_manual(values = c( "0.1" = 0.4,"0.25" = 0.8, "0.4" = 1.2),labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity" )+
   scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   facet_nested( ~ selection_strength, labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
-  theme_fig +
-  theme(
-    panel.background = element_rect(fill = "white", colour = "black"),
-    panel.grid = element_blank(),
-    strip.background = element_rect(colour = "white", fill = "white"),
-    plot.title = element_text(hjust = 0.5)
-  )+
   labs(
     x = "Year",
-    y = "Median Productivity (N x W)"
-  )
-pareto_trend_syl
+    y = "Productivity (N x W)"
+  )+
+  theme_fig 
+
+pareto_A_main
 
 
-######## SUPP FIGURE 8a      (pareto optimization trends) ##########
+######## FIGURE S8a      (pareto optimization trends) ##########
 
 # plot along time
-pareto_tred_supp <- ggplot() +
+pareto_A_supp <- ggplot() +
   # neutral baseline in all facets
   geom_ribbon(data = neutral_area,
               aes(x = year,
@@ -2473,12 +2501,20 @@ pareto_tred_supp <- ggplot() +
                  y = med_NW,
                  color = configuration, linetype = proportion_orientalis, 
                  group = interaction(strategy_id, segment_id)),
-             size = 1) +
+             size = 0.7) +
   geom_vline(xintercept = c(100, 500),  linetype= "dashed", color = "black")+
-  scale_x_continuous(breaks = seq(0, 700, by = 100))+
+  
   facet_nested( ~ selection_type + selection_strength, scales = "free_y", 
-               labeller = labeller(selection_type = c( "Neutral" = "Neutral\n(No maladaptation)"))) +
-  scale_linewidth_manual(values = c( "0.1" = 0.5,"0.25" = 0.8, "0.4" = 1.1),name = "Introduction Intensity" )+
+               labeller = labeller( selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"),
+                                   selection_type = as_labeller(c(
+                                     "Neutral" = "Neutral",
+                                     "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
+                                     "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
+                                     "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
+                                   ), label_parsed)
+                                   
+                                   )) +
+  scale_linewidth_manual(values = c( "0.1" = 0.4,"0.25" = 0.8, "0.4" = 1.2),labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity" )+
   scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   scale_color_manual(values = config_palette, name = "Configuration") +
@@ -2491,12 +2527,12 @@ pareto_tred_supp <- ggplot() +
   )+
   labs(
     x = "Year",
-    y = "Median Productivity (N x W)"
+    y = "Productivity (N x W)"
   )
-pareto_tred_supp
+pareto_A_supp
 
 
-######## FIGURE 4b           (pareto opt at t=100) ##############
+######## FIGURE 4b           (pareto opt at t=100,500 ) ##############
 
 dt_merged_summary$selection_type <- factor(dt_merged_summary$selection_type, levels = c("Neutral","Wori > Wf1 > Weu","Weu > Wf1 > Wori","Wf1 > Weu = Wori"))
 best_str$selection_type <- factor(best_str$selection_type, levels = c("Neutral","Wori > Wf1 > Weu","Weu > Wf1 > Wori","Wf1 > Weu = Wori"))
@@ -2510,22 +2546,27 @@ legend_vals <- c(
 )
 
 
-## ONLY EUROPEAN BEECH S (MAIN?)
-
 # remove "No introduction" scenario -- keep only selection against slyvatica
 dt_sub <- subset(dt_merged_summary,year %in% c(100,500) & selection_type %in% c("Wori > Wf1 > Weu")& configuration!= "No introduction")
 best_sub <- subset(best_str,year %in% c(100,500)& selection_type %in% c("Wori > Wf1 > Weu")& configuration!= "No introduction")
 
-pareto_syl <- ggplot(best_sub, aes(x = med_cost, y = med_NW)) +
+pareto_B_main <- ggplot(best_sub, aes(x = med_cost, y = med_NW)) +
   geom_point(data = dt_sub,
              aes(x = med_cost, y = med_NW),
              inherit.aes = FALSE,
              color = "black",
-             alpha = 0.8)+
+             alpha = 0.7)+
 
-  geom_point(data = best_sub,aes(size = med_hyb_prop, color = configuration ), alpha = 0.8)+
+  geom_point(data = best_sub,aes(size = med_hyb_prop, color = configuration,shape = factor(proportion_orientalis) ), alpha = 1)+
   #geom_line(data = best_sub, aes(group = interaction(selection_type, selection_strength)),color = "red") +
-  geom_text(data =best_sub, aes(label = proportion_orientalis), vjust = -0.8) +
+  #geom_text(data =best_sub, aes(label = proportion_orientalis), vjust = -0.8) +
+  
+  ## point for no introduction --?
+  geom_point(data = subset(dt_merged_summary,configuration=="No introduction"& year ==100),
+             aes(x = year,
+                 y = med_NW),
+             color = "black",
+             shape = 4, size = 2) +
   scale_color_manual(values = config_palette, name = "Configuration") +
   scale_size_continuous(
     name = "Hybrid proportion",
@@ -2533,29 +2574,35 @@ pareto_syl <- ggplot(best_sub, aes(x = med_cost, y = med_NW)) +
     labels = scales::percent_format(accuracy = 1),
     range = c(2, 10)
   )+
-  labs(y = "Median Productivity (N x W)",
+  scale_shape_manual( name = "Introduction Intensity", values = c(1, 10, 16),  labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%") ) +
+  
+  labs(y = "Productivity (N x W)",
        x = "Estimated cost") +
   facet_nested(year ~  selection_strength, scales = "free_y", 
                labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
-  theme_fig +
+  theme_fig 
   theme(
     panel.background = element_rect(fill = "white", colour = "black"),
     panel.grid = element_blank(),
     strip.background = element_rect(colour = "white", fill = "white"),
     plot.title = element_text(hjust = 0.5)
   )
-pareto_syl
+  
+pareto_B_main
 
-######## SUPP FIGURE 8b      (pareto opt at t=100) ##############
+
+######## FIGURE S8b      (pareto opt at t=100) ##############
 
 dt_sub2 <- subset(dt_merged_summary,year %in% c(100,500) & selection_type %in% c("Weu > Wf1 > Wori", "Wf1 > Weu = Wori") & configuration!= "No introduction")
 best_sub2 <- subset(best_str,year %in% c(100,500)& selection_type %in% c("Weu > Wf1 > Wori", "Wf1 > Weu = Wori")& configuration!= "No introduction")
 
-pareto_supp <- ggplot(dt_sub2, aes(x = med_cost, y = med_NW)) +
-  geom_point(color = "black") +
-  geom_point(data = best_sub2,aes(size = med_hyb_prop, color = configuration ), alpha = 0.8)+
+pareto_B_supp <- ggplot(dt_sub2, aes(x = med_cost, y = med_NW)) +
+  geom_point(color = "black",alpha = 0.7) +
+  geom_point(data = best_sub2,aes(size = med_hyb_prop, color = configuration,shape = factor(proportion_orientalis)  ), alpha = 1)+
+
+  
   #geom_line(data = best_sub2, aes(group = interaction(selection_type, selection_strength)),color = "red") +
-  geom_text(data =best_sub2, aes(label = proportion_orientalis), vjust = -0.9) +
+  #geom_text(data =best_sub2, aes(label = proportion_orientalis), vjust = -0.9) +
   scale_color_manual(values = config_palette, name = "Configuration") +
   scale_size_continuous(
     name = "Hybrid proportion",
@@ -2563,58 +2610,88 @@ pareto_supp <- ggplot(dt_sub2, aes(x = med_cost, y = med_NW)) +
     labels = scales::percent_format(accuracy = 1),
     range = c(2, 10)
   )+
-  labs(y = "Median Productivity (N x W)",
+  scale_shape_manual(
+    name = "Introduction Intensity",
+    values = c(1, 10, 16),  labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%") 
+    #labels = scales::percent_format(accuracy = 1)
+  ) +
+  
+  labs(y = "Productivity (N x W)",
        x = "Estimated cost") +
   facet_nested(year ~ selection_type + selection_strength, scales = "free_y",    labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
-  theme_fig +
+  theme_fig 
   theme(
     panel.background = element_rect(fill = "white", colour = "black"),
     panel.grid = element_blank(),
     strip.background = element_rect(colour = "white", fill = "white"),
     plot.title = element_text(hjust = 0.5)
   )
-pareto_supp
+  pareto_B_supp
 
 
 
 ######## FINAL FIGURE 4      (pareto optimization) #############
 
 # combine plots
-syl_combined <- (pareto_trend_syl / pareto_syl) +
-  plot_layout(guides = "collect", heights = c(1, 2)) +
-  plot_annotation(tag_levels = "a") &  
+pareto_main <- ((pareto_A_main +
+                   theme(plot.margin = margin(b = 0))) / (pareto_B_main+ theme(strip.text.x = element_blank()))) +
+  plot_layout(heights = c(1, 1)) +
+  plot_annotation(tag_levels = "A") &  
   theme(
     legend.position = "right",
-    plot.tag = element_text(size = 25, face = "bold")
+    plot.tag = element_text(size =14, face = "bold")
   )
-syl_combined
+pareto_main
 
 
 ggsave(
-  paste0(fig_path,"/Pareto_sylvatica.png"),
-  plot = last_plot(),   # or assign your plot to an object and use plot = p
-  width = 15,
-  height = 12,
-  units = "in"
+  filename = file.path(fig_path, "Figure4.png"),
+  plot = pareto_main, 
+  width =10,
+  height = 8,
+  units = "in", 
+  dpi = 600
+)
+
+ggsave(
+  filename = file.path(fig_path, "Figure4.pdf"),
+  plot = pareto_main, 
+  width =10,
+  height =8,
+  units = "in", 
+  device = cairo_pdf
 )
 
 
-######## FINAL SUPP FIGURE 8 (pareto optimizaion) #############
-others_combined <- (pareto_tred_supp / pareto_supp) +
-  plot_layout(guides = "collect", heights = c(1, 2)) +
-  plot_annotation(tag_levels = "a") &  
+
+######## FINAL FIGURE S8 (pareto optimizaion) #############
+pareto_supp <- ((pareto_A_supp  +
+                       theme(plot.margin = margin(b = 0))) / (pareto_B_supp+ theme(strip.text.x = element_blank()))) +
+  plot_layout(heights = c(1, 1)) +
+  plot_annotation(tag_levels = "A") &  
   theme(
     legend.position = "right",
-    plot.tag = element_text(size = 25, face = "bold")
+    plot.tag = element_text(size =14, face = "bold")
   )
-others_combined
+pareto_supp
 
 
 ggsave(
-  paste0(fig_path,"/Pareto_supplementary.png"),
-  plot = last_plot(),   # or assign your plot to an object and use plot = p
-  width = 22,
-  height = 14,
-  units = "in"
+  filename = file.path(fig_path, "FigureS8.png"),
+  plot = pareto_supp, 
+  width =13,
+  height = 8,
+  units = "in", 
+  dpi = 600
 )
+
+ggsave(
+  filename = file.path(fig_path, "FigureS8.pdf"),
+  plot = pareto_supp, 
+  width =13,
+  height =8,
+  units = "in", 
+  device = cairo_pdf
+)
+
 
