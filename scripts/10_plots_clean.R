@@ -333,8 +333,8 @@ genotypes <- tibble(
 )
 
 theta_df <- tibble(
-  theta_name = c("Wori > Wf1 > Weu", "Wf1 > Weu = Wori", "Weu > Wf1 > Wori"),
-  theta = c(1, 0, -1)
+  theta_name = c("Wori > Wf1 > Weu", "Weu > Wf1 > Wori", "Wf1 > Weu = Wori"),
+  theta = c(1, -1, 0)
 )
 
 plot_data <- expand_grid(
@@ -355,7 +355,7 @@ plot_data <- expand_grid(
     stage = factor(stage, levels = stages),
     theta_name = factor(
       theta_name,
-      levels = c("Wori > Wf1 > Weu", "Wf1 > Weu = Wori", "Weu > Wf1 > Wori")
+      levels = c("Wori > Wf1 > Weu", "Weu > Wf1 > Wori", "Wf1 > Weu = Wori")
     )
   )
 
@@ -369,7 +369,16 @@ beech_cols <- c(
 selection <- ggplot(plot_data, aes(stage, W, color = genotype, group = genotype)) +
   geom_line(linewidth = 0.6) +
   geom_point(size = 1.6) +
-  facet_grid(strength ~ theta_name) +
+  facet_grid(
+    strength ~ theta_name,
+    labeller = labeller(
+      theta_name = as_labeller(c(
+        "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
+        "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
+        "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
+      ), label_parsed)
+    )
+  ) +
   scale_y_continuous(limits = c(0.5, 1), breaks = seq(0.5, 1, 0.1)) +
   scale_color_manual(values = beech_cols) +
   labs(
@@ -1121,7 +1130,168 @@ ggplot(subset(dt2_median_patch_summary_sub, age_class == 3& year==500),
   labs(title = "Spatial distribution of W ADULTS at t = 500") 
 
 
-######## FIGURE S2       (MISSING) ##########
+######## FIGURE S2  (demographic / density-regulation parameterization) ##########
+
+suppressPackageStartupMessages({
+  library(data.table)
+  library(stringr)
+  library(ggplot2)
+  library(scales)
+  library(patchwork)
+})
+
+## ---- paths: point this at the parameterization runs ----
+param_root <- file.path("manuscript", "supplementary", "parameterization")
+runs_root  <- file.path(param_root, "parameterization_runs")
+
+## ---- which slice to summarise ----
+configuration          <- "dispersed"   # representative config used for calibration
+layout_run             <- 1
+p_focus                <- 25             # 25% introduction
+gen_max                <- 1000
+max_internal_replicate <- 50
+GEN_MAX_PLOT           <- 200            # x-axis window for the figure
+
+## ---- find demography .txt files for this config + run ----
+run_str     <- sprintf("r%02d", as.integer(layout_run))
+demog_files <- list.files(file.path(runs_root, configuration),
+                          recursive = TRUE, full.names = TRUE, pattern = "\\.txt$")
+path_norm   <- gsub("\\\\", "/", demog_files)
+demog_files <- demog_files[
+  grepl("/run/[^/]+\\.txt$", path_norm) &
+    !grepl("_bygen\\.txt$", path_norm) &
+    !grepl("\\.log$", path_norm) &
+    grepl(paste0("/", run_str, "/"), path_norm)
+]
+if (!is.na(p_focus)) {
+  demog_files <- demog_files[grepl(sprintf("_p%d_", as.integer(p_focus)),
+                                   basename(demog_files))]
+}
+stopifnot(length(demog_files) > 0)
+
+parse_meta <- function(path) {
+  m <- str_match(
+    basename(path),
+    "^(.+?)_p(\\d+)_r(\\d+)_k(\\d+(?:\\.\\d+)?)_b(\\d+(?:\\.\\d+)?)(?:_|\\.|$)"
+  )
+  if (any(is.na(m))) stop("Could not parse metadata from: ", basename(path))
+  data.table(configuration = m[, 2], ori_proportion = as.integer(m[, 3]),
+             layout_run = as.integer(m[, 4]),
+             k = as.numeric(m[, 5]), b = as.numeric(m[, 6]))
+}
+
+cols_to_read <- c("replicate", "generation", "pop.tot",
+                  "off.tot", "a0.tot", "a1.tot", "a2.tot", "a3.tot")
+
+## read + reshape once (one rbindlist; no redundant work inside a loop)
+demog_long <- rbindlist(lapply(demog_files, function(f) {
+  meta   <- parse_meta(f)
+  header <- names(fread(f, nrows = 0))
+  dt     <- fread(f, select = intersect(cols_to_read, header))
+  if ("off.tot" %in% names(dt) && !"a0.tot" %in% names(dt)) {
+    setnames(dt, "off.tot", "a0.tot")            # harmonise offspring column name
+  }
+  dt <- cbind(dt, meta)
+  melt(dt,
+       id.vars = c("replicate", "generation", "configuration",
+                   "ori_proportion", "layout_run", "k", "b"),
+       measure.vars  = patterns("\\.tot$"),
+       variable.name = "stage", value.name = "N")
+}), use.names = TRUE, fill = TRUE)
+
+demog_long <- demog_long[replicate %between% c(1, max_internal_replicate) &
+                           generation <= gen_max]
+if (!is.na(p_focus)) demog_long <- demog_long[ori_proportion == as.integer(p_focus)]
+
+## ---- stage labels: match the age classes used in Fig. 1b ----
+stage_labs <- c("pop.tot" = "Total", "a0.tot" = "Seedlings", "a1.tot" = "Saplings",
+                "a2.tot" = "Juveniles", "a3.tot" = "Adults")
+demog_long[, stage_label := stage_labs[as.character(stage)]]   # index by name, not factor code
+
+stage_levels <- c("Seedlings", "Saplings", "Juveniles", "Adults")
+
+## Okabe-Ito (colour-blind safe), ordered seedling -> adult; adults = strong blue
+stage_pal <- c("Seedlings" = "#E69F00", "Saplings" = "#009E73",
+               "Juveniles" = "#56B4E9", "Adults" = "#0072B2")
+
+## ---- median + IQR across replicates (per k, b, stage, generation) ----
+demog_iqr <- demog_long[
+  stage_label %in% stage_levels & generation <= GEN_MAX_PLOT,
+  .(med = median(N, na.rm = TRUE),
+    q25 = quantile(N, 0.25, na.rm = TRUE),
+    q75 = quantile(N, 0.75, na.rm = TRUE)),
+  by = .(k, b, stage_label, generation)
+]
+demog_iqr[, stage_label := factor(stage_label, levels = stage_levels)]
+
+## retained (K, b) combination to outline in both panels
+retained <- data.table(k = 30, b = 0.03)
+
+## italic K / b strip labels (matches the math styling used in Figs 2-4)
+lab_kb <- label_bquote(rows = italic(b) == .(b), cols = italic(K) == .(k))
+
+TARGET_LO <- 40; TARGET_HI <- 60; TARGET_MID <- 50
+
+## ---- Panel A: all life stages ----
+pA <- ggplot(demog_iqr, aes(generation, colour = stage_label)) +
+  geom_ribbon(aes(ymin = q25, ymax = q75, fill = stage_label),
+              alpha = 0.18, linewidth = 0, show.legend = FALSE) +
+  geom_line(aes(y = med), linewidth = 0.6) +
+  geom_rect(data = retained, inherit.aes = FALSE,
+            aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+            fill = NA, colour = "grey15", linewidth = 0.9) +
+  facet_grid(b ~ k, scales = "free_y", labeller = lab_kb) +
+  scale_colour_manual(values = stage_pal, drop = FALSE) +
+  scale_fill_manual(values = stage_pal, drop = FALSE, guide = "none") +
+  scale_x_continuous(limits = c(0, GEN_MAX_PLOT), breaks = c(0, 50, 100, 150, 200),
+                     expand = expansion(mult = c(0.01, 0.02))) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "Years", y = "Abundance", colour = "Life stage") +
+  guides(colour = guide_legend(override.aes = list(linewidth = 2, alpha = 1))) +
+  theme_fig +
+  theme(legend.position = "bottom",
+        strip.text = element_text(size = 10))
+
+## ---- Panel B: adults only, with target band (40-60) and reference at 50 ----
+adult_iqr  <- demog_iqr[stage_label == "Adults"]
+facet_keys <- unique(adult_iqr[, .(k, b)])
+
+pB <- ggplot(adult_iqr, aes(generation)) +
+  geom_rect(data = facet_keys, inherit.aes = FALSE,
+            aes(xmin = -Inf, xmax = Inf, ymin = TARGET_LO, ymax = TARGET_HI),
+            fill = "grey80", alpha = 0.5) +
+  geom_hline(yintercept = TARGET_MID, linetype = "dashed",
+             linewidth = 0.3, colour = "grey40") +
+  geom_ribbon(aes(ymin = q25, ymax = q75),
+              fill = stage_pal[["Adults"]], alpha = 0.35, linewidth = 0) +
+  geom_line(aes(y = med), colour = stage_pal[["Adults"]], linewidth = 0.8) +
+  geom_rect(data = retained, inherit.aes = FALSE,
+            aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+            fill = NA, colour = "grey15", linewidth = 0.9) +
+  facet_grid(b ~ k, scales = "free_y", labeller = lab_kb) +
+  scale_x_continuous(limits = c(0, GEN_MAX_PLOT), breaks = c(0, 50, 100, 150, 200),
+                     expand = expansion(mult = c(0.01, 0.02))) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 4), labels = scales::comma,
+                     expand = expansion(mult = c(0.02, 0.06))) +
+  labs(x = "Years", y = "Adult abundance") +
+  theme_fig +
+  theme(strip.text = element_text(size = 10))
+
+## ---- combine: A (all stages) over B (adults) ----
+figS2 <- pA / pB +
+  plot_layout(heights = c(2, 1.35), guides = "collect") +
+  plot_annotation(tag_levels = "A") &
+  theme(legend.position = "bottom",
+        plot.tag = element_text(size = 14, face = "bold"))
+
+figS2
+
+ggsave(file.path(fig_path, "FigureS2.png"), figS2,
+       width = 9, height = 11, units = "in", dpi = 600, bg = "white")
+ggsave(file.path(fig_path, "FigureS2.pdf"), figS2,
+       width = 9, height = 11, units = "in", device = cairo_pdf)
+
+
 ######## FIGURE 2 AND FIGURE S3 (genotype P1 trends) #############
 
 dt <- readRDS(file.path(res_path, "Quanti_data_processed.RDS"))
