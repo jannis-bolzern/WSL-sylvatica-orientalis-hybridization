@@ -1,7 +1,9 @@
+
 library(data.table)
 library(stringr)
 
 # reading and parsing all quanti files and combining into two big datasets
+# summarizing at whole scneario level and then at patch level
 # outputs : Quanti_data.RDS
 
 
@@ -17,11 +19,10 @@ parse_quanti_metadata <- function(path) {
   proportion_orientalis <- as.numeric(str_extract(bn, "(?<=_p)\\d+"))/ 100
   generation     <- as.numeric(str_extract(bn, "(?<=_)\\d{4}(?=_)"))
   replicate      <- as.numeric(str_extract(bn, "(?<=_)\\d+(?=\\.quanti$)"))
-  run            <- sub(".*\\/(r[0-9]+)\\/.*", "\\1", path)
+  run            <- str_match(bn, "_(r\\d+)_")[,2]   ## changed : before --> sub(".*\\/(r[0-9]+)\\/.*", "\\1", path)  
   sel_full       <- str_match(bn, "_r\\d+_(.*?)_k")[,2]
   sel_type       <- ifelse(sel_full == "neutral","neutral",str_extract(sel_full, "^(sel_[EO]|heterosis)"))
   sel_strength   <- ifelse(sel_full == "neutral",NA,str_extract(sel_full, "(low|mid|high)$"))
-  
     
   data.table(
     file = path,
@@ -90,12 +91,14 @@ quanti_data_clean <- copy(quanti_data)
 # convert types
 quanti_data_clean[, selection_type := factor(selection_type, levels = c("neutral", "sel_E", "sel_O", "heterosis"))]
 quanti_data_clean[, selection_strength := factor(selection_strength, levels = c("low", "mid", "high"))]
-quanti_data_clean[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects"))]
+quanti_data_clean[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects", "no_introduction"))]
 quanti_data_clean$sim_id <- with(quanti_data_clean,paste(configuration,proportion_orientalis,selection_type,selection_strength,sep = "_"))
 
 saveRDS(quanti_data_clean, (file.path(res_path, "Quanti_data_raw.RDS")))
 
 gc()
+
+
 
 ##########################################################################################################
 
@@ -115,10 +118,10 @@ rm(quanti_data_clean)
 
 ## labels for plotting
 sel_map <- c(
-  heterosis = "Heterosis",
+  heterosis = "Wf1 > Weu = Wori",
   neutral = "Neutral",
-  sel_E   = "European b. selected against",
-  sel_O   = "Oriental b. selected against"
+  sel_E   = "Wori > Wf1 > Weu",
+  sel_O   = "Weu > Wf1 > Wori"
 )
 quanti_data[, selection_label := sel_map[as.character(selection_type)]]
 
@@ -126,7 +129,8 @@ config_map <- c(
   dispersed = "Dispersed",
   multi_cluster = "Multiple clusters",
   one_cluster   = "Single cluster",
-  transects   = "Transects"
+  transects   = "Transects", 
+  no_introduction = "No introduction"
 )
 quanti_data[, config_label := config_map[as.character(configuration)]]
 
@@ -144,7 +148,6 @@ quanti_data[, proportion_orientalis := factor(proportion_orientalis)]
 
 # save 
 saveRDS(quanti_data, (file.path(res_path, "Quanti_data_processed.RDS")))
-
 
 ##########################################################################################################
 
@@ -216,8 +219,8 @@ quanti_data_patch_summary[, proportion_orientalis :=  factor(proportion_oriental
 
 saveRDS(quanti_data_patch_summary,file.path(res_path, "Hyb_proportions_patch_summary_replicates.RDS") )
 
-############################### spatial patterns of % orientalis genotype
 
+############################### spatial patterns of % orientalis genotype
 
 
 # select only some years (otherwise too slow)
@@ -244,7 +247,6 @@ by = .(configuration, proportion_orientalis, selection_type,selection_strength, 
 
 # reorder proportion orientalis 
 p1_patch_summary[, proportion_orientalis :=  factor(proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(proportion_orientalis))))))]
-p1_patch_summary$selection_type <- factor(p1_patch_summary$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
 
 saveRDS(p1_patch_summary,file.path(res_path, "Orientalis_genot_patch_summary_replicates.RDS") )
 

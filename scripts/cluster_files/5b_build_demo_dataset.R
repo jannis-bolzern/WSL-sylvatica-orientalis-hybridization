@@ -95,7 +95,7 @@ combined_pop_data[, sim_id := paste(configuration, proportion_orientalis,selecti
 # convert to factors
 combined_pop_data[, selection_type := factor(selection_type, levels = c("neutral", "sel_E", "sel_O", "heterosis"))]
 combined_pop_data[, selection_strength := factor(selection_strength, levels = c("low", "mid", "high"))]
-combined_pop_data[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects"))]
+combined_pop_data[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects", "no_introduction"))]
 
 # convert generation column to year
 setnames(combined_pop_data, "generation", "year")
@@ -122,10 +122,10 @@ saveRDS(combined_pop_data, file = file.path(res_path,"Demo_data_raw.RDS"))
 setDT(combined_pop_data)
 
 sel_map <- c(
-  heterosis = "Heterosis",
+  heterosis = "Wf1 > Weu = Wori",
   neutral = "Neutral",
-  sel_E   = "European b. selected against",
-  sel_O   = "Oriental b. selected against"
+  sel_E   = "Wori > Wf1 > Weu",
+  sel_O   = "Weu > Wf1 > Wori"
 )
 combined_pop_data[, selection_label := sel_map[as.character(selection_type)]]
 
@@ -133,7 +133,8 @@ config_map <- c(
   dispersed = "Dispersed",
   multi_cluster = "Multiple clusters",
   one_cluster   = "Single cluster",
-  transects   = "Transects"
+  transects   = "Transects", 
+  no_introduction = "No introduction"
 )
 combined_pop_data[, config_label := config_map[as.character(configuration)]]
 

@@ -6,6 +6,8 @@ library(stringr)
 # outputs : Fit_data.RDS --- etc
 
 
+### TO CORRECT, THERE SI AN ERROR IN READING OR PARSING OR PROCESSING RUN COLUMN --> IT IS STORED AS THE PATH
+
 res_path <- "/home/stefanin/nemo/nemo_files/nemoage0.32.6b/results/"
 
 ########### FIT FILES
@@ -18,7 +20,7 @@ parse_fit_metadata <- function(path) {
   proportion_orientalis <- as.numeric(str_extract(bn, "(?<=_p)\\d+"))/100
   generation     <- as.numeric(str_extract(bn, "(?<=_)\\d{4}(?=_)"))
   replicate      <- as.numeric(str_extract(bn, "(?<=_)\\d+(?=\\.fit$)"))
-  run            <- sub(".*\\/(r[0-9]+)\\/.*", "\\1", path)
+  run            <- str_match(bn, "_(r\\d+)_")[,2]   ### changed : before ---> sub(".*\\/(r[0-9]+)\\/.*", "\\1", path)
   sel_full       <- str_match(bn, "_r\\d+_(.*?)_k")[,2]
   sel_type       <- ifelse(sel_full == "neutral","neutral",str_extract(sel_full, "^(sel_[EO]|heterosis)"))
   sel_strength   <- ifelse(sel_full == "neutral",NA,str_extract(sel_full, "(low|mid|high)$"))
@@ -82,7 +84,7 @@ fit_data[, sim_id := paste(configuration, proportion_orientalis,selection_type,s
 # convert to factors
 fit_data[, selection_type := factor(selection_type, levels = c("neutral", "sel_E", "sel_O", "heterosis"))]
 fit_data[, selection_strength := factor(selection_strength, levels = c( "low", "mid", "high"))]
-fit_data[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects"))]
+fit_data[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects","no_introduction"))]
 
 # make sure is numeric
 fit_data$year <- as.numeric(fit_data$year)
@@ -103,10 +105,10 @@ saveRDS(fit_data, file = file.path(res_path,"Fit_data_raw.RDS"))
 setDT(fit_data)
 
 sel_map <- c(
-  heterosis = "Heterosis",
+  heterosis = "Wf1 > Weu = Wori",
   neutral = "Neutral",
-  sel_E   = "European b. selected against",
-  sel_O   = "Oriental b. selected against"
+  sel_E   = "Wori > Wf1 > Weu",
+  sel_O   = "Weu > Wf1 > Wori"
 )
 fit_data[, selection_label := sel_map[as.character(selection_type)]]
 
@@ -114,7 +116,8 @@ config_map <- c(
   dispersed = "Dispersed",
   multi_cluster = "Multiple clusters",
   one_cluster   = "Single cluster",
-  transects   = "Transects"
+  transects   = "Transects", 
+  no_introduction = "No introduction"
 )
 fit_data[, config_label := config_map[as.character(configuration)]]
 

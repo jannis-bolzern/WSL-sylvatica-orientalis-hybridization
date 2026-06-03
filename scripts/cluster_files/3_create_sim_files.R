@@ -38,7 +38,7 @@ GRID_SHP <- file.path(DIRS$grid, "Grid_4x4m_100x100m.shp")
 # ---- Scenario design
 PROP_LEVELS    <- c(0.10, 0.25, 0.40)
 CONFIG_LEVELS  <- c("dispersed", "one_cluster", "multi_cluster", "transects")
-N_LAYOUT_RUNS  <- 5  # "biological replicates" per (config × proportion)
+N_LAYOUT_RUNS  <- 5  # "biological replicates" per (config Ã— proportion)
 
 # ---- Planting scheme for Orientalis
 PLANTING_SCHEME <- c(0, 20, 0, 0)  # stage0..stage3

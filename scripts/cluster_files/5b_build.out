@@ -1,0 +1,456 @@
+
+R version 4.3.0 (2023-04-21) -- "Already Tomorrow"
+Copyright (C) 2023 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R ist freie Software und kommt OHNE JEGLICHE GARANTIE.
+Sie sind eingeladen, es unter bestimmten Bedingungen weiter zu verbreiten.
+Tippen Sie 'license()' or 'licence()' für Details dazu.
+
+R ist ein Gemeinschaftsprojekt mit vielen Beitragenden.
+Tippen Sie 'contributors()' für mehr Information und 'citation()',
+um zu erfahren, wie R oder R packages in Publikationen zitiert werden können.
+
+Tippen Sie 'demo()' für einige Demos, 'help()' für on-line Hilfe, oder
+'help.start()' für eine HTML Browserschnittstelle zur Hilfe.
+Tippen Sie 'q()', um R zu verlassen.
+
+> 
+> 
+> library(data.table)
+> library(stringr)
+> 
+> # reading and parsing all demo files (.txt) and combining into one dataset
+> # summarizing data
+> # outputs : Demo_data.RDS
+> 
+> 
+> ####### DEMOGRAPHIC DATA
+> 
+> ## parse metadata from filename
+> parse_demo_metadata <- function(path) {
++   
++   bn <- basename(path)
++   
++   # from filename 
++   configuration  <- str_match(bn, "^(.*?)_p")[,2]
++   proportion_orientalis <-  as.numeric(str_extract(bn, "(?<=_p)\\d+"))/ 100
++   run            <- str_match(bn, "_(r\\d+)_")[,2]
++   sel_full       <- str_match(bn, "_r\\d+_(.*?)_k")[,2]
++   sel_type       <- ifelse(sel_full == "neutral","neutral",str_extract(sel_full, "^(sel_[EO]|heterosis)"))
++   sel_strength   <- ifelse(sel_full == "neutral",NA,str_extract(sel_full, "(low|mid|high)$"))
++   
++   k <- as.numeric(str_match(bn, "_k([0-9.]+)")[,2])
++   b <- as.numeric(str_match(bn, "_b([0-9]+\\.?[0-9]*)(?=\\.txt$)")[,2])
++   
++   data.table(
++     file = path,
++     configuration = configuration,
++     proportion_orientalis = proportion_orientalis,
++     selection = sel_full,
++     selection_type = sel_type, 
++     selection_strength = sel_strength,
++     run = run,
++     k = k,
++     b = b
++   )
++ }
+> 
+> ## get demographic files
+> res_path <- "/home/stefanin/nemo/nemo_files/nemoage0.32.6b/results/"
+> file_pattern <- "*.txt$"
+> 
+> demo_files <- list.files(
++   path = res_path,
++   recursive = TRUE,
++   full.names = TRUE,
++   pattern = file_pattern
++ )
+> 
+> # do not read the _bygen files
+> demo_files <- demo_files[!grepl("bygen", demo_files)]
+> 
+> # do not read burnin results
+> demo_files <- demo_files[!grepl("burnin", demo_files)]
+> 
+> ## build metadata table
+> meta_dt <- rbindlist(
++   lapply(demo_files, parse_demo_metadata),
++   fill = TRUE
++ )
+> 
+> ## read and process demographic files
+> cols_to_read = c("replicate", "generation", "pop.tot", "a0.tot", "a1.tot","a2.tot", "a3.tot")
+> demo_data <- rbindlist(
++   lapply(meta_dt$file, function(f) {
++     
++     dt <- fread(f, select = cols_to_read)
++     dt[, file := f]
++     
++     melt(
++       dt,
++       id.vars = c("replicate", "generation", "file"),
++       measure.vars = patterns(".tot"),
++       variable.name = "stage",
++       value.name = "N_stage"
++     )
++   }),
++   fill = TRUE
++ )
+> 
+> ## merge metadata
+> combined_pop_data <- merge(
++   demo_data,
++   meta_dt,
++   by = "file",
++   all.x = TRUE
++ )
+> 
+> 
+> ## get a unique sim ID
+> combined_pop_data[, sim_id := paste(configuration, proportion_orientalis,selection_type,selection_strength, k, b, sep = "_")]
+> # convert to factors
+> combined_pop_data[, selection_type := factor(selection_type, levels = c("neutral", "sel_E", "sel_O", "heterosis"))]
+> combined_pop_data[, selection_strength := factor(selection_strength, levels = c("low", "mid", "high"))]
+> combined_pop_data[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects", "no_introduction"))]
+> 
+> # convert generation column to year
+> setnames(combined_pop_data, "generation", "year")
+> 
+> ##### checks 
+> # number of runs per combination 
+> aggregate(run ~ configuration + proportion_orientalis  + selection_type + selection_strength,
++           data = combined_pop_data,
++           FUN = function(x) length(unique(x)))
+      configuration proportion_orientalis selection_type selection_strength run
+1   no_introduction                  0.00          sel_E                low   1
+2         dispersed                  0.10          sel_E                low   5
+3       one_cluster                  0.10          sel_E                low   5
+4     multi_cluster                  0.10          sel_E                low   5
+5         transects                  0.10          sel_E                low   5
+6         dispersed                  0.25          sel_E                low   5
+7       one_cluster                  0.25          sel_E                low   5
+8     multi_cluster                  0.25          sel_E                low   5
+9         transects                  0.25          sel_E                low   5
+10        dispersed                  0.40          sel_E                low   5
+11      one_cluster                  0.40          sel_E                low   5
+12    multi_cluster                  0.40          sel_E                low   5
+13        transects                  0.40          sel_E                low   5
+14        dispersed                  0.10          sel_O                low   5
+15      one_cluster                  0.10          sel_O                low   5
+16    multi_cluster                  0.10          sel_O                low   5
+17        transects                  0.10          sel_O                low   5
+18        dispersed                  0.25          sel_O                low   5
+19      one_cluster                  0.25          sel_O                low   5
+20    multi_cluster                  0.25          sel_O                low   5
+21        transects                  0.25          sel_O                low   5
+22        dispersed                  0.40          sel_O                low   5
+23      one_cluster                  0.40          sel_O                low   5
+24    multi_cluster                  0.40          sel_O                low   5
+25        transects                  0.40          sel_O                low   5
+26        dispersed                  0.10      heterosis                low   5
+27      one_cluster                  0.10      heterosis                low   5
+28    multi_cluster                  0.10      heterosis                low   5
+29        transects                  0.10      heterosis                low   5
+30        dispersed                  0.25      heterosis                low   5
+31      one_cluster                  0.25      heterosis                low   5
+32    multi_cluster                  0.25      heterosis                low   5
+33        transects                  0.25      heterosis                low   5
+34        dispersed                  0.40      heterosis                low   5
+35      one_cluster                  0.40      heterosis                low   5
+36    multi_cluster                  0.40      heterosis                low   5
+37        transects                  0.40      heterosis                low   5
+38  no_introduction                  0.00          sel_E                mid   1
+39        dispersed                  0.10          sel_E                mid   5
+40      one_cluster                  0.10          sel_E                mid   5
+41    multi_cluster                  0.10          sel_E                mid   5
+42        transects                  0.10          sel_E                mid   5
+43        dispersed                  0.25          sel_E                mid   5
+44      one_cluster                  0.25          sel_E                mid   5
+45    multi_cluster                  0.25          sel_E                mid   5
+46        transects                  0.25          sel_E                mid   5
+47        dispersed                  0.40          sel_E                mid   5
+48      one_cluster                  0.40          sel_E                mid   5
+49    multi_cluster                  0.40          sel_E                mid   5
+50        transects                  0.40          sel_E                mid   5
+51        dispersed                  0.10          sel_O                mid   5
+52      one_cluster                  0.10          sel_O                mid   5
+53    multi_cluster                  0.10          sel_O                mid   5
+54        transects                  0.10          sel_O                mid   5
+55        dispersed                  0.25          sel_O                mid   5
+56      one_cluster                  0.25          sel_O                mid   5
+57    multi_cluster                  0.25          sel_O                mid   5
+58        transects                  0.25          sel_O                mid   5
+59        dispersed                  0.40          sel_O                mid   5
+60      one_cluster                  0.40          sel_O                mid   5
+61    multi_cluster                  0.40          sel_O                mid   5
+62        transects                  0.40          sel_O                mid   5
+63        dispersed                  0.10      heterosis                mid   5
+64      one_cluster                  0.10      heterosis                mid   5
+65    multi_cluster                  0.10      heterosis                mid   5
+66        transects                  0.10      heterosis                mid   5
+67        dispersed                  0.25      heterosis                mid   5
+68      one_cluster                  0.25      heterosis                mid   5
+69    multi_cluster                  0.25      heterosis                mid   5
+70        transects                  0.25      heterosis                mid   5
+71        dispersed                  0.40      heterosis                mid   5
+72      one_cluster                  0.40      heterosis                mid   5
+73    multi_cluster                  0.40      heterosis                mid   5
+74        transects                  0.40      heterosis                mid   5
+75  no_introduction                  0.00          sel_E               high   1
+76        dispersed                  0.10          sel_E               high   5
+77      one_cluster                  0.10          sel_E               high   5
+78    multi_cluster                  0.10          sel_E               high   5
+79        transects                  0.10          sel_E               high   5
+80        dispersed                  0.25          sel_E               high   5
+81      one_cluster                  0.25          sel_E               high   5
+82    multi_cluster                  0.25          sel_E               high   5
+83        transects                  0.25          sel_E               high   5
+84        dispersed                  0.40          sel_E               high   5
+85      one_cluster                  0.40          sel_E               high   5
+86    multi_cluster                  0.40          sel_E               high   5
+87        transects                  0.40          sel_E               high   5
+88        dispersed                  0.10          sel_O               high   5
+89      one_cluster                  0.10          sel_O               high   5
+90    multi_cluster                  0.10          sel_O               high   5
+91        transects                  0.10          sel_O               high   5
+92        dispersed                  0.25          sel_O               high   5
+93      one_cluster                  0.25          sel_O               high   5
+94    multi_cluster                  0.25          sel_O               high   5
+95        transects                  0.25          sel_O               high   5
+96        dispersed                  0.40          sel_O               high   5
+97      one_cluster                  0.40          sel_O               high   5
+98    multi_cluster                  0.40          sel_O               high   5
+99        transects                  0.40          sel_O               high   5
+100       dispersed                  0.10      heterosis               high   5
+101     one_cluster                  0.10      heterosis               high   5
+102   multi_cluster                  0.10      heterosis               high   5
+103       transects                  0.10      heterosis               high   5
+104       dispersed                  0.25      heterosis               high   5
+105     one_cluster                  0.25      heterosis               high   5
+106   multi_cluster                  0.25      heterosis               high   5
+107       transects                  0.25      heterosis               high   5
+108       dispersed                  0.40      heterosis               high   5
+109     one_cluster                  0.40      heterosis               high   5
+110   multi_cluster                  0.40      heterosis               high   5
+111       transects                  0.40      heterosis               high   5
+> 
+> unique(combined_pop_data[, .(selection, selection_type, selection_strength)])
+         selection selection_type selection_strength
+            <char>         <fctr>             <fctr>
+ 1: heterosis_high      heterosis               high
+ 2:  heterosis_low      heterosis                low
+ 3:  heterosis_mid      heterosis                mid
+ 4:        neutral        neutral               <NA>
+ 5:     sel_E_high          sel_E               high
+ 6:      sel_E_low          sel_E                low
+ 7:      sel_E_mid          sel_E                mid
+ 8:     sel_O_high          sel_O               high
+ 9:      sel_O_low          sel_O                low
+10:      sel_O_mid          sel_O                mid
+> 
+> # check for NA values
+> anyNA(combined_pop_data)
+[1] TRUE
+> colSums(is.na(combined_pop_data))
+                 file             replicate                  year 
+                    0                     0                     0 
+                stage               N_stage         configuration 
+                    0                     0                     0 
+proportion_orientalis             selection        selection_type 
+                    0                     0                     0 
+   selection_strength                   run                     k 
+               183000                     0                     0 
+                    b                sim_id 
+                    0                     0 
+> 
+> # check number of replicates
+> rep_check <- aggregate(replicate ~ sim_id,data = combined_pop_data,FUN = function(x) length(unique(x)))
+> rep_check
+                                       sim_id replicate
+1        dispersed_0.1_heterosis_high_30_0.03        10
+2         dispersed_0.1_heterosis_low_30_0.03        10
+3         dispersed_0.1_heterosis_mid_30_0.03        10
+4            dispersed_0.1_neutral_NA_30_0.03        10
+5            dispersed_0.1_sel_E_high_30_0.03        10
+6             dispersed_0.1_sel_E_low_30_0.03        10
+7             dispersed_0.1_sel_E_mid_30_0.03        10
+8            dispersed_0.1_sel_O_high_30_0.03        10
+9             dispersed_0.1_sel_O_low_30_0.03        10
+10            dispersed_0.1_sel_O_mid_30_0.03        10
+11      dispersed_0.25_heterosis_high_30_0.03        10
+12       dispersed_0.25_heterosis_low_30_0.03        10
+13       dispersed_0.25_heterosis_mid_30_0.03        10
+14          dispersed_0.25_neutral_NA_30_0.03        10
+15          dispersed_0.25_sel_E_high_30_0.03        10
+16           dispersed_0.25_sel_E_low_30_0.03        10
+17           dispersed_0.25_sel_E_mid_30_0.03        10
+18          dispersed_0.25_sel_O_high_30_0.03        10
+19           dispersed_0.25_sel_O_low_30_0.03        10
+20           dispersed_0.25_sel_O_mid_30_0.03        10
+21       dispersed_0.4_heterosis_high_30_0.03        10
+22        dispersed_0.4_heterosis_low_30_0.03        10
+23        dispersed_0.4_heterosis_mid_30_0.03        10
+24           dispersed_0.4_neutral_NA_30_0.03        10
+25           dispersed_0.4_sel_E_high_30_0.03        10
+26            dispersed_0.4_sel_E_low_30_0.03        10
+27            dispersed_0.4_sel_E_mid_30_0.03        10
+28           dispersed_0.4_sel_O_high_30_0.03        10
+29            dispersed_0.4_sel_O_low_30_0.03        10
+30            dispersed_0.4_sel_O_mid_30_0.03        10
+31   multi_cluster_0.1_heterosis_high_30_0.03        10
+32    multi_cluster_0.1_heterosis_low_30_0.03        10
+33    multi_cluster_0.1_heterosis_mid_30_0.03        10
+34       multi_cluster_0.1_neutral_NA_30_0.03        10
+35       multi_cluster_0.1_sel_E_high_30_0.03        10
+36        multi_cluster_0.1_sel_E_low_30_0.03        10
+37        multi_cluster_0.1_sel_E_mid_30_0.03        10
+38       multi_cluster_0.1_sel_O_high_30_0.03        10
+39        multi_cluster_0.1_sel_O_low_30_0.03        10
+40        multi_cluster_0.1_sel_O_mid_30_0.03        10
+41  multi_cluster_0.25_heterosis_high_30_0.03        10
+42   multi_cluster_0.25_heterosis_low_30_0.03        10
+43   multi_cluster_0.25_heterosis_mid_30_0.03        10
+44      multi_cluster_0.25_neutral_NA_30_0.03        10
+45      multi_cluster_0.25_sel_E_high_30_0.03        10
+46       multi_cluster_0.25_sel_E_low_30_0.03        10
+47       multi_cluster_0.25_sel_E_mid_30_0.03        10
+48      multi_cluster_0.25_sel_O_high_30_0.03        10
+49       multi_cluster_0.25_sel_O_low_30_0.03        10
+50       multi_cluster_0.25_sel_O_mid_30_0.03        10
+51   multi_cluster_0.4_heterosis_high_30_0.03        10
+52    multi_cluster_0.4_heterosis_low_30_0.03        10
+53    multi_cluster_0.4_heterosis_mid_30_0.03        10
+54       multi_cluster_0.4_neutral_NA_30_0.03        10
+55       multi_cluster_0.4_sel_E_high_30_0.03        10
+56        multi_cluster_0.4_sel_E_low_30_0.03        10
+57        multi_cluster_0.4_sel_E_mid_30_0.03        10
+58       multi_cluster_0.4_sel_O_high_30_0.03        10
+59        multi_cluster_0.4_sel_O_low_30_0.03        10
+60        multi_cluster_0.4_sel_O_mid_30_0.03        10
+61       no_introduction_0_sel_E_high_30_0.03        50
+62        no_introduction_0_sel_E_low_30_0.03        50
+63        no_introduction_0_sel_E_mid_30_0.03        50
+64     one_cluster_0.1_heterosis_high_30_0.03        10
+65      one_cluster_0.1_heterosis_low_30_0.03        10
+66      one_cluster_0.1_heterosis_mid_30_0.03        10
+67         one_cluster_0.1_neutral_NA_30_0.03        10
+68         one_cluster_0.1_sel_E_high_30_0.03        10
+69          one_cluster_0.1_sel_E_low_30_0.03        10
+70          one_cluster_0.1_sel_E_mid_30_0.03        10
+71         one_cluster_0.1_sel_O_high_30_0.03        10
+72          one_cluster_0.1_sel_O_low_30_0.03        10
+73          one_cluster_0.1_sel_O_mid_30_0.03        10
+74    one_cluster_0.25_heterosis_high_30_0.03        10
+75     one_cluster_0.25_heterosis_low_30_0.03        10
+76     one_cluster_0.25_heterosis_mid_30_0.03        10
+77        one_cluster_0.25_neutral_NA_30_0.03        10
+78        one_cluster_0.25_sel_E_high_30_0.03        10
+79         one_cluster_0.25_sel_E_low_30_0.03        10
+80         one_cluster_0.25_sel_E_mid_30_0.03        10
+81        one_cluster_0.25_sel_O_high_30_0.03        10
+82         one_cluster_0.25_sel_O_low_30_0.03        10
+83         one_cluster_0.25_sel_O_mid_30_0.03        10
+84     one_cluster_0.4_heterosis_high_30_0.03        10
+85      one_cluster_0.4_heterosis_low_30_0.03        10
+86      one_cluster_0.4_heterosis_mid_30_0.03        10
+87         one_cluster_0.4_neutral_NA_30_0.03        10
+88         one_cluster_0.4_sel_E_high_30_0.03        10
+89          one_cluster_0.4_sel_E_low_30_0.03        10
+90          one_cluster_0.4_sel_E_mid_30_0.03        10
+91         one_cluster_0.4_sel_O_high_30_0.03        10
+92          one_cluster_0.4_sel_O_low_30_0.03        10
+93          one_cluster_0.4_sel_O_mid_30_0.03        10
+94       transects_0.1_heterosis_high_30_0.03        10
+95        transects_0.1_heterosis_low_30_0.03        10
+96        transects_0.1_heterosis_mid_30_0.03        10
+97           transects_0.1_neutral_NA_30_0.03        10
+98           transects_0.1_sel_E_high_30_0.03        10
+99            transects_0.1_sel_E_low_30_0.03        10
+100           transects_0.1_sel_E_mid_30_0.03        10
+101          transects_0.1_sel_O_high_30_0.03        10
+102           transects_0.1_sel_O_low_30_0.03        10
+103           transects_0.1_sel_O_mid_30_0.03        10
+104     transects_0.25_heterosis_high_30_0.03        10
+105      transects_0.25_heterosis_low_30_0.03        10
+106      transects_0.25_heterosis_mid_30_0.03        10
+107         transects_0.25_neutral_NA_30_0.03        10
+108         transects_0.25_sel_E_high_30_0.03        10
+109          transects_0.25_sel_E_low_30_0.03        10
+110          transects_0.25_sel_E_mid_30_0.03        10
+111         transects_0.25_sel_O_high_30_0.03        10
+112          transects_0.25_sel_O_low_30_0.03        10
+113          transects_0.25_sel_O_mid_30_0.03        10
+114      transects_0.4_heterosis_high_30_0.03        10
+115       transects_0.4_heterosis_low_30_0.03        10
+116       transects_0.4_heterosis_mid_30_0.03        10
+117          transects_0.4_neutral_NA_30_0.03        10
+118          transects_0.4_sel_E_high_30_0.03        10
+119           transects_0.4_sel_E_low_30_0.03        10
+120           transects_0.4_sel_E_mid_30_0.03        10
+121          transects_0.4_sel_O_high_30_0.03        10
+122           transects_0.4_sel_O_low_30_0.03        10
+123           transects_0.4_sel_O_mid_30_0.03        10
+> 
+> saveRDS(combined_pop_data, file = file.path(res_path,"Demo_data_raw.RDS"))
+> 
+> ## labels for plotting
+> setDT(combined_pop_data)
+> 
+> sel_map <- c(
++   heterosis = "Wf1 > Weu = Wori",
++   neutral = "Neutral",
++   sel_E   = "Wori > Wf1 > Weu",
++   sel_O   = "Weu > Wf1 > Wori"
++ )
+> combined_pop_data[, selection_label := sel_map[as.character(selection_type)]]
+> 
+> config_map <- c(
++   dispersed = "Dispersed",
++   multi_cluster = "Multiple clusters",
++   one_cluster   = "Single cluster",
++   transects   = "Transects", 
++   no_introduction = "No introduction"
++ )
+> combined_pop_data[, config_label := config_map[as.character(configuration)]]
+> 
+> stage_map <- c(
++   pop.tot = "Total Population",
++   a0.tot = "Stage 0", 
++   a1.tot = "Stage 1", 
++   a2.tot = "Stage 2", 
++   a3.tot = "Stage 3")
+> 
+> combined_pop_data[, stage_label := stage_map[as.character(stage)]]
+> 
+> 
+> # tidy up cols
+> combined_pop_data <-combined_pop_data[, c("file", "configuration","selection","stage", "selection_type") := NULL]
+> setcolorder(combined_pop_data, c("sim_id", "config_label","proportion_orientalis", "selection_label", "selection_strength","run","replicate","year", "stage_label","k","b","N_stage"))
+> colnames(combined_pop_data)<-c("sim_id", "configuration","proportion_orientalis","selection_type","selection_strength", "run","replicate", "year", "age_class" ,"k","b","N_stage" )
+> combined_pop_data[, year := as.numeric(year)]
+> combined_pop_data[, proportion_orientalis := factor(proportion_orientalis)]
+> 
+> ## save master file
+> saveRDS(combined_pop_data, file = file.path(res_path,"Demo_data_processed.RDS"))
+> rm(demo_data, demo_files)
+> 
+> ###############################################################################################################
+> 
+> ## summarize across replicates
+> combined_pop_data_summary <- combined_pop_data[
++   , .(
++     mean_N = mean(N_stage, na.rm = TRUE),
++     sd_N   = sd(N_stage, na.rm = TRUE), 
++     q10_N = quantile(N_stage, 0.1, na.rm = TRUE),
++     q50_N = quantile(N_stage, 0.5, na.rm = TRUE),
++     q90_N = quantile(N_stage, 0.9, na.rm = TRUE)
++   ),
++   by = .(configuration,proportion_orientalis,selection_type,selection_strength,year,age_class
++   )
++ ]
+> 
+> write.csv(combined_pop_data_summary, file.path(res_path, "Demo_data_summary_replicates.csv"))
+> 
+> 
+> 

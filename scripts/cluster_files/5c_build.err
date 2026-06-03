@@ -1,0 +1,4 @@
+Fehler in kruskal.test.default(x = mf[[1L]], g = mf[[2L]]) : 
+  alle Beobachtungen sind in derselben Gruppe
+Ruft auf: kruskal.test ... kruskal.test.formula -> kruskal.test -> kruskal.test.default
+Ausführung angehalten

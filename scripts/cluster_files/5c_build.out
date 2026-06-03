@@ -1,0 +1,202 @@
+
+R version 4.3.0 (2023-04-21) -- "Already Tomorrow"
+Copyright (C) 2023 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R ist freie Software und kommt OHNE JEGLICHE GARANTIE.
+Sie sind eingeladen, es unter bestimmten Bedingungen weiter zu verbreiten.
+Tippen Sie 'license()' or 'licence()' für Details dazu.
+
+R ist ein Gemeinschaftsprojekt mit vielen Beitragenden.
+Tippen Sie 'contributors()' für mehr Information und 'citation()',
+um zu erfahren, wie R oder R packages in Publikationen zitiert werden können.
+
+Tippen Sie 'demo()' für einige Demos, 'help()' für on-line Hilfe, oder
+'help.start()' für eine HTML Browserschnittstelle zur Hilfe.
+Tippen Sie 'q()', um R zu verlassen.
+
+> library(data.table)
+> library(stringr)
+> 
+> # reading and parsing all fit files (.txt) and combining into one dataset
+> # summarizing at whole scneario level and then at patch level
+> # outputs : Fit_data.RDS --- etc
+> 
+> 
+> ### TO CORRECT, THERE SI AN ERROR IN READING OR PARSING OR PROCESSING RUN COLUMN --> IT IS STORED AS THE PATH
+> 
+> res_path <- "/home/stefanin/nemo/nemo_files/nemoage0.32.6b/results/"
+> 
+> ########### FIT FILES
+> 
+> # parse metadata
+> parse_fit_metadata <- function(path) {
++   bn <- basename(path)
++   
++   configuration  <- str_match(bn, "^(.*?)_p")[,2]
++   proportion_orientalis <- as.numeric(str_extract(bn, "(?<=_p)\\d+"))/100
++   generation     <- as.numeric(str_extract(bn, "(?<=_)\\d{4}(?=_)"))
++   replicate      <- as.numeric(str_extract(bn, "(?<=_)\\d+(?=\\.fit$)"))
++   run            <- str_match(bn, "_(r\\d+)_")[,2]   ### changed : before ---> sub(".*\\/(r[0-9]+)\\/.*", "\\1", path)
++   sel_full       <- str_match(bn, "_r\\d+_(.*?)_k")[,2]
++   sel_type       <- ifelse(sel_full == "neutral","neutral",str_extract(sel_full, "^(sel_[EO]|heterosis)"))
++   sel_strength   <- ifelse(sel_full == "neutral",NA,str_extract(sel_full, "(low|mid|high)$"))
++   
++   data.table(
++     file = path, ## needed
++     configuration = configuration,
++     proportion_orientalis = proportion_orientalis,
++     selection = sel_full,
++     selection_type = sel_type, 
++     selection_strength = sel_strength,
++     year = generation,
++     replicate = replicate,
++     run = run
++   )
++ }
+> 
+> 
+> fit_files <- list.files(
++   path = res_path,
++   recursive = TRUE,
++   full.names = TRUE,
++   pattern = "\\.fit$"
++ )
+> # do not read burnin results
+> fit_files <- fit_files[!grepl("burnin", fit_files)]
+> 
+> 
+> # build table
+> meta_dt <- rbindlist(
++   lapply(fit_files, parse_fit_metadata),
++   fill = TRUE
++ )
+> 
+> # attach data to the metadata
+> fit_data <- rbindlist(
++   lapply(meta_dt$file, function(f) {
++     dt <- fread(f, header = FALSE)
++     
++     # enforce correct names
++     setnames(dt, c("pop", "trait", "stage", "age", "isMigrant"))
++     
++     dt[, file := f]
++     dt
++   }),
++   fill = TRUE
++ )
+> 
+> 
+> fit_data <- merge(
++   fit_data,
++   meta_dt,
++   by = "file",
++   all.x = TRUE
++ )
+> 
+> 
+> 
+> ## get a unique sim ID
+> fit_data[, sim_id := paste(configuration, proportion_orientalis,selection_type,selection_strength, sep = "_")]
+> # convert to factors
+> fit_data[, selection_type := factor(selection_type, levels = c("neutral", "sel_E", "sel_O", "heterosis"))]
+> fit_data[, selection_strength := factor(selection_strength, levels = c( "low", "mid", "high"))]
+> fit_data[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects","no_introduction"))]
+> 
+> # make sure is numeric
+> fit_data$year <- as.numeric(fit_data$year)
+> fit_data$replicate <- as.numeric(fit_data$replicate)
+> 
+> 
+> unique(fit_data[, .(selection, selection_type, selection_strength)])
+        selection selection_type selection_strength
+           <char>         <fctr>             <fctr>
+1: heterosis_high      heterosis               high
+2:  heterosis_low      heterosis                low
+3:  heterosis_mid      heterosis                mid
+4:     sel_E_high          sel_E               high
+5:      sel_E_low          sel_E                low
+6:      sel_E_mid          sel_E                mid
+7:     sel_O_high          sel_O               high
+8:      sel_O_low          sel_O                low
+9:      sel_O_mid          sel_O                mid
+> 
+> 
+> # save master file
+> saveRDS(fit_data, file = file.path(res_path,"Fit_data_raw.RDS"))
+> 
+> 
+> ###################################### process dataset
+> 
+> 
+> ## labels for plotting
+> setDT(fit_data)
+> 
+> sel_map <- c(
++   heterosis = "Wf1 > Weu = Wori",
++   neutral = "Neutral",
++   sel_E   = "Wori > Wf1 > Weu",
++   sel_O   = "Weu > Wf1 > Wori"
++ )
+> fit_data[, selection_label := sel_map[as.character(selection_type)]]
+> 
+> config_map <- c(
++   dispersed = "Dispersed",
++   multi_cluster = "Multiple clusters",
++   one_cluster   = "Single cluster",
++   transects   = "Transects", 
++   no_introduction = "No introduction"
++ )
+> fit_data[, config_label := config_map[as.character(configuration)]]
+> 
+> # tidy up cols
+> fit_data <-fit_data[, c("file", "configuration","selection","selection_type","isMigrant") := NULL]
+> 
+> setcolorder(fit_data, c("sim_id", "config_label","proportion_orientalis", "selection_label", "selection_strength", "run", "replicate","year","pop",  "stage", "age","trait" ))
+> colnames(fit_data)  <-c("sim_id", "configuration","proportion_orientalis","selection_type","selection_strength",  "run","replicate", "year","pop" ,"age_class", "age","W" )
+> fit_data[, year := as.numeric(year)]
+> fit_data[, proportion_orientalis := factor(proportion_orientalis)]
+> 
+> 
+> ### ADD THE NEUTRAL DATA (NOT PRESENT IN THIS DATASET BECAUSE W IS ALWAYS 1)
+> # read the quanti dataset for the missing data
+> quanti_data <- readRDS(file.path(res_path, "Quanti_data_processed.RDS"))
+> 
+> neutral_data <- quanti_data[selection_type == "Neutral",
++                     .(sim_id,configuration, proportion_orientalis,selection_type, selection_strength,run, replicate, year, pop, age_class, age)]
+> 
+> neutral_data[, W := 1]
+> # check 
+> colnames(neutral_data) == colnames(fit_data)
+ [1] TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE TRUE
+> 
+> # append
+> fit_data <- rbindlist(list(fit_data, neutral_data), fill = TRUE)
+> 
+> ## save master file
+> saveRDS(fit_data, file = file.path(res_path,"Fit_data_processed.RDS"))
+> 
+> 
+> ## median across individuals of each scenario and each age class (skewed distributions) - replicate level
+> fit_data_median <- fit_data[,.( 
++   med_W = median(W), 
++   q25_W = quantile(W, 0.25, na.rm = T),
++   q75_W = quantile(W, 0.75, na.rm = T)
++ ),
++ by = .(sim_id, configuration, proportion_orientalis, selection_type,selection_strength, year, age_class, run, replicate) ]
+> 
+> gc()
+             used    (Mb)  gc trigger    (Mb)    max used    (Mb)
+Ncells     796424    42.6     2807148   150.0     9145791   488.5
+Vcells 7030665996 53639.8 11882093822 90653.2 10085108977 76943.3
+> 
+> # compare runs results (run = biological replicate of same scenario)
+> fit_data_test <- fit_data_median[
++   configuration == "Dispersed" &
++     proportion_orientalis == 0.1 &
++     selection_type == "Heterosis" &
++     selection_strength == "low" &
++     year == 100 &
++     age_class == 1
++ ]
+> kruskal.test(med_W ~ factor(run), data = fit_data_test)
