@@ -19,7 +19,7 @@ library(tidyr)
 
 res_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/output/analysis"
 #dir.create("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Figures_manuscript")
-fig_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Figures_manuscript"
+fig_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/manuscript/Figures_manuscript"
 
 ## for Evolutionary applications: 
 # figure legends double-spaced on a separate sheet = CAPTION / LEGEND TEXT BELOW THE FIGUREM SUBMITTED SEPARATELY IN THE MANUSCRIPT FILE
@@ -429,7 +429,7 @@ ggsave(
 ######## FIGURE S1       (questionnaires plots) ##########
 
 path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/questionnaires/"
-file <- file.path(path, "Questionnaire_pag1_summary.xlsx")
+file <- file.path(path, "Questionnaire_pag1_summary_2.xlsx")
 dat <- read_excel(file, sheet = 1)
 
 dat <- dat %>%
@@ -437,12 +437,14 @@ dat <- dat %>%
     respondent_group = str_to_title(respondent_group),
     answer_label = factor(
       answer_label,
-      levels = c("does_not_apply", "partially_applies", "assumed", "applies", "unknown"),
-      labels = c("Does not apply", "Partially applies", "Assumed", "Applies", "Unknown")
+      levels = c("does_not_apply", "partially_applies", "assumed", "applies", "missing_or_invalid", "unknown"),
+      labels = c("Does not apply", "Partially applies", "Assumed", "Applies", "Missing", "Unknown")
     )
   )
 
+
 dat_plot <- dat %>%
+  filter(answer_label != "Missing")%>%
   mutate(
     respondent_group = factor(respondent_group, levels = c("Forester", "Researcher")),
     answer_label = factor(
@@ -800,6 +802,9 @@ ggsave(
 )
 
 ##### future introductions
+
+## remove missing or invalid
+
 dat_future_sum <- dat_plot %>%
   filter(str_detect(question_type, "Assessment of future introductions" )) %>%
   group_by(question_type,species,question_group,question_id,question,answer_label
@@ -1918,8 +1923,7 @@ facet_combos <- non_neutral %>%
   dplyr::distinct(selection_type, selection_strength)
 neutral_expanded <- merge( neutral_data, facet_combos, by = NULL)
 
-
-hybprop_trend_syl <- ggplot(subset(non_neutral,age_class=="3"& Genotype=="hyb"&selection_type =="Wori > Wf1 > Weu" & configuration != "No introduction"),  
+hybprop_trend_main <- ggplot(subset(non_neutral,age_class=="3"& Genotype=="hyb"&selection_type =="Wori > Wf1 > Weu" & configuration != "No introduction"),  
                             aes(year, q50,colour =configuration,fill=configuration,
                                 linewidth = proportion_orientalis,
                                 group  =interaction(configuration, proportion_orientalis) 
@@ -1936,7 +1940,7 @@ hybprop_trend_syl <- ggplot(subset(non_neutral,age_class=="3"& Genotype=="hyb"&s
   ) +
   
   geom_line(size = 1) +
-  geom_vline(xintercept=100, linetype="dashed")+
+  #geom_vline(xintercept=100, linetype="dashed")+
   
   scale_colour_manual(values = config_palette, name = "Configuration") +
   scale_fill_manual(values = config_palette) +
@@ -1956,9 +1960,11 @@ hybprop_trend_syl <- ggplot(subset(non_neutral,age_class=="3"& Genotype=="hyb"&s
   )+
   labs(x = "Year", y = "Hybrid proportions")+
   guides(fill="none", color = "none", linetype = "none")+
-  theme_fig
+  theme_fig+
+  theme(panel.spacing.x = unit(4, "pt"))
 
-hybprop_trend_syl
+hybprop_trend_main
+
 
 ######## FIGURE S6a #############
 
@@ -1978,7 +1984,7 @@ hybprop_trend_supp <- ggplot(subset(non_neutral,Genotype=="hyb"&selection_type%i
               fill = "grey70",
   ) +
   geom_line(size = 1) +
-  geom_vline(xintercept=100, linetype="dashed")+
+  #geom_vline(xintercept=100, linetype="dashed")+
   scale_colour_manual(values = config_palette, name = "Configuration") +
   scale_fill_manual(values = config_palette) +
   scale_alpha_manual(values = c("0.1" = 0.3,"0.25" = 0.7,"0.4" = 0.9), labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity")+
@@ -1987,7 +1993,7 @@ hybprop_trend_supp <- ggplot(subset(non_neutral,Genotype=="hyb"&selection_type%i
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   
   labs(x = "Year", y = "Hybrid proportions")+
-
+  
   facet_nested(
     ~  selection_type+ selection_strength,
     labeller = labeller(selection_strength = c(
@@ -2005,7 +2011,10 @@ hybprop_trend_supp <- ggplot(subset(non_neutral,Genotype=="hyb"&selection_type%i
   )+
   
   guides(fill="none", color = "none", linetype = "none")+
-  theme_fig
+  theme_fig+
+  theme(ggh4x.facet.nestline = element_line(size = 1),
+        panel.spacing.x = unit(4, "pt"))
+
 
 
 hybprop_trend_supp
@@ -2068,7 +2077,7 @@ facet_combos <- non_neutral %>%
 
 neutral_expanded <- merge(neutral_data, facet_combos, by = NULL)
 
-NW_trend_syl <- ggplot()+
+NW_trend_main <- ggplot()+
   # neutral baseline in all facets
   geom_ribbon(data = subset(neutral_expanded,selection_type.y =="Wori > Wf1 > Weu" & configuration != "No introduction"), 
               aes(x = year,
@@ -2093,7 +2102,7 @@ NW_trend_syl <- ggplot()+
             aes(x = year,y = q50_NW),
             color = "black",
             linewidth = 1) +
-  geom_vline(xintercept=100, linetype="dashed")+
+  #geom_vline(xintercept=100, linetype="dashed")+
   
   scale_colour_manual(values = config_palette, name = "Configuration") +
   scale_fill_manual(values = config_palette) +
@@ -2105,8 +2114,10 @@ NW_trend_syl <- ggplot()+
   labs(x = "Year", y = "Productivity (N x W)")+
   facet_nested( ~  selection_strength, labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
   guides(fill="none", alpha = "none", linewidth = "none")+
-  theme_fig
-NW_trend_syl
+  theme_fig+
+  theme(panel.spacing.x = unit(4, "pt"))
+NW_trend_main
+
 
 
 ######## FIGURE S6c #############
@@ -2130,7 +2141,7 @@ NW_trend_supp <- ggplot()+
                 linewidth = proportion_orientalis,
                 group =interaction(configuration, proportion_orientalis)
             )) +
-  geom_vline(xintercept=100, linetype="dashed")+
+  #geom_vline(xintercept=100, linetype="dashed")+
   
   scale_colour_manual(values = config_palette, name = "Configuration") +
   scale_fill_manual(values = config_palette) +
@@ -2157,7 +2168,9 @@ NW_trend_supp <- ggplot()+
   )+
   
   guides(fill="none", alpha = "none", linewidth = "none")+
-  theme_fig
+  theme_fig+
+  theme(panel.spacing.x = unit(4, "pt"))
+
 NW_trend_supp
 
 ######## FIGURE 3b and d     (HYBRID PROPORTIONS and NW at t=100) ###############
@@ -2190,7 +2203,7 @@ neutral_ranges[, x := as.numeric(factor(proportion_orientalis))]
 neutral_ranges[, `:=`(xmin = x-0.4,xmax = x+0.4 )]
 
 # subset orientals favoured
-t100_syl_hyb <- ggplot(subset(dt_long,metric%in%c("Hyb_proportion")&selection_type=="Wori > Wf1 > Weu"& proportion_orientalis != 0),
+hybprop_t100_main <- ggplot(subset(dt_long,metric%in%c("Hyb_proportion")&selection_type=="Wori > Wf1 > Weu"& proportion_orientalis != 0),
                        aes(x = factor(proportion_orientalis),
                            y = value,
                            fill = configuration,
@@ -2211,28 +2224,31 @@ t100_syl_hyb <- ggplot(subset(dt_long,metric%in%c("Hyb_proportion")&selection_ty
   facet_nested(metric ~  selection_strength,scales = "free_y", labeller=labeller(metric=c("Hyb_proportion"="Hybrid proportions"), selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
   labs(x = "Introduction Intensity", y = "Hybrid proportions") +
   guides(color = "none", alpha = "none") +
-  theme_fig+
-  theme(panel.background = element_rect(fill = "white", colour = "black"), 
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        
-        strip.text = element_text(),
-        strip.background = element_rect(colour = "white", fill = "white"), 
-        
-        legend.key = element_rect(colour = "white"),
-        legend.key.spacing.y = unit(0.4, 'cm'), 
-        
-        plot.title = element_text(hjust = 0.5))
+  #theme_fig+
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.spacing.x = unit(4, "pt"),
+    panel.border = element_rect(fill = NA,linewidth = 1,linetype = "dashed"),
+    axis.line = element_blank(),
+    
+    strip.text = element_text(),
+    strip.background = element_rect(fill = "white"),
+    legend.key = element_rect(colour = "white"),
+    legend.key.spacing.y = unit(0.4, "cm"),
+    plot.title = element_text(hjust = 0.5)
+  )
+hybprop_t100_main
 
-t100_syl_hyb
 
-t100_syl_NW <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type=="Wori > Wf1 > Weu"& proportion_orientalis != 0),
-                      aes(x = factor(proportion_orientalis),
-                          y = value,
-                          fill = configuration,
-                         
-                          group = interaction(proportion_orientalis, configuration)), 
-                      colour = "black") +
+NW_t100_main <-  ggplot(subset(dt_long,metric%in%c("NW")&selection_type=="Wori > Wf1 > Weu"& proportion_orientalis != 0),
+                        aes(x = factor(proportion_orientalis),
+                            y = value,
+                            fill = configuration,
+                            
+                            group = interaction(proportion_orientalis, configuration)), 
+                        colour = "black") +
   geom_rect(
     data = subset(neutral_ranges,metric%in%c("NW")),
     aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, alpha = proportion_orientalis),
@@ -2249,28 +2265,31 @@ t100_syl_NW <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type=="Wori > W
   facet_nested(metric ~  selection_strength,scales = "free_y", labeller=labeller(metric=c("Hyb_proportion"="Hybrid proportions"),  selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
   labs(x = "Introduction Intensity", y = "Productivity (N x W)") +
   guides(color = "none", alpha = "none") +
-  theme_fig+
-  theme(panel.background = element_rect(fill = "white", colour = "black"), 
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        
-        strip.text = element_text(),
-        strip.background = element_rect(colour = "white", fill = "white"), 
-        
-        legend.key = element_rect(colour = "white"),
-        legend.key.spacing.y = unit(0.4, 'cm'), 
-        
-        plot.title = element_text(hjust = 0.5))
+  #theme_fig+
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.spacing.x = unit(4, "pt"),
+    panel.border = element_rect(fill = NA,linewidth = 1,linetype = "dashed"),
+    axis.line = element_blank(),
+    
+    strip.text = element_text(),
+    strip.background = element_rect(fill = "white"),
+    legend.key = element_rect(colour = "white"),
+    legend.key.spacing.y = unit(0.4, "cm"),
+    plot.title = element_text(hjust = 0.5)
+  )
 
-t100_syl_NW
+NW_t100_main
 
 ######## FIGURE S6b and d    (HYBRID PROPORTIONS and NW at t=100) ###############
 
-t100_supp_hyb <- ggplot(subset(dt_long,metric%in%c("Hyb_proportion")&selection_type%in% c("Weu > Wf1 > Wori", "Wf1 > Weu = Wori") & proportion_orientalis != 0),
+hybprop_t100_supp <- ggplot(subset(dt_long,metric%in%c("Hyb_proportion")&selection_type%in% c("Weu > Wf1 > Wori", "Wf1 > Weu = Wori") & proportion_orientalis != 0),
                         aes(x = factor(proportion_orientalis),
                             y = value,
                             fill = configuration,
-                           
+                            
                             group = interaction(proportion_orientalis, configuration)), 
                         colour = "black") +
   geom_rect(
@@ -2296,29 +2315,34 @@ t100_supp_hyb <- ggplot(subset(dt_long,metric%in%c("Hyb_proportion")&selection_t
                                    "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
                                    "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
                                  ), label_parsed)
-        )
-      )+
+               )
+  )+
   labs(x = "Introduction Intensity", y = "Hybrid proportions") +
   guides(color = "none", alpha = "none") +
-  theme_fig+
-  theme(panel.background = element_rect(fill = "white", colour = "black"), 
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        
-        strip.text = element_text(),
-        legend.key = element_rect(colour = "white"),
-        legend.key.spacing.y = unit(0.4, 'cm'), 
-        strip.background = element_rect(colour = "white", fill = "white"), 
-        plot.title = element_text(hjust = 0.5))
+  #theme_fig+
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.spacing.x = unit(4, "pt"),
+    panel.border = element_rect(fill = NA,linewidth = 1,linetype = "dashed"),
+    axis.line = element_blank(),
+    
+    strip.text = element_text(),
+    strip.background = element_rect(fill = "white"),
+    legend.key = element_rect(colour = "white"),
+    legend.key.spacing.y = unit(0.4, "cm"),
+    plot.title = element_text(hjust = 0.5)
+  )
 
-t100_supp_hyb
+hybprop_t100_supp
 
 
-t100_supp_nw <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type%in% c("Weu > Wf1 > Wori", "Wf1 > Weu = Wori") & proportion_orientalis != 0),
+NW_t100_supp <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type%in% c("Weu > Wf1 > Wori", "Wf1 > Weu = Wori") & proportion_orientalis != 0),
                        aes(x = factor(proportion_orientalis),
                            y = value,
                            fill = configuration,
-                          
+                           
                            group = interaction(proportion_orientalis, configuration)), 
                        colour = "black") +
   geom_rect(
@@ -2348,30 +2372,34 @@ t100_supp_nw <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type%in% c("We
   )+
   labs(x = "Introduction Intensity", y = "Productivity (N x W)") +
   guides(color = "none", alpha = "none") +
-  theme_fig+
-  theme(panel.background = element_rect(fill = "white", colour = "black"), 
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        
-        strip.text = element_text(),
-        legend.key = element_rect(colour = "white"),
-        legend.key.spacing.y = unit(0.4, 'cm'), 
-        strip.background = element_rect(colour = "white", fill = "white"), 
-        plot.title = element_text(hjust = 0.5))
+  #theme_fig+
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.spacing.x = unit(4, "pt"),
+    panel.border = element_rect(fill = NA,linewidth = 1,linetype = "dashed"),
+    axis.line = element_blank(),
+    
+    strip.text = element_text(),
+    strip.background = element_rect(fill = "white"),
+    legend.key = element_rect(colour = "white"),
+    legend.key.spacing.y = unit(0.4, "cm"),
+    plot.title = element_text(hjust = 0.5)
+  )
 
-t100_supp_nw
+NW_t100_supp
 
 
 ######## FINAL FIGURE 3 ############
 
-## COMBINE EUROPEAN BECH MAIN
-# combine plots
-syl_combined <- (
-  (hybprop_trend_syl +
-    theme(plot.margin = margin(b = 0))) /
-    (t100_syl_hyb + theme(strip.text.x = element_blank(), strip.text.y = element_blank(),plot.margin = margin(t = 0, b = 5))) /
-    (NW_trend_syl + theme(strip.text.x = element_blank(),plot.margin = margin(b = 0))) /
-    (t100_syl_NW + theme(strip.text.x = element_blank(), strip.text.y = element_blank(), plot.margin = margin(t = 0, b = 5)))
+## MAIN
+
+fig3_main <- (
+    (hybprop_trend_main + theme(plot.margin = margin(b = 0))) /
+    (hybprop_t100_main + theme(strip.text.x = element_blank(), strip.text.y = element_blank(),plot.margin = margin(t = 0, b = 5))) /
+    (NW_trend_main + theme(strip.text.x = element_blank(),plot.margin = margin(b = 0))) /
+    (NW_t100_main + theme(strip.text.x = element_blank(), strip.text.y = element_blank(), plot.margin = margin(t = 0, b = 5)))
 ) +
   plot_layout(guides = "collect", heights = c(1.3,0.8,1.3,0.8)) +
   plot_annotation(tag_levels = "A") &
@@ -2379,11 +2407,11 @@ syl_combined <- (
     legend.position = "right",
     plot.tag = element_text(size = 14, face = "bold")
   )
-syl_combined
+fig3_main
 
 ggsave(
-  filename = file.path(fig_path, "Figure3.png"),
-  plot = syl_combined, 
+  filename = file.path(fig_path, "Figure3_2.png"),
+  plot = fig3_main, 
   width =10,
   height = 10,
   units = "in", 
@@ -2391,8 +2419,8 @@ ggsave(
 )
 
 ggsave(
-  filename = file.path(fig_path, "Figure3.pdf"),
-  plot = syl_combined, 
+  filename = file.path(fig_path, "Figure3_2.pdf"),
+  plot = fig3_main, 
   width =10,
   height =10,
   units = "in", 
@@ -2401,10 +2429,10 @@ ggsave(
 
 ######## FINAL FIGURE S6 ############
 
-supp_combined <- (hybprop_trend_supp / 
-                    (t100_supp_hyb  + theme(strip.text.x = element_blank(), strip.text.y = element_blank(), plot.margin = margin(t = 0, b = 5))) /
-                    (NW_trend_supp  + theme(strip.text.x = element_blank(),plot.margin = margin(b = 0))) /
-                    (t100_supp_nw + theme(strip.text.x = element_blank(), strip.text.y = element_blank(), plot.margin = margin(t = 0, b = 5)))
+figS6 <- (hybprop_trend_supp / 
+            (hybprop_t100_supp  + theme(strip.text.x = element_blank(), strip.text.y = element_blank(), plot.margin = margin(t = 0, b = 5))) /
+            (NW_trend_supp  + theme(strip.text.x = element_blank(),plot.margin = margin(b = 0))) /
+            (NW_t100_supp + theme(strip.text.x = element_blank(), strip.text.y = element_blank(), plot.margin = margin(t = 0, b = 5)))
 )+
   plot_layout(guides = "collect",heights = c(1.3,0.8,1.3,0.8)) +
   plot_annotation(tag_levels = "A") &  
@@ -2413,11 +2441,11 @@ supp_combined <- (hybprop_trend_supp /
     legend.position = "right",
     plot.tag = element_text(size = 14, face = "bold")
   )
-supp_combined
+figS6
 
 ggsave(
   filename = file.path(fig_path, "FigureS6.png"),
-  plot = supp_combined, 
+  plot = figS6, 
   width =15,
   height = 10,
   units = "in", 
@@ -2426,7 +2454,7 @@ ggsave(
 
 ggsave(
   filename = file.path(fig_path, "FigureS6.pdf"),
-  plot = supp_combined, 
+  plot = figS6, 
   width =15,
   height = 10,
   units = "in", 
@@ -2627,8 +2655,8 @@ pareto_A_main <- ggplot() +
                  color = configuration,
                  group = interaction(strategy_id, segment_id)),
              size = 0.7) +
-  geom_vline(xintercept = c(100, 500),  linetype= "dashed", color = "black")+
-
+  #geom_vline(xintercept = c(100, 500),  linetype= "dashed", color = "black")+
+  
   scale_color_manual(values = config_palette, name = "Configuration") +
   scale_linewidth_manual(values = c( "0.1" = 0.4,"0.25" = 0.8, "0.4" = 1.2),labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity" )+
   scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) +
@@ -2638,7 +2666,10 @@ pareto_A_main <- ggplot() +
     x = "Year",
     y = "Productivity (N x W)"
   )+
-  theme_fig 
+  theme_fig+
+  theme(panel.spacing.x = unit(4, "pt"),
+        legend.key.spacing.y = unit(0.05, "cm"), 
+        legend.position = "right")
 
 pareto_A_main
 
@@ -2646,7 +2677,7 @@ pareto_A_main
 ######## FIGURE S8a      (pareto optimization trends) ##########
 
 # plot along time
-pareto_A_supp <- ggplot() +
+pareto_A_supp <-ggplot() +
   # neutral baseline in all facets
   geom_ribbon(data = neutral_area,
               aes(x = year,
@@ -2672,33 +2703,33 @@ pareto_A_supp <- ggplot() +
                  color = configuration, linetype = proportion_orientalis, 
                  group = interaction(strategy_id, segment_id)),
              size = 0.7) +
-  geom_vline(xintercept = c(100, 500),  linetype= "dashed", color = "black")+
+  #geom_vline(xintercept = c(100, 500),  linetype= "dashed", color = "black")+
   
   facet_nested( ~ selection_type + selection_strength, scales = "free_y", 
-               labeller = labeller( selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"),
-                                   selection_type = as_labeller(c(
-                                     "Neutral" = "Neutral",
-                                     "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
-                                     "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
-                                     "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
-                                   ), label_parsed)
-                                   
-                                   )) +
+                labeller = labeller( selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"),
+                                     selection_type = as_labeller(c(
+                                       "Neutral" = "Neutral",
+                                       "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
+                                       "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
+                                       "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
+                                     ), label_parsed)
+                                     
+                )) +
   scale_linewidth_manual(values = c( "0.1" = 0.4,"0.25" = 0.8, "0.4" = 1.2),labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity" )+
   scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   scale_color_manual(values = config_palette, name = "Configuration") +
-  theme_fig +
-  theme(
-    panel.background = element_rect(fill = "white", colour = "black"),
-    panel.grid = element_blank(),
-    strip.background = element_rect(colour = "white", fill = "white"),
-    plot.title = element_text(hjust = 0.5)
-  )+
   labs(
     x = "Year",
     y = "Productivity (N x W)"
-  )
+  )+
+  theme_fig +
+  theme(  ggh4x.facet.nestline = element_line(size = 1),
+          panel.spacing.x = unit(4, "pt"),
+          legend.key.spacing.y = unit(0.05, "cm"), 
+          legend.position = "right")
+
+
 pareto_A_supp
 
 
@@ -2726,7 +2757,7 @@ pareto_B_main <- ggplot(best_sub, aes(x = med_cost, y = med_NW)) +
              inherit.aes = FALSE,
              color = "black",
              alpha = 0.7)+
-
+  
   geom_point(data = best_sub,aes(size = med_hyb_prop, color = configuration,shape = factor(proportion_orientalis) ), alpha = 1)+
   #geom_line(data = best_sub, aes(group = interaction(selection_type, selection_strength)),color = "red") +
   #geom_text(data =best_sub, aes(label = proportion_orientalis), vjust = -0.8) +
@@ -2749,12 +2780,25 @@ pareto_B_main <- ggplot(best_sub, aes(x = med_cost, y = med_NW)) +
   labs(y = "Productivity (N x W)",
        x = "Estimated cost") +
   facet_nested(year ~  selection_strength, scales = "free_y", 
-               labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
-  theme_fig 
+               labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"),
+                                   year = c("100"="t = 100", "500"="t = 500"))) +
+  #theme_fig+
   theme(
-    panel.background = element_rect(fill = "white", colour = "black"),
-    panel.grid = element_blank(),
-    strip.background = element_rect(colour = "white", fill = "white"),
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.spacing.x = unit(4, "pt"),
+    panel.spacing.y = unit(35, "pt"),
+    panel.border = element_rect(fill = NA,linewidth = 1,linetype = "dashed"),
+    axis.line = element_blank(),
+    
+    strip.text = element_text(),
+    strip.background = element_rect(fill = "white"),
+    legend.key = element_rect(colour = "white"),
+    legend.key.spacing.y = unit(0.05, "cm"),
+    legend.position = "right",
+    legend.title = element_text(size = 9),
+    legend.text  = element_text(size = 8),
     plot.title = element_text(hjust = 0.5)
   )
   
@@ -2766,10 +2810,10 @@ pareto_B_main
 dt_sub2 <- subset(dt_merged_summary,year %in% c(100,500) & selection_type %in% c("Weu > Wf1 > Wori", "Wf1 > Weu = Wori") & configuration!= "No introduction")
 best_sub2 <- subset(best_str,year %in% c(100,500)& selection_type %in% c("Weu > Wf1 > Wori", "Wf1 > Weu = Wori")& configuration!= "No introduction")
 
-pareto_B_supp <- ggplot(dt_sub2, aes(x = med_cost, y = med_NW)) +
+pareto_B_supp <-  ggplot(dt_sub2, aes(x = med_cost, y = med_NW)) +
   geom_point(color = "black",alpha = 0.7) +
   geom_point(data = best_sub2,aes(size = med_hyb_prop, color = configuration,shape = factor(proportion_orientalis)  ), alpha = 1)+
-
+  
   
   #geom_line(data = best_sub2, aes(group = interaction(selection_type, selection_strength)),color = "red") +
   #geom_text(data =best_sub2, aes(label = proportion_orientalis), vjust = -0.9) +
@@ -2788,80 +2832,128 @@ pareto_B_supp <- ggplot(dt_sub2, aes(x = med_cost, y = med_NW)) +
   
   labs(y = "Productivity (N x W)",
        x = "Estimated cost") +
-  facet_nested(year ~ selection_type + selection_strength, scales = "free_y",    labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
-  theme_fig 
+  facet_nested(year ~ selection_type + selection_strength, scales = "free_y",    
+               labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"),year = c("100"="t = 100", "500"="t = 500"),
+                                   selection_type = as_labeller(c(
+                                     "Neutral" = "Neutral",
+                                     "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
+                                     "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
+                                     "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
+                                   ), label_parsed))) +
+  #theme_fig+
   theme(
-    panel.background = element_rect(fill = "white", colour = "black"),
-    panel.grid = element_blank(),
-    strip.background = element_rect(colour = "white", fill = "white"),
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.spacing.x = unit(4, "pt"),
+    panel.spacing.y = unit(35, "pt"),
+    panel.border = element_rect(fill = NA,linewidth = 1,linetype = "dashed"),
+    axis.line = element_blank(),
+    
+    strip.text = element_text(),
+    strip.background = element_rect(fill = "white"),
+    legend.key = element_rect(colour = "white"),
+    legend.key.spacing.y = unit(0.05, "cm"),
+    legend.position = "right",
+    legend.title = element_text(size = 9),
+    legend.text  = element_text(size = 8),
     plot.title = element_text(hjust = 0.5)
   )
+
+
   pareto_B_supp
 
 
 
 ######## FINAL FIGURE 4      (pareto optimization) #############
 
-# combine plots
-pareto_main <- ((pareto_A_main +
-                   theme(plot.margin = margin(b = 0))) / (pareto_B_main+ theme(strip.text.x = element_blank()))) +
-  plot_layout(heights = c(1, 1)) +
-  plot_annotation(tag_levels = "A") &  
-  theme(
-    legend.position = "right",
-    plot.tag = element_text(size =14, face = "bold")
+  pareto_A_leg <- pareto_A_main +
+    theme(
+      legend.position = c(1.02, 0.5),
+      legend.justification = c(0, 0.5),
+      plot.margin = margin(b = 10, r = 90)
+    )
+  
+  pareto_B_leg <- pareto_B_main +
+    theme(
+      strip.text.x = element_blank(),
+      legend.position = c(1.02, 0.5),
+      legend.justification = c(0, 0.5),
+      plot.margin = margin(r = 80)
+    )
+  
+  pareto_main <- (pareto_A_leg / pareto_B_leg) +
+    plot_layout(heights = c(0.8, 1.2)) +
+    plot_annotation(tag_levels = "A") &
+    theme(
+      plot.tag = element_text(size = 14, face = "bold")
+    )
+  
+  
+  
+  ggsave(
+    filename = file.path(fig_path, "Figure4_2.png"),
+    plot = pareto_main, 
+    width =10,
+    height = 8,
+    units = "in", 
+    dpi = 600
   )
-pareto_main
-
-
-ggsave(
-  filename = file.path(fig_path, "Figure4.png"),
-  plot = pareto_main, 
-  width =10,
-  height = 8,
-  units = "in", 
-  dpi = 600
-)
-
-ggsave(
-  filename = file.path(fig_path, "Figure4.pdf"),
-  plot = pareto_main, 
-  width =10,
-  height =8,
-  units = "in", 
-  device = cairo_pdf
-)
-
+  
+  ggsave(
+    filename = file.path(fig_path, "Figure4_2.pdf"),
+    plot = pareto_main, 
+    width =10,
+    height =8,
+    units = "in", 
+    device = cairo_pdf
+  )
+  
 
 
 ######## FINAL FIGURE S8 (pareto optimizaion) #############
-pareto_supp <- ((pareto_A_supp  +
-                       theme(plot.margin = margin(b = 0))) / (pareto_B_supp+ theme(strip.text.x = element_blank()))) +
-  plot_layout(heights = c(1, 1)) +
-  plot_annotation(tag_levels = "A") &  
-  theme(
-    legend.position = "right",
-    plot.tag = element_text(size =14, face = "bold")
+  pareto_A_leg <- pareto_A_supp +
+    theme(
+      legend.position = c(1.02, 0.5),
+      legend.justification = c(0, 0.5),
+      plot.margin = margin(b = 10, r = 90)
+    )
+  
+  pareto_B_leg <- pareto_B_supp +
+    theme(
+      strip.text.x = element_blank(),
+      legend.position = c(1.02, 0.5),
+      legend.justification = c(0, 0.5),
+      plot.margin = margin(r = 80)
+    )
+  
+  
+  pareto_supp <- (pareto_A_leg / pareto_B_leg) +
+    plot_layout(heights = c(0.8, 1.2)) +
+    plot_annotation(tag_levels = "A") &
+    theme(
+      plot.tag = element_text(size = 14, face = "bold")
+    )
+  pareto_supp
+  
+  
+  
+  
+  ggsave(
+    filename = file.path(fig_path, "FigureS8_2.png"),
+    plot = pareto_supp, 
+    width =13,
+    height = 8,
+    units = "in", 
+    dpi = 600
   )
-pareto_supp
-
-
-ggsave(
-  filename = file.path(fig_path, "FigureS8.png"),
-  plot = pareto_supp, 
-  width =13,
-  height = 8,
-  units = "in", 
-  dpi = 600
-)
-
-ggsave(
-  filename = file.path(fig_path, "FigureS8.pdf"),
-  plot = pareto_supp, 
-  width =13,
-  height =8,
-  units = "in", 
-  device = cairo_pdf
-)
-
-
+  
+  ggsave(
+    filename = file.path(fig_path, "FigureS8_2.pdf"),
+    plot = pareto_supp, 
+    width =13,
+    height =8,
+    units = "in", 
+    device = cairo_pdf
+  )
+  
