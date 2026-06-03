@@ -1,21 +1,33 @@
+#!/usr/bin/env Rscript
+# ------------------------------------------------------------------------------
+# 10_make_plots.R
+#
+# Purpose:
+#   Build figures for manuscript
+#
+# Dependencies:
+#   requires processed outputs from 08_build_datasets.R and 09_calculate_productivity.R
+#
+# Outputs:
+#   Figures in .png and .pdf format
+# ------------------------------------------------------------------------------
 
-### the script: 
-# loads all the results from Quanti_data.R object and process the dataset
-# create different plots
+suppressPackageStartupMessages({
+  library(data.table)
+  library(stringr)
+  library(ggplot2)
+  library(terra)
+  library(ggh4x)
+  library(ggpubr)
+  library(patchwork)
+  library(readr)
+  library(readxl)
+  library(dplyr)
+  library(forcats)
+  library(scales)
+  library(tidyr)
+})
 
-library(data.table)
-library(stringr)
-library(ggplot2)
-library(terra)
-library(ggh4x)
-library(ggpubr)
-library(patchwork)
-library(readr)
-library(readxl)
-library(dplyr)
-library(forcats)
-library(scales)
-library(tidyr)
 
 res_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/output/analysis"
 #dir.create("C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Figures_manuscript")

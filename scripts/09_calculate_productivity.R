@@ -1,21 +1,34 @@
+#!/usr/bin/env Rscript
+# ------------------------------------------------------------------------------
+# 09_calculate_productivity.R
+#
+# Purpose:
+#   Build the final replicate-level dataset used for downstream analyses and
+#   plotting. The script reads processed demographic, fitness, and quantitative-
+#   genetic datasets, filters them to adult individuals/stages, summarizes
+#   individual-level fitness and hybrid ancestry to stand level, merges all
+#   variables by scenario and replicate, and computes absolute and relative
+#   productivity metrics.
+#
+# Dependencies:
+#   requires processed outputs from 08_build_datasets.R
+#
+# Inputs:
+#   Demo_data_processed.RDS
+#   Fit_data_processed.RDS
+#   Quanti_data_processed.RDS
+#
+# Outputs:
+#   Final_dataset_replicate_level.RDS
+# ------------------------------------------------------------------------------
 
-### this script
-# 1. read the processed demo, fit and quanti dataset, filter for adults
-# 2. summarize fit and quanti from individual to stand level (one line per replicate)
-# 3. merges the 3 datasets
-# 4. computes productivity (NW), productivity relative to the final productivity and relative to the neutral productivity for eahc year and simulation
-# 5. save the result into Final_dataset_replicate_level.RDS
-
-
-library(data.table)
-library(stringr)
-library(ggplot2)
-library(terra)
-library(ggh4x)
-library(ggpubr)
+suppressPackageStartupMessages({
+  library(data.table)
+  library(ggplot2)
+  library(ggh4x)
+})
 
 res_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/output/analysis"
-fig_path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/Figures_manuscript"
 
 ############## combine data and calculate productivity ##########
 
@@ -24,7 +37,7 @@ dt2 <- readRDS(file.path(res_path, "Fit_data_processed.RDS")) ## individual-leve
 dt3 <- readRDS(file.path(res_path, "Quanti_data_processed.RDS"))  ## individual-level data
 
 
-## correct runs!!!
+## correct runs
 dt2[configuration == "No introduction", run := "r01"]
 dt3[configuration == "No introduction", run := "r01"]
 

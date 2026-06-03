@@ -1,20 +1,49 @@
 
+#!/usr/bin/env Rscript
+# ------------------------------------------------------------------------------
+# 05_process_simulation_outputs.R
+#
+# Purpose:
+#   Import and process Nemo-age simulation outputs. The script reads demographic,
+#   quantitative-genetic, and fitness files, extracts scenario metadata from file
+#   and folder names, removes burn-in outputs, standardizes labels for plotting,
+#   attaches estimated introduction costs, and saves raw, processed, and summarized
+#   datasets at both landscape and patch level.
+#
+# Dependencies:
+#   requires Nemo-age output files generated for the hybridization simulations.
+#
+# Inputs:
+#   results/**/*.txt      demographic output files
+#   results/**/*.quanti   quantitative-genetic output files
+#   results/**/*.fit      fitness output files
+#
+# Outputs:
+#   Cost_design_table.csv
+#   Quanti_data_raw.RDS
+#   Quanti_data_processed.RDS
+#   Genot_proportions_summary_replicates.RDS
+#   Hyb_proportions_patch.RDS
+#   Hyb_proportions_patch_summary_replicates.RDS
+#   Orientalis_genot_patch_summary_replicates.RDS
+#   Demo_data_raw.RDS
+#   Demo_data_processed.RDS
+#   Demo_data_summary_replicates.csv
+#   Fit_data_raw.RDS
+#   Fit_data_processed.RDS
+#   Fit_data_summary_replicates.RDS
+#   W_median_patch.RDS
+#   W_median_patch_summary_replicates.RDS
+# ------------------------------------------------------------------------------
 
-### the script: 
-# creates a table for the estimated cost of introduction
-# reads all demographics, fit and quanti files output of Nemo simulations (except the burnin)
-# reads the metadata from file names and folder names
-# keep only relevant columns, save into "Data_raw.RDS" objects
-# tidies up column, chnage column labels for plotting, make the object lighter
-# save the processed object as "Data_processed.RDS"
-# summarize data across replicates at landscape level and save into "Data_summary_replicates.RDS"
-# summarize data at patch level and save into "Data_patch.RDS"
-# summarize data at patch level across replicate and saves into "Data_patch_summary_replicates.RDS"
+suppressPackageStartupMessages({
+  library(data.table)
+  library(stringr)
+  library(tidyr)
+  library(dplyr)
+})
 
-library(data.table)
-library(stringr)
-library(tidyr)
-library(dplyr)
+
 
 res_path <- "/home/stefanin/nemo/nemo_files/nemoage0.32.6b/results/"
 
@@ -50,11 +79,10 @@ parse_quanti_metadata <- function(path) {
   proportion_orientalis <- as.numeric(str_extract(bn, "(?<=_p)\\d+"))/ 100
   generation     <- as.numeric(str_extract(bn, "(?<=_)\\d{4}(?=_)"))
   replicate      <- as.numeric(str_extract(bn, "(?<=_)\\d+(?=\\.quanti$)"))
-  run            <- sub(".*\\/(r[0-9]+)\\/.*", "\\1", path)
+  run            <- str_match(bn, "_(r\\d+)_")[,2]   ## changed : before --> sub(".*\\/(r[0-9]+)\\/.*", "\\1", path)  
   sel_full       <- str_match(bn, "_r\\d+_(.*?)_k")[,2]
   sel_type       <- ifelse(sel_full == "neutral","neutral",str_extract(sel_full, "^(sel_[EO]|heterosis)"))
-  sel_strength   <- ifelse(sel_full == "neutral",NA,str_extract(sel_full, "(min|low|mid|high)$"))
-  
+  sel_strength   <- ifelse(sel_full == "neutral",NA,str_extract(sel_full, "(low|mid|high)$"))
   
   data.table(
     file = path,
@@ -122,11 +150,13 @@ quanti_data_clean <- copy(quanti_data)
 
 # convert types
 quanti_data_clean[, selection_type := factor(selection_type, levels = c("neutral", "sel_E", "sel_O", "heterosis"))]
-quanti_data_clean[, selection_strength := factor(selection_strength, levels = c("min", "low", "mid", "high"))]
-quanti_data_clean[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects"))]
-quanti_data_clean$sim_id <- with(quanti_data_clean,paste(configuration,proportion_orientalis,selection_type,selection_strength, run,sep = "_"))
+quanti_data_clean[, selection_strength := factor(selection_strength, levels = c("low", "mid", "high"))]
+quanti_data_clean[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects", "no_introduction"))]
+quanti_data_clean$sim_id <- with(quanti_data_clean,paste(configuration,proportion_orientalis,selection_type,selection_strength,sep = "_"))
 
 saveRDS(quanti_data_clean, (file.path(res_path, "Quanti_data_raw.RDS")))
+
+gc()
 
 
 
@@ -142,6 +172,8 @@ quanti_data <- merge(
   all.x = TRUE
 )
 
+rm(quanti_data_clean)
+
 ## labels for plotting
 sel_map <- c(
   heterosis = "Wf1 > Weu = Wori",
@@ -155,15 +187,17 @@ config_map <- c(
   dispersed = "Dispersed",
   multi_cluster = "Multiple clusters",
   one_cluster   = "Single cluster",
-  transects   = "Transects"
+  transects   = "Transects", 
+  no_introduction = "No introduction"
 )
 quanti_data[, config_label := config_map[as.character(configuration)]]
 
-# simulation ID
-quanti_data$sim_id <- with(quanti_data,paste(configuration,proportion_orientalis,selection_type,selection_strength,run,sep = "_"))
+# simulation ID 
+quanti_data$sim_id <- with(quanti_data,paste(configuration,proportion_orientalis,selection_type,selection_strength,sep = "_"))
 
 # tidy up cols
-quanti_data <-quanti_data[, c("configuration","ID","selection","selection_type","run") := NULL]
+
+quanti_data <-quanti_data[, c("configuration","ID","selection","selection_type") := NULL]
 colnames(quanti_data)
 setcolorder(quanti_data, c("sim_id", "config_label","proportion_orientalis","cost","selection_label","selection_strength","run", "replicate","year", "stage",     "age", "pop", "P1"))
 colnames(quanti_data)<-  c("sim_id", "configuration","proportion_orientalis","cost","selection_type","selection_strength","run", "replicate","year", "age_class", "age", "pop" ,"P1")
@@ -200,24 +234,22 @@ quanti_data_genot_quantiles <- quanti_data_genot[, .(
   q90_hyb = quantile(prop_hybrid, 0.9, na.rm = TRUE)
   
 ),
-by = .(configuration, proportion_orientalis, cost,
-       selection_type, selection_strength,
-       age_class, year)]
+by = .(configuration,proportion_orientalis,cost,selection_type, selection_strength,age_class, year)]
+
+saveRDS(quanti_data_genot_quantiles, (file.path(res_path, "Genot_proportions_summary_replicates.RDS")))
 
 
-saveRDS(quanti_data_genot_meanrep, (file.path(res_path, "Genot_proportions_summary_replicates.RDS")))
-
-
-######## summarise patch level
+### summarise patch level
 
 # subset only some years 
 quanti_data_subset <- quanti_data[year %in% c(50,100,500, 1000)]
+
 
 # hybrid proportions and HI values per simulation and replicate and patch (across all individuals) = 1 row x sim replicate x year x age_class x patch
 quanti_data_patch <- quanti_data_subset[,.( 
   N = .N,
   N_hybrid = sum(P1 > -1 & P1 < 1),
-  prop_hybrids = mean(P1 > -1 & P1 < 1),
+  prop_hybrid = mean(P1 > -1 & P1 < 1)
 ),
 by = .(configuration, proportion_orientalis, selection_type, selection_strength, year, run, replicate, age_class, cost, pop) ]
 
@@ -226,14 +258,14 @@ gc()
 ## ---> to check for variability within patch (maybe not needed)
 saveRDS(quanti_data_patch,file.path(res_path, "Hyb_proportions_patch.RDS") )
 
-
 # summarize across run and then replicates per patch
 quanti_data_patch_summary <- quanti_data_patch[, .(
   q10_hyb = quantile(prop_hybrid, 0.1, na.rm = TRUE),
   q50_hyb = quantile(prop_hybrid, 0.5, na.rm = TRUE),
   q90_hyb = quantile(prop_hybrid, 0.9, na.rm = TRUE)
 ),
-by = .(configuration, proportion_orientalis, selection_type,selection_strength, year, age_class, cost)]
+by = .(configuration, proportion_orientalis, selection_type,selection_strength, year, age_class, cost, pop)]
+
 
 # reorder proportion orientalis 
 quanti_data_patch_summary[, proportion_orientalis :=  factor(proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(proportion_orientalis))))))]
@@ -241,7 +273,8 @@ quanti_data_patch_summary[, proportion_orientalis :=  factor(proportion_oriental
 saveRDS(quanti_data_patch_summary,file.path(res_path, "Hyb_proportions_patch_summary_replicates.RDS") )
 
 
-# proportion of orientalis ancestry (p1) per patch across replicates
+############################### spatial patterns of % orientalis genotype
+
 
 # select only some years (otherwise too slow)
 quanti_data_subset <- quanti_data[year %in% c(50,100,500, 1000)]
@@ -267,9 +300,11 @@ by = .(configuration, proportion_orientalis, selection_type,selection_strength, 
 
 # reorder proportion orientalis 
 p1_patch_summary[, proportion_orientalis :=  factor(proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(proportion_orientalis))))))]
-p1_patch_summary$selection_type <- factor(p1_patch_summary$selection_type, levels = c("Neutral","European b. selected against","Oriental b. selected against","Heterosis"))
 
 saveRDS(p1_patch_summary,file.path(res_path, "Orientalis_genot_patch_summary_replicates.RDS") )
+
+
+
 
 
 ####### DEMOGRAPHIC FILES ######
@@ -285,7 +320,7 @@ parse_demo_metadata <- function(path) {
   run            <- str_match(bn, "_(r\\d+)_")[,2]
   sel_full       <- str_match(bn, "_r\\d+_(.*?)_k")[,2]
   sel_type       <- ifelse(sel_full == "neutral","neutral",str_extract(sel_full, "^(sel_[EO]|heterosis)"))
-  sel_strength   <- ifelse(sel_full == "neutral",NA,str_extract(sel_full, "(min|low|mid|high)$"))
+  sel_strength   <- ifelse(sel_full == "neutral",NA,str_extract(sel_full, "(low|mid|high)$"))
   
   k <- as.numeric(str_match(bn, "_k([0-9.]+)")[,2])
   b <- as.numeric(str_match(bn, "_b([0-9]+\\.?[0-9]*)(?=\\.txt$)")[,2])
@@ -353,12 +388,13 @@ combined_pop_data <- merge(
   all.x = TRUE
 )
 
+
 ## get a unique sim ID
-combined_pop_data[, sim_id := paste(configuration, proportion_orientalis,selection_type,selection_strength, run, k, b, sep = "_")]
+combined_pop_data[, sim_id := paste(configuration, proportion_orientalis,selection_type,selection_strength, k, b, sep = "_")]
 # convert to factors
 combined_pop_data[, selection_type := factor(selection_type, levels = c("neutral", "sel_E", "sel_O", "heterosis"))]
-combined_pop_data[, selection_strength := factor(selection_strength, levels = c("min", "low", "mid", "high"))]
-combined_pop_data[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects"))]
+combined_pop_data[, selection_strength := factor(selection_strength, levels = c("low", "mid", "high"))]
+combined_pop_data[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects", "no_introduction"))]
 
 # convert generation column to year
 setnames(combined_pop_data, "generation", "year")
@@ -376,7 +412,6 @@ anyNA(combined_pop_data)
 colSums(is.na(combined_pop_data))
 
 # check number of replicates
-combined_pop_data$sim_id <- with(combined_pop_data,paste(configuration,proportion_orientalis,selection_type,selection_strength, run,sep = "_"))
 rep_check <- aggregate(replicate ~ sim_id,data = combined_pop_data,FUN = function(x) length(unique(x)))
 rep_check
 
@@ -397,7 +432,8 @@ config_map <- c(
   dispersed = "Dispersed",
   multi_cluster = "Multiple clusters",
   one_cluster   = "Single cluster",
-  transects   = "Transects"
+  transects   = "Transects", 
+  no_introduction = "No introduction"
 )
 combined_pop_data[, config_label := config_map[as.character(configuration)]]
 
@@ -418,13 +454,11 @@ colnames(combined_pop_data)<-c("sim_id", "configuration","proportion_orientalis"
 combined_pop_data[, year := as.numeric(year)]
 combined_pop_data[, proportion_orientalis := factor(proportion_orientalis)]
 
-# create the run+replicate variable (each run has replicate 1 to 10)
-combined_pop_data$replicate2 <- paste0(combined_pop_data$run,"_",as.character(combined_pop_data$replicate))
-
 ## save master file
 saveRDS(combined_pop_data, file = file.path(res_path,"Demo_data_processed.RDS"))
-
 rm(demo_data, demo_files)
+
+###############################################################################################################
 
 ## summarize across replicates
 combined_pop_data_summary <- combined_pop_data[
@@ -433,13 +467,15 @@ combined_pop_data_summary <- combined_pop_data[
     sd_N   = sd(N_stage, na.rm = TRUE), 
     q10_N = quantile(N_stage, 0.1, na.rm = TRUE),
     q50_N = quantile(N_stage, 0.5, na.rm = TRUE),
-    q90_N = quantile(N_stage, 0.9, na.rm = TRUE),
+    q90_N = quantile(N_stage, 0.9, na.rm = TRUE)
   ),
   by = .(configuration,proportion_orientalis,selection_type,selection_strength,year,age_class
   )
 ]
 
 write.csv(combined_pop_data_summary, file.path(res_path, "Demo_data_summary_replicates.csv"))
+
+
 
 ####### FIT FILES ###########
 
@@ -451,12 +487,13 @@ parse_fit_metadata <- function(path) {
   proportion_orientalis <- as.numeric(str_extract(bn, "(?<=_p)\\d+"))/100
   generation     <- as.numeric(str_extract(bn, "(?<=_)\\d{4}(?=_)"))
   replicate      <- as.numeric(str_extract(bn, "(?<=_)\\d+(?=\\.fit$)"))
-  run            <- sub(".*\\/(r[0-9]+)\\/.*", "\\1", path)
+  run            <- str_match(bn, "_(r\\d+)_")[,2]   ### changed : before ---> sub(".*\\/(r[0-9]+)\\/.*", "\\1", path)
   sel_full       <- str_match(bn, "_r\\d+_(.*?)_k")[,2]
   sel_type       <- ifelse(sel_full == "neutral","neutral",str_extract(sel_full, "^(sel_[EO]|heterosis)"))
   sel_strength   <- ifelse(sel_full == "neutral",NA,str_extract(sel_full, "(low|mid|high)$"))
   
   data.table(
+    file = path, ## needed
     configuration = configuration,
     proportion_orientalis = proportion_orientalis,
     selection = sel_full,
@@ -508,21 +545,28 @@ fit_data <- merge(
 )
 
 
+
 ## get a unique sim ID
-fit_data[, sim_id := paste(configuration, proportion_orientalis,selection_type,selection_strength, run, sep = "_")]
+fit_data[, sim_id := paste(configuration, proportion_orientalis,selection_type,selection_strength, sep = "_")]
 # convert to factors
 fit_data[, selection_type := factor(selection_type, levels = c("neutral", "sel_E", "sel_O", "heterosis"))]
 fit_data[, selection_strength := factor(selection_strength, levels = c( "low", "mid", "high"))]
-fit_data[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects"))]
+fit_data[, configuration := factor(configuration, levels = c("dispersed", "one_cluster", "multi_cluster", "transects","no_introduction"))]
 
 # make sure is numeric
 fit_data$year <- as.numeric(fit_data$year)
 fit_data$replicate <- as.numeric(fit_data$replicate)
 
+
 unique(fit_data[, .(selection, selection_type, selection_strength)])
+
 
 # save master file
 saveRDS(fit_data, file = file.path(res_path,"Fit_data_raw.RDS"))
+
+
+###################################### process dataset
+
 
 ## labels for plotting
 setDT(fit_data)
@@ -539,26 +583,26 @@ config_map <- c(
   dispersed = "Dispersed",
   multi_cluster = "Multiple clusters",
   one_cluster   = "Single cluster",
-  transects   = "Transects"
+  transects   = "Transects", 
+  no_introduction = "No introduction"
 )
 fit_data[, config_label := config_map[as.character(configuration)]]
 
 # tidy up cols
 fit_data <-fit_data[, c("file", "configuration","selection","selection_type","isMigrant") := NULL]
 
-setcolorder(fit_data, c("sim_id", "config_label","proportion_orientalis", "selection_label", "selection_strength", "replicate","year","pop",  "stage", "age","trait" ))
-colnames(fit_data)<-c( "sim_id", "configuration","proportion_orientalis","selection_type","selection_strength", "replicate", "year","pop" ,"age_class", "age","W" )
+setcolorder(fit_data, c("sim_id", "config_label","proportion_orientalis", "selection_label", "selection_strength", "run", "replicate","year","pop",  "stage", "age","trait" ))
+colnames(fit_data)  <-c("sim_id", "configuration","proportion_orientalis","selection_type","selection_strength",  "run","replicate", "year","pop" ,"age_class", "age","W" )
 fit_data[, year := as.numeric(year)]
 fit_data[, proportion_orientalis := factor(proportion_orientalis)]
+
 
 ### ADD THE NEUTRAL DATA (NOT PRESENT IN THIS DATASET BECAUSE W IS ALWAYS 1)
 # read the quanti dataset for the missing data
 quanti_data <- readRDS(file.path(res_path, "Quanti_data_processed.RDS"))
 
 neutral_data <- quanti_data[selection_type == "Neutral",
-                    .(sim_id,configuration, proportion_orientalis,
-                      selection_type, selection_strength,
-                      run, replicate, year, pop, age_class, age)]
+                            .(sim_id,configuration, proportion_orientalis,selection_type, selection_strength,run, replicate, year, pop, age_class, age)]
 
 neutral_data[, W := 1]
 # check 
@@ -566,7 +610,10 @@ colnames(neutral_data) == colnames(fit_data)
 
 # append
 fit_data <- rbindlist(list(fit_data, neutral_data), fill = TRUE)
+
+## save master file
 saveRDS(fit_data, file = file.path(res_path,"Fit_data_processed.RDS"))
+
 
 ## median across individuals of each scenario and each age class (skewed distributions) - replicate level
 fit_data_median <- fit_data[,.( 
@@ -618,7 +665,7 @@ by = .(configuration, proportion_orientalis, selection_type, selection_strength,
 
 gc()
 
-## ---> to check for variability within patch (maybe not needed..?)
+## ---> to check for variability within patch (maybe not needed)
 saveRDS(fit_data_median_patch,file.path(res_path, "W_median_patch.RDS") )
 
 # summarize across run and then replicates per patch
@@ -633,9 +680,10 @@ by = .(configuration, proportion_orientalis, selection_type,selection_strength, 
 
 rm(fit_data_median_patch)
 
+
 # reorder proportion orientalis 
 fit_data_median_patch_summary[, proportion_orientalis :=  factor(proportion_orientalis, levels = rev(sort(unique(as.numeric(as.character(proportion_orientalis))))))]
 
-saveRDS(fit_data_median_patch_summary,file.path(res_path, "W_median_patch_summary_replicates.RDS") )
 
+saveRDS(fit_data_median_patch_summary,file.path(res_path, "W_median_patch_summary_replicates.RDS") )
 
