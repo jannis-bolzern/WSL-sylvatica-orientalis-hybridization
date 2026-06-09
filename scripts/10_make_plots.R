@@ -26,6 +26,7 @@ suppressPackageStartupMessages({
   library(forcats)
   library(scales)
   library(tidyr)
+  library(forcats)
 })
 
 
@@ -86,362 +87,10 @@ theme_fig <- theme_bw(base_size = 10) +
     
   )
 
+######## FIGURE 1       (questionnaires plots) ##########
 
-######## FIGURE 1A           (starting scenarios) ##########
-
-##### add dispersed - etc labels
-##### add proportion orientalis labels
-##### uniform the style
-
-cfg_labels <- c(
-  "dispersed" = "Dispersed",
-  "multi_cluster" = "Multiple clusters",
-  "one_cluster" = "Single cluster",
-  "transects" = "Transects"
-)
-
-prop_labels <- c(
-  "0.10" = "10%",
-  "0.25" = "25%",
-  "0.40" = "40%"
-)
-
-## modified script from 04_qc_layourt_overviews.R
-
-suppressPackageStartupMessages({
-  library(data.table)
-  library(ggplot2)
-  library(terra)
-  library(cowplot)
-})
-
-source('scripts/00_control_panel.R')
-
-INPUT_ROOT <- if (exists('IN') && is.list(IN) && !is.null(IN$files)) IN$files else file.path('input', 'input_files')
-QC_ROOT    <- if (exists('OUT') && is.list(OUT) && !is.null(OUT$qc)) OUT$qc else file.path('output', 'qc')
-
-MANIFEST   <- file.path(SCRIPTS$manifests, 'manifest_scenarios.tsv')
-GRID_SHP   <- file.path(INPUT_ROOT, 'grid', 'Grid_4x4m_100x100m.shp')
-PLOT_DIR   <- file.path(QC_ROOT, 'layout_overviews')
-
-dir.create(PLOT_DIR, showWarnings = FALSE, recursive = TRUE)
-
-if (!file.exists(MANIFEST)) {
-  stop('Missing ', MANIFEST, '\nRun the scenario-generation script first (e.g., scripts/02_*).', call. = FALSE)
-}
-if (!file.exists(GRID_SHP)) {
-  # fallback: first .shp found under input/grid
-  hits <- list.files(file.path(INPUT_ROOT, 'grid'), pattern = '\\.(shp)$', full.names = TRUE)
-  if (length(hits) == 0) stop('Could not find grid shapefile under: ', file.path(INPUT_ROOT, 'grid'), call. = FALSE)
-  GRID_SHP <- hits[1]
-}
-
-# ---- helpers
-coords_from_grid <- function(grid) {
-  cent <- terra::centroids(grid)
-  xy   <- as.data.frame(terra::crds(cent))
-  names(xy) <- c('x', 'y')
-  
-  # assumes patchID exists and is 1..N^2 in raster order
-  patchID <- as.integer(grid$patchID)
-  n_patches <- length(patchID)
-  N <- as.integer(round(sqrt(n_patches)))
-  if (N * N != n_patches) stop('Grid is not square (n_patches=', n_patches, ').', call. = FALSE)
-  
-  coords <- data.table(patchID = patchID, x = xy$x, y = xy$y)
-  coords[, row := ((patchID - 1L) %/% N) + 1L]
-  coords[, col := ((patchID - 1L) %%  N) + 1L]
-  coords[, y_plot := N - row + 1L]
-  coords[, x_plot := col]
-  coords[]
-}
-
-
-plot_layout_binary <- function(conf_dt, coords_dt, title = NULL) {
-  df <- merge(coords_dt[, .(patchID, x_plot, y_plot)], conf_dt, by = 'patchID', all.x = TRUE)
-  df[, patch_value := fifelse(is.na(patch_value), 'S', patch_value)]
-  
-  ggplot(df, aes(x = x_plot, y = y_plot)) +
-    geom_tile(aes(fill = patch_value), color = 'black', linewidth = 0.10) +
-    coord_equal(expand = FALSE) +
-    scale_x_continuous(expand = c(0, 0)) +
-    scale_y_continuous(expand = c(0, 0)) +
-    scale_fill_manual(
-      values = c(S = '#ffcc00', O = '#482173FF'),
-      labels = c(S = "European beech", O = "Oriental beech")
-    ) +
-    labs(title = title, x = NULL, y = NULL, fill = NULL) +
-    theme_void(base_size = 9) +
-    theme(
-      legend.position = "none",
-      plot.title = element_text(hjust = 0.5, size = 8),
-      plot.margin = margin(1, 1, 1, 1, "mm"),
-      plot.background = element_rect(fill = "white", color = NA),
-      panel.background = element_rect(fill = "white", color = NA)
-    )
-}
-
-# ---- load inputs 
-manifest <- fread(MANIFEST)
-need <- c('sim_name', 'cfg_file', 'configuration', 'prop_orientalis', 'n_orientalis')
-if (!all(need %in% names(manifest))) {
-  stop('manifest_scenarios.tsv missing columns: ', paste(setdiff(need, names(manifest)), collapse = ', '), call. = FALSE)
-}
-
-grid   <- terra::vect(GRID_SHP)
-coords <- coords_from_grid(grid)
-n_patches <- nrow(coords)
-
-manifest[, scenario_key := sub('_r[0-9]+$', '', sim_name)]
-
-groups <- manifest[
-  , .(
-    cfg_files    = list(cfg_file),
-    sims         = list(sim_name),
-    configuration = configuration[1],
-    prop         = prop_orientalis[1],
-    n_orientalis = n_orientalis[1]
-  ),
-  by = .(scenario_key)
-]
-
-# ---- CREATE PANELS 
-
-plot_list <- list()
-
-for (i in seq_len(nrow(groups))) {
-  key <- groups$scenario_key[i]
-  cfg <- groups$configuration[i]
-  p   <- groups$prop[i]
-  
-  cfg_files <- unlist(groups$cfg_files[i])
-  sims      <- unlist(groups$sims[i])
-  
-  ord <- order(sims)
-  cfg_files <- cfg_files[ord]
-  sims      <- sims[ord]
-  
-  plist <- lapply(seq_along(cfg_files), function(j) {
-    if (!file.exists(cfg_files[j])) return(NULL)
-    dt <- fread(cfg_files[j], showProgress = FALSE)[, .(patchID, patch_value)]
-    nO_run <- sum(dt$patch_value == 'O')
-    rep_lab <- sprintf('r%02d | %d (%.2f%%)', j, nO_run, 100 * nO_run / n_patches)
-    plot_layout_binary(dt, coords, NULL)
-  })
-  plist <- Filter(Negate(is.null), plist)
-  if (length(plist) == 0) next
-  
-  main_title <- sprintf(
-    '%s | requested %.0f%% (%.1f/%d) | used %d/%d = %.2f%%',
-    cfg, 100 * p, p * n_patches, n_patches, 
-    groups$n_orientalis[i], n_patches,
-    100 * groups$n_orientalis[i] / n_patches
-  )
-  
-  panel <- plist[[1]]   # select only first run for plotting
-  final <- cowplot::plot_grid(
-    cowplot::ggdraw() + cowplot::draw_label(main_title, fontface = 'bold', size = 20),
-    panel,
-    ncol = 1,
-    rel_heights = c(0.18, 1)
-  )
-  
-  plot_list[[key]] <- panel
-}
-
-plot_list
-
-configs <- c("dispersed", "multi_cluster", "one_cluster", "transects")
-props   <- c(0.10, 0.25, 0.40)
-
-panel_grid <- list()
-
-for (p in props) {
-  for (cfg in configs) {
-    
-    key <- groups$scenario_key[
-      groups$configuration == cfg & groups$prop == p
-    ][1]
-    
-    panel_grid[[paste(cfg, p, sep = "_")]] <- plot_list[[key]]
-  }
-}
-
-layout_grid <- cowplot::plot_grid(
-  plotlist = panel_grid,
-  ncol = length(configs),
-  align = "hv",
-  axis = "tblr"
-)
-
-col_labels <- cowplot::plot_grid(
-  plotlist = lapply(configs, function(cfg) {
-    cowplot::ggdraw() +
-      cowplot::draw_label(
-        cfg_labels[[cfg]],
-        size = 10,
-        hjust = 0.5,
-        vjust = 0.5
-      )
-  }),
-  ncol = length(configs),
-  align = "h"
-)
-
-row_labels <- cowplot::plot_grid(
-  plotlist = lapply(props, function(p) {
-    cowplot::ggdraw() +
-      cowplot::draw_label(
-        prop_labels[[sprintf("%.2f", p)]],
-        size = 10,
-        angle = 270,
-        hjust = 0.5,
-        vjust = 0.5
-      )
-  }),
-  ncol = 1,
-  align = "v"
-)
-
-empty_corner <- cowplot::ggdraw()
-
-final_grid <- cowplot::plot_grid(
-  cowplot::plot_grid(
-    col_labels, empty_corner,
-    ncol = 2,
-    rel_widths = c( 1, 0.08)
-  ),
-  cowplot::plot_grid(
-    layout_grid,row_labels,
-    ncol = 2,
-    rel_widths = c(1, 0.08)
-  ),
-  ncol = 1,
-  rel_heights = c(0.08, 1)
-)
-
-final_grid
-
-
-######## FIGURE 1b           (selection scheme) #########
-
-library(tidyverse)
-
-selection_strength_map <- list(
-  Low = c(40, 60, 120, 180),
-  Intermediate = c(20, 30, 80, 120),
-  High = c(10, 15, 50, 80)
-)
-
-fitness <- function(z, theta, w2) {
-  1 - ((z - theta)^2) / w2
-}
-
-stages <- c("Seedlings", "Saplings", "Juveniles", "Adults")
-
-genotypes <- tibble(
-  genotype = c("European beech", "F1", "Oriental beech"),
-  z = c(-1, 0, 1)
-)
-
-theta_df <- tibble(
-  theta_name = c("Wori > Wf1 > Weu", "Weu > Wf1 > Wori", "Wf1 > Weu = Wori"),
-  theta = c(1, -1, 0)
-)
-
-plot_data <- expand_grid(
-  strength = names(selection_strength_map),
-  theta_df,
-  genotypes,
-  stage = stages
-) %>%
-  group_by(strength, theta_name) %>%
-  mutate(
-    stage_id = match(stage, stages),
-    w2 = selection_strength_map[[unique(strength)]][stage_id],
-    W = fitness(z, theta, w2)
-  ) %>%
-  ungroup() %>%
-  mutate(
-    strength = factor(strength, levels = c("Low", "Intermediate", "High")),
-    stage = factor(stage, levels = stages),
-    theta_name = factor(
-      theta_name,
-      levels = c("Wori > Wf1 > Weu", "Weu > Wf1 > Wori", "Wf1 > Weu = Wori")
-    )
-  )
-
-
-beech_cols <- c(
-  "European beech" = "#ffcc00",
-  "F1"   = "#25858EFF",
-  "Oriental beech" = "#482173FF"
-)
-
-selection <- ggplot(plot_data, aes(stage, W, color = genotype, group = genotype)) +
-  geom_line(linewidth = 0.6) +
-  geom_point(size = 1.6) +
-  facet_grid(
-    strength ~ theta_name,
-    labeller = labeller(
-      theta_name = as_labeller(c(
-        "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
-        "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
-        "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
-      ), label_parsed)
-    )
-  ) +
-  scale_y_continuous(limits = c(0.5, 1), breaks = seq(0.5, 1, 0.1)) +
-  scale_color_manual(values = beech_cols) +
-  labs(
-    x = "Age class",
-    y = "Fitness (W)",
-    color = "Genotype"
-  ) +
-  theme_fig +
-  theme(
-    axis.text.x = element_text(angle = 35, hjust = 1),
-    legend.position = "right"
-  )
-selection
-
-######## FIGURE 1 #########
-
-# combine plots
-plot1 <- (
-  (final_grid +
-     theme(plot.margin = margin(b = 0))) /
-    (selection + theme(plot.margin = margin(t = 0, b = 5))) 
-) +
-  plot_layout(guides = "collect") +
-  plot_annotation(tag_levels = "A") &
-  theme(
-    legend.position = "right",
-    plot.tag = element_text(size = 14, face = "bold")
-  )
-plot1
-
-ggsave(
-  filename = file.path(fig_path, "Figure1.png"),
-  plot = plot1,
-  width = 9,
-  height = 12,
-  units = "in"
-)
-
-ggsave(
-  filename = file.path(fig_path, "Figure1.pdf"),
-  plot = plot1,
-  width = 9,
-  height = 12,
-  units = "in",
-  device = cairo_pdf
-)
-
-######## FIGURE S1       (questionnaires plots) ##########
-
-path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/questionnaires/"
-file <- file.path(path, "Questionnaire_pag1_summary_2.xlsx")
+path <- "C:/Users/stefanin/Dropbox/WSL_PhD/Projects/Hybridization2/questionnaires"
+file <- file.path(path, "Questionnaire_pag1_summary.xlsx")
 dat <- read_excel(file, sheet = 1)
 
 dat <- dat %>%
@@ -668,7 +317,7 @@ p_existing <- ggplot(
 p_existing
 
 
-########## GOOD SUPP FIGURE 1A
+########## FIGURE 1
 
 library(tidytext)
 library(tidyr)
@@ -743,9 +392,32 @@ dat_existing_plot$question_group <- factor(
   )
 )
 
-# plot (no "other")
+facilitator_groups <- c(
+  "Climate change extremes",
+  "Use in forestry",
+  "Genetic risks and benefits"
+)
+
+dat_div_existing2 <- dat_existing_plot %>%
+  mutate(
+    am_role = if_else(
+      question_group %in% facilitator_groups,
+      "Facilitate assisted migration",
+      "Barriers to assisted migration"
+    ),
+    am_role = factor(
+      am_role,
+      levels = c(
+        "Facilitate assisted migration",
+        "Barriers to assisted migration"
+      )
+    )
+  )
+
+
+# plot 
 p_existing <- ggplot(
-  subset(dat_existing_plot,question!= "Other"),
+  dat_div_existing2,
   aes(
     x = prop_div,
     y = question_ord,
@@ -758,7 +430,12 @@ p_existing <- ggplot(
     question_group ~ species,
     scales = "free_y",
     space = "free_y",
-    switch = "y"
+    switch = "y", 
+    labeller =  labeller(question_group = c("Invasive potential"="Invasive potential          ", 
+                                            "Pests and diseases" = "Pests and diseases      ", 
+                                            "Legal status" = "Legal status                    "), 
+                         species = c("European beech in the Rhine valley" = "European beech\nin the Rhine valley", 
+                                     "Oriental beech from the Greater Caucasus" = "Oriental beech\nfrom the Greater Caucasus"))
   ) +
   scale_y_reordered(drop = TRUE)+
   scale_x_continuous(
@@ -772,41 +449,57 @@ p_existing <- ggplot(
       "Assumed" = "#0072B2",
       "Does not apply" = "#CC79A7",
       "Unknown" = "#999999"
-    )
-  )+
+    ),guide = guide_legend(title.position = "top" ))+
   labs(
     x = "Percentage of answers",
     y = NULL,
     fill = "Answer category", 
-    tag = "A"
+    #tag = "A"
   ) +
   theme_fig +
   theme(
-    #ggh4x.facet.nestline = element_line(linewidth = 1),
+    ggh4x.facet.nestline = element_line(linewidth = 1),
     strip.background = element_blank(),
     strip.placement = "outside",
-    strip.text.y.left = element_text(angle = 0, hjust = 1),
+    strip.text.y.left = element_text(angle = 0, hjust =0),
     strip.text.y = element_text(angle = 90),
     axis.title.y = element_blank(),
     legend.position = "bottom",
     plot.tag = element_text(size = 14,face = "bold"),
-    plot.tag.position = c(0.01, 0.99)
+    plot.tag.position = c(0.01, 0.99), 
+    
   )
-  
+
 
 p_existing
 
+
+## split and remove "others"
+p_A <- p_existing %+%
+  filter(dat_div_existing2,question!= "Other"& am_role == "Facilitate assisted migration") +
+  labs(tag= "A")
+
+p_B <- p_existing %+%
+  filter(dat_div_existing2, question!= "Other"&am_role == "Barriers to assisted migration") +
+  labs(tag= "B")
+
+p_final <- p_A / p_B +
+  plot_layout(guides = "collect",heights = c(1, 1), widths = c(1,1)) &
+  theme(legend.position = "bottom")
+
+p_final
+
 ggsave(
-  filename = file.path(fig_path, "FigureS1a.png"),
-  plot = p_existing,
+  filename = file.path(fig_path, "Figure1.png"),
+  plot = p_final,
   width = 10.5,
   height = 12,
   units = "in"
 )
 
 ggsave(
-  filename = file.path(fig_path, "FigureS1a.pdf"),
-  plot = p_existing,
+  filename = file.path(fig_path, "Figure1.pdf"),
+  plot = p_final,
   width = 10.5,
   height = 12,
   units = "in",
@@ -878,9 +571,44 @@ dat_future_plot$question_group <- factor(
   )
 )
 
+
+## reorder question group
+dat_future_plot$question_group <- factor(
+  dat_future_plot$question_group,
+  levels = unique(
+    dat_plot$question_group[
+      str_detect(dat_plot$question_type, "Assessment of future introductions")
+    ]
+  )
+)
+
+facilitator_groups <- c(
+  "Climate change extremes",
+  "Use in forestry",
+  "Genetic risks and benefits"
+)
+
+dat_future_plot2 <- dat_future_plot %>%
+  mutate(
+    am_role = if_else(
+      question_group %in% facilitator_groups,
+      "Facilitate assisted migration",
+      "Barriers to assisted migration"
+    ),
+    am_role = factor(
+      am_role,
+      levels = c(
+        "Facilitate assisted migration",
+        "Barriers to assisted migration"
+      )
+    )
+  )
+
+
+
 # plot (remove "other")
 p_future <- ggplot(
-  subset(dat_future_plot,question!= "Other"),
+  subset(dat_future_plot2,question!= "Other"),
   aes(
     x = prop_div,
     y = question_ord,
@@ -894,8 +622,11 @@ p_future <- ggplot(
     scales = "free_y",
     space = "free_y",
     switch = "y", 
-    labeller = labeller(species = c("Reasons to introduce more Oriental beech from the Greater Caucasus" = "Reasons to introduce more Oriental beech\nfrom the Greater Caucasus", 
-                        "Reasons to introduce “other Oriental beeches”, which one?" = "Reasons to introduce “other Oriental beeches”,\n which one?"))
+    labeller = labeller(question_group = c("Invasive potential"="Invasive potential           ", 
+                                           "Pests and diseases" = "Pests and diseases       ", 
+                                           "Legal status" = "Legal status                     "), 
+                        species = c("Reasons to introduce more Oriental beech from the Greater Caucasus" = "Reasons to introduce more Oriental\nbeech from the Greater Caucasus", 
+                                    "Reasons to introduce “other Oriental beeches”, which one?" = "Reasons to introduce “other\nOriental beeches” (which one)?"))
   ) +
   scale_y_reordered(drop = TRUE)+
   scale_x_continuous(
@@ -918,39 +649,407 @@ p_future <- ggplot(
     tag = "B"
   ) +
   theme_fig +
-  theme(
-    strip.background = element_blank(),
-    strip.placement = "outside",
-    strip.text.y.left = element_text(angle = 0, hjust = 1),
-    strip.text.y = element_text(angle = 90),
-    axis.title.y = element_blank(),
-    legend.position = "bottom",
-    plot.tag = element_text(
-      size = 14,
-      face = "bold"
-    ),
+    theme(
+      ggh4x.facet.nestline = element_line(linewidth = 1),
+      strip.background = element_blank(),
+      strip.placement = "outside",
+      strip.text.y.left = element_text(angle = 0, hjust =0),
+      strip.text.y = element_text(angle = 90),
+      axis.title.y = element_blank(),
+      legend.position = "bottom",
+      plot.tag = element_text(size = 14,face = "bold"),
+      plot.tag.position = c(0.01, 0.99), 
+ )
     
-    plot.tag.position = c(0.01, 0.99)
-  )
 
 p_future
 
+
+## split and remove "others"
+p_A <- p_future %+%
+  filter(dat_future_plot2,question!= "Other"& am_role == "Facilitate assisted migration") +
+  labs(tag= "A")
+
+p_B <- p_future %+%
+  filter(dat_future_plot2, question!= "Other"&am_role == "Barriers to assisted migration") +
+  labs(tag= "B")
+
+p_final <- p_A / p_B +
+  plot_layout(guides = "collect",heights = c(1, 1), widths = c(1,1)) &
+  theme(legend.position = "bottom")
+
+p_final
+
+
 ggsave(
-  filename = file.path(fig_path, "FigureS1b.png"),
-  plot = p_future,
-  width = 10.5,
+  filename = file.path(fig_path, "FigureS1.png"),
+  plot = p_final,
+  width = 11,
   height = 12,
   units = "in"
 )
 
 ggsave(
-  filename = file.path(fig_path, "FigureS1b.pdf"),
-  plot = p_future,
-  width = 10.5,
+  filename = file.path(fig_path, "FigureS1.pdf"),
+  plot = p_final,
+  width = 11,
   height = 12,
   units = "in",
   device = cairo_pdf
 )
+
+######## FIGURE 2A           (starting scenarios) ##########
+
+##### add dispersed - etc labels
+##### add proportion orientalis labels
+##### uniform the style
+
+cfg_labels <- c(
+  "dispersed" = "Dispersed",
+  "multi_cluster" = "Multiple clusters",
+  "one_cluster" = "Single cluster",
+  "transects" = "Transects"
+)
+
+prop_labels <- c(
+  "0.10" = "10%",
+  "0.25" = "25%",
+  "0.40" = "40%"
+)
+
+## modified script from 04_qc_layourt_overviews.R
+
+suppressPackageStartupMessages({
+  library(data.table)
+  library(ggplot2)
+  library(terra)
+  library(cowplot)
+})
+
+source('scripts/00_control_panel.R')
+
+INPUT_ROOT <- if (exists('IN') && is.list(IN) && !is.null(IN$files)) IN$files else file.path('input', 'input_files')
+QC_ROOT    <- if (exists('OUT') && is.list(OUT) && !is.null(OUT$qc)) OUT$qc else file.path('output', 'qc')
+
+MANIFEST   <- file.path(SCRIPTS$manifests, 'manifest_scenarios.tsv')
+GRID_SHP   <- file.path(INPUT_ROOT, 'grid', 'Grid_4x4m_100x100m.shp')
+PLOT_DIR   <- file.path(QC_ROOT, 'layout_overviews')
+
+dir.create(PLOT_DIR, showWarnings = FALSE, recursive = TRUE)
+
+if (!file.exists(MANIFEST)) {
+  stop('Missing ', MANIFEST, '\nRun the scenario-generation script first (e.g., scripts/02_*).', call. = FALSE)
+}
+if (!file.exists(GRID_SHP)) {
+  # fallback: first .shp found under input/grid
+  hits <- list.files(file.path(INPUT_ROOT, 'grid'), pattern = '\\.(shp)$', full.names = TRUE)
+  if (length(hits) == 0) stop('Could not find grid shapefile under: ', file.path(INPUT_ROOT, 'grid'), call. = FALSE)
+  GRID_SHP <- hits[1]
+}
+
+# ---- helpers
+coords_from_grid <- function(grid) {
+  cent <- terra::centroids(grid)
+  xy   <- as.data.frame(terra::crds(cent))
+  names(xy) <- c('x', 'y')
+  
+  # assumes patchID exists and is 1..N^2 in raster order
+  patchID <- as.integer(grid$patchID)
+  n_patches <- length(patchID)
+  N <- as.integer(round(sqrt(n_patches)))
+  if (N * N != n_patches) stop('Grid is not square (n_patches=', n_patches, ').', call. = FALSE)
+  
+  coords <- data.table(patchID = patchID, x = xy$x, y = xy$y)
+  coords[, row := ((patchID - 1L) %/% N) + 1L]
+  coords[, col := ((patchID - 1L) %%  N) + 1L]
+  coords[, y_plot := N - row + 1L]
+  coords[, x_plot := col]
+  coords[]
+}
+
+
+plot_layout_binary <- function(conf_dt, coords_dt, title = NULL) {
+  df <- merge(coords_dt[, .(patchID, x_plot, y_plot)], conf_dt, by = 'patchID', all.x = TRUE)
+  df[, patch_value := fifelse(is.na(patch_value), 'S', patch_value)]
+  
+  ggplot(df, aes(x = x_plot, y = y_plot)) +
+    geom_tile(aes(fill = patch_value), color = 'black', linewidth = 0.10) +
+    coord_equal(expand = FALSE) +
+    scale_x_continuous(expand = c(0, 0)) +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_fill_manual(
+      values = c(S = '#ffcc00', O = '#482173FF'),
+      labels = c(S = "European beech", O = "Oriental beech")
+    ) +
+    labs(title = title, x = NULL, y = NULL, fill = NULL) +
+    theme_void(base_size = 9) +
+    theme(
+      legend.position = "none",
+      plot.title = element_text(hjust = 0.5, size = 8),
+      plot.margin = margin(1, 1, 1, 1, "mm"),
+      plot.background = element_rect(fill = "white", color = NA),
+      panel.background = element_rect(fill = "white", color = NA)
+    )
+}
+
+# ---- load inputs 
+manifest <- fread(MANIFEST)
+need <- c('sim_name', 'cfg_file', 'configuration', 'prop_orientalis', 'n_orientalis')
+if (!all(need %in% names(manifest))) {
+  stop('manifest_scenarios.tsv missing columns: ', paste(setdiff(need, names(manifest)), collapse = ', '), call. = FALSE)
+}
+
+grid   <- terra::vect(GRID_SHP)
+coords <- coords_from_grid(grid)
+n_patches <- nrow(coords)
+
+manifest[, scenario_key := sub('_r[0-9]+$', '', sim_name)]
+
+groups <- manifest[
+  , .(
+    cfg_files    = list(cfg_file),
+    sims         = list(sim_name),
+    configuration = configuration[1],
+    prop         = prop_orientalis[1],
+    n_orientalis = n_orientalis[1]
+  ),
+  by = .(scenario_key)
+]
+
+# ---- CREATE PANELS 
+
+plot_list <- list()
+
+for (i in seq_len(nrow(groups))) {
+  key <- groups$scenario_key[i]
+  cfg <- groups$configuration[i]
+  p   <- groups$prop[i]
+  
+  cfg_files <- unlist(groups$cfg_files[i])
+  sims      <- unlist(groups$sims[i])
+  
+  ord <- order(sims)
+  cfg_files <- cfg_files[ord]
+  sims      <- sims[ord]
+  
+  plist <- lapply(seq_along(cfg_files), function(j) {
+    if (!file.exists(cfg_files[j])) return(NULL)
+    dt <- fread(cfg_files[j], showProgress = FALSE)[, .(patchID, patch_value)]
+    nO_run <- sum(dt$patch_value == 'O')
+    rep_lab <- sprintf('r%02d | %d (%.2f%%)', j, nO_run, 100 * nO_run / n_patches)
+    plot_layout_binary(dt, coords, NULL)
+  })
+  plist <- Filter(Negate(is.null), plist)
+  if (length(plist) == 0) next
+  
+  main_title <- sprintf(
+    '%s | requested %.0f%% (%.1f/%d) | used %d/%d = %.2f%%',
+    cfg, 100 * p, p * n_patches, n_patches, 
+    groups$n_orientalis[i], n_patches,
+    100 * groups$n_orientalis[i] / n_patches
+  )
+  
+  panel <- plist[[1]]   # select only first run for plotting
+  final <- cowplot::plot_grid(
+    cowplot::ggdraw() + cowplot::draw_label(main_title, fontface = 'bold', size = 20),
+    panel,
+    ncol = 1,
+    rel_heights = c(0.18, 1)
+  )
+  
+  plot_list[[key]] <- panel
+}
+
+plot_list
+
+configs <- c("dispersed", "multi_cluster", "one_cluster", "transects")
+props   <- c(0.10, 0.25, 0.40)
+
+panel_grid <- list()
+
+for (p in props) {
+  for (cfg in configs) {
+    
+    key <- groups$scenario_key[
+      groups$configuration == cfg & groups$prop == p
+    ][1]
+    
+    panel_grid[[paste(cfg, p, sep = "_")]] <- plot_list[[key]]
+  }
+}
+
+layout_grid <- cowplot::plot_grid(
+  plotlist = panel_grid,
+  ncol = length(configs),
+  align = "hv",
+  axis = "tblr"
+)
+
+col_labels <- cowplot::plot_grid(
+  plotlist = lapply(configs, function(cfg) {
+    cowplot::ggdraw() +
+      cowplot::draw_label(
+        cfg_labels[[cfg]],
+        size = 13,
+        hjust = 0.5,
+        vjust = 0.5
+      )
+  }),
+  ncol = length(configs),
+  align = "h"
+)
+
+row_labels <- cowplot::plot_grid(
+  plotlist = lapply(props, function(p) {
+    cowplot::ggdraw() +
+      cowplot::draw_label(
+        prop_labels[[sprintf("%.2f", p)]],
+        size = 13,
+        angle = 270,
+        hjust = 0.5,
+        vjust = 0.5
+      )
+  }),
+  ncol = 1,
+  align = "v"
+)
+
+empty_corner <- cowplot::ggdraw()
+
+final_grid <- cowplot::plot_grid(
+  cowplot::plot_grid(
+    col_labels, empty_corner,
+    ncol = 2,
+    rel_widths = c( 1, 0.08)
+  ),
+  cowplot::plot_grid(
+    layout_grid,row_labels,
+    ncol = 2,
+    rel_widths = c(1, 0.08)
+  ),
+  ncol = 1,
+  rel_heights = c(0.08, 1)
+)
+
+final_grid
+
+
+######## FIGURE 2b           (selection scheme) #########
+
+library(tidyverse)
+
+selection_strength_map <- list(
+  Low = c(40, 60, 120, 180),
+  Intermediate = c(20, 30, 80, 120),
+  High = c(10, 15, 50, 80)
+)
+
+fitness <- function(z, theta, w2) {
+  1 - ((z - theta)^2) / w2
+}
+
+stages <- c("Seedlings", "Saplings", "Juveniles", "Adults")
+
+genotypes <- tibble(
+  genotype = c("European beech", "F1", "Oriental beech"),
+  z = c(-1, 0, 1)
+)
+
+theta_df <- tibble(
+  theta_name = c("Wori > Wf1 > Weu", "Weu > Wf1 > Wori", "Wf1 > Weu = Wori"),
+  theta = c(1, -1, 0)
+)
+
+plot_data <- expand_grid(
+  strength = names(selection_strength_map),
+  theta_df,
+  genotypes,
+  stage = stages
+) %>%
+  group_by(strength, theta_name) %>%
+  mutate(
+    stage_id = match(stage, stages),
+    w2 = selection_strength_map[[unique(strength)]][stage_id],
+    W = fitness(z, theta, w2)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    strength = factor(strength, levels = c("Low", "Intermediate", "High")),
+    stage = factor(stage, levels = stages),
+    theta_name = factor(
+      theta_name,
+      levels = c("Wori > Wf1 > Weu", "Weu > Wf1 > Wori", "Wf1 > Weu = Wori")
+    )
+  )
+
+
+beech_cols <- c(
+  "European beech" = "#ffcc00",
+  "F1"   = "#25858EFF",
+  "Oriental beech" = "#482173FF"
+)
+
+selection <- ggplot(plot_data, aes(stage, W, color = genotype, group = genotype)) +
+  geom_line(linewidth = 0.6) +
+  geom_point(size = 1.6) +
+  facet_grid(
+    strength ~ theta_name,
+    labeller = labeller(
+      strength = c("Low"="Low\nselection", "Intermediate"="Intermediate\nselection", "High"="High\nselection"),
+      theta_name = as_labeller(c(
+        "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
+        "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
+        "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
+      ), label_parsed)
+    )
+  ) +
+  scale_y_continuous(limits = c(0.5, 1), breaks = seq(0.5, 1, 0.1)) +
+  scale_color_manual(values = beech_cols) +
+  labs(
+    x = "Age class",
+    y = "Fitness (W)",
+    color = "Genotype"
+  ) +
+  theme_fig +
+  theme(
+    axis.text.x = element_text(angle = 35, hjust = 1),
+    legend.position = "right"
+  )
+selection
+
+######## FIGURE 2 #########
+
+# combine plots
+plot2 <- (
+  (final_grid +
+     theme(plot.margin = margin(b = 0))) /
+    (selection + theme(plot.margin = margin(t = 0, b = 5))) 
+) +
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A") &
+  theme(
+    legend.position = "right",
+    plot.tag = element_text(size = 14, face = "bold")
+  )
+plot2
+
+ggsave(
+  filename = file.path(fig_path, "Figure2.png"),
+  plot = plot2,
+  width = 9,
+  height = 12,
+  units = "in"
+)
+
+ggsave(
+  filename = file.path(fig_path, "Figure2.pdf"),
+  plot = plot2,
+  width =9,
+  height = 12,
+  units = "in",
+  device = cairo_pdf
+)
+
 
 ######## demographic results ###########
 
@@ -1309,7 +1408,7 @@ ggsave(file.path(fig_path, "FigureS2.pdf"), figS2,
        width = 9, height = 11, units = "in", device = cairo_pdf)
 
 
-######## FIGURE 2 AND FIGURE S3 (genotype P1 trends) #############
+######## FIGURE 3 AND FIGURE S3 (genotype P1 trends) #############
 
 dt <- readRDS(file.path(res_path, "Quanti_data_processed.RDS"))
 
@@ -1378,9 +1477,9 @@ p1_plot_full <- ggplot(
     proportion_orientalis + configuration ~ selection_type + selection_strength,
     labeller = labeller(
       selection_strength = c(
-        "low" = "Low",
-        "mid" = "Intermediate",
-        "high" = "High"
+        "low" = "Low\nselection",
+        "mid" = "Intermediate\nselection",
+        "high" = "High\nselection"
       ),
       proportion_orientalis = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),
       selection_type = as_labeller(c(
@@ -1471,9 +1570,9 @@ p1_plot_main <- ggplot(sub,
   facet_nested(
     selection_strength ~ selection_type,
     labeller = labeller(selection_strength = c(
-      "low" = "Low",
-      "mid" = "Intermediate",
-      "high" = "High"
+      "low" = "Low\nselection",
+      "mid" = "Intermediate\nselection",
+      "high" = "High\nselection"
     ),
     selection_type = as_labeller(c(
       "Neutral" = "Neutral",
@@ -1494,7 +1593,6 @@ p1_plot_main <- ggplot(sub,
     axis.text  = element_text(size = 9),
     
     strip.text = element_text(size = 11),
-    strip.text.y = element_text(angle = 0, hjust = 0),
     strip.background = element_blank(),
     
     legend.title = element_text(size = 10),
@@ -1520,7 +1618,7 @@ p1_plot_main
 
 
 ggsave(
-  filename = file.path(fig_path, "Figure2.png"),
+  filename = file.path(fig_path, "Figure3.png"),
   plot = p1_plot_main,
   width = 10,
   height = 6,
@@ -1528,7 +1626,7 @@ ggsave(
 )
 
 ggsave(
-  filename = file.path(fig_path, "Figure2.pdf"),
+  filename = file.path(fig_path, "Figure3.pdf"),
   plot = p1_plot_main,
   width = 10,
   height = 6,
@@ -1687,13 +1785,13 @@ genotypes <- ggplot(subset(dt3_genot_quant_wide, age_class ==3& configuration!= 
   labs(x = "Year", y = "Proportion") +
   facet_nested(proportion_orientalis ~ selection_type + selection_strength,
     labeller = labeller(selection_strength = c(
-      "low" = "Low",
-      "mid" = "Intermediate",
-      "high" = "High"
+      "low" = "Low\nselection",
+      "mid" = "Intermediate\nselection",
+      "high" = "High\nselection"
     ),proportion_orientalis = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%")),
     )+
   theme_fig+
-  theme(  
+  theme(   ggh4x.facet.nestline = element_line(size = 1),
           legend.title = element_text(size = 9),
           legend.text  = element_text(size = 8),
           legend.key = element_blank(),
@@ -1704,16 +1802,16 @@ genotypes
 ggsave(
   filename = file.path(fig_path, "FigureS4.png"),
   plot = genotypes,   
-  width = 11,
-  height = 4,
+  width = 14,
+  height = 8,
   units = "in"
 )
 
 ggsave(
   filename = file.path(fig_path, "FigureS4.pdf"),
   plot = genotypes,
-  width = 11,
-  height = 4,
+  width = 14,
+  height = 8,
   units = "in",
   device = cairo_pdf
 )
@@ -1777,9 +1875,9 @@ time_hyb <- ggplot(subset(dt_final,metric == "Time to 50% hybrids" & configurati
     selection_strength ~ selection_type  ,scales = "free",
     labeller = labeller(
       selection_strength = c(
-        "low" = "Low",
-        "mid" = "Intermediate",
-        "high" = "High"
+        "low" = "Low\nselection",
+        "mid" = "Intermediate\nselection",
+        "high" = "High\nselection"
       ),
       selection_type = as_labeller(c(
         "Neutral" = "Neutral",
@@ -1794,7 +1892,7 @@ time_hyb <- ggplot(subset(dt_final,metric == "Time to 50% hybrids" & configurati
        y = "Years") +
   guides() +
   theme_fig+ 
-  theme(panel.grid.major = element_line(color="grey80"))
+  theme(panel.grid.major = element_line(color="grey90"))
 time_hyb
 
 
@@ -1816,9 +1914,9 @@ time_nw <-  ggplot(subset(dt_final,metric == "Time to 80% NW" & configuration!="
     selection_strength ~ selection_type  ,scales = "free",
     labeller = labeller(
       selection_strength = c(
-        "low" = "Low",
-        "mid" = "Intermediate",
-        "high" = "High"
+        "low" = "Low\nselection",
+        "mid" = "Intermediate\nselection",
+        "high" = "High\nselection"
       ),
       selection_type = as_labeller(c(
         "Neutral" = "Neutral",
@@ -1832,7 +1930,7 @@ time_nw <-  ggplot(subset(dt_final,metric == "Time to 80% NW" & configuration!="
        y = "Years") +
   guides(color = "none") +
   theme_fig+ 
-  theme(panel.grid.major = element_line(color="grey80"))
+  theme(panel.grid.major = element_line(color="grey90"))
 time_nw
 
 
@@ -1865,7 +1963,7 @@ ggsave(
 )
 
 
-######## FIGURE 3a           (hybrid proportions trends) ############
+######## FIGURE 4a           (hybrid proportions trends) ############
 
 dt3 <- readRDS(file.path(res_path, "Quanti_data_processed.RDS"))
 
@@ -1962,12 +2060,14 @@ hybprop_trend_main <- ggplot(subset(non_neutral,age_class=="3"& Genotype=="hyb"&
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   
   facet_nested(
-    ~   selection_strength,
-    labeller = labeller(selection_strength = c(
-      "low" = "Low",
-      "mid" = "Intermediate",
-      "high" = "High"
-    )
+    ~   selection_type + selection_strength,
+    labeller = labeller( selection_strength = c("low"="Low\nselection", "mid"="Intermediate \nselection", "high"="High\nselection"),
+                         selection_type = as_labeller(c(
+                           "Neutral" = "Neutral",
+                           "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
+                           "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
+                           "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
+                         ), label_parsed)
     )
   )+
   labs(x = "Year", y = "Hybrid proportions")+
@@ -2008,11 +2108,7 @@ hybprop_trend_supp <- ggplot(subset(non_neutral,Genotype=="hyb"&selection_type%i
   
   facet_nested(
     ~  selection_type+ selection_strength,
-    labeller = labeller(selection_strength = c(
-      "low" = "Low",
-      "mid" = "Intermediate",
-      "high" = "High"
-    ),
+    labeller = labeller(selection_strength = c("low"="Low\nselection", "mid"="Intermediate \nselection", "high"="High\nselection"),
     selection_type = as_labeller(c(
       "Neutral" = "Neutral",
       "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
@@ -2027,12 +2123,10 @@ hybprop_trend_supp <- ggplot(subset(non_neutral,Genotype=="hyb"&selection_type%i
   theme(ggh4x.facet.nestline = element_line(size = 1),
         panel.spacing.x = unit(4, "pt"))
 
-
-
 hybprop_trend_supp
 
  
-######## FIGURE 3c           (productivity trends) #################
+######## FIGURE 4c           (productivity trends) #################
 
 dt <- readRDS(file.path(res_path, "Final_dataset_replicate_level.RDS"))
 dt$selection_type <- factor(dt$selection_type, levels = c("Neutral","Wori > Wf1 > Weu","Weu > Wf1 > Wori","Wf1 > Weu = Wori"))
@@ -2042,7 +2136,7 @@ ggplot(dt,
        aes(year,  NW,
            group = interaction(configuration, replicate2) ))+  
   geom_line() +
-  labs(x = "Year", y = "Productivity (N x W)")+
+  labs(x = "Year", y = "RSP")+
   facet_nested(proportion_orientalis+ configuration~ selection_type + selection_strength, labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
   theme_minimal() +
 
@@ -2113,7 +2207,7 @@ NW_trend_main <- ggplot()+
   geom_line(data = subset(non_neutral,configuration=="No introduction"& year <700),
             aes(x = year,y = q50_NW),
             color = "black",
-            linewidth = 1) +
+            linewidth = 1.3) +
   #geom_vline(xintercept=100, linetype="dashed")+
   
   scale_colour_manual(values = config_palette, name = "Configuration") +
@@ -2123,8 +2217,8 @@ NW_trend_main <- ggplot()+
   scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   
-  labs(x = "Year", y = "Productivity (N x W)")+
-  facet_nested( ~  selection_strength, labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
+  labs(x = "Year", y = "RSP")+
+  facet_nested( ~  selection_strength) +
   guides(fill="none", alpha = "none", linewidth = "none")+
   theme_fig+
   theme(panel.spacing.x = unit(4, "pt"))
@@ -2162,7 +2256,7 @@ NW_trend_supp <- ggplot()+
   scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
   
-  labs(x = "Year", y = "Productivity (N x W)")+
+  labs(x = "Year", y = "RSP")+
   facet_nested(
     ~  selection_type+ selection_strength,
     labeller = labeller(selection_strength = c(
@@ -2185,7 +2279,7 @@ NW_trend_supp <- ggplot()+
 
 NW_trend_supp
 
-######## FIGURE 3b and d     (HYBRID PROPORTIONS and NW at t=100) ###############
+######## FIGURE 4b and d     (HYBRID PROPORTIONS and NW at t=100) ###############
 
 dt <- readRDS(file.path(res_path, "Final_dataset_replicate_level.RDS"))
 
@@ -2233,7 +2327,7 @@ hybprop_t100_main <- ggplot(subset(dt_long,metric%in%c("Hyb_proportion")&selecti
   scale_alpha_manual(values = c("0.1" = 0.5,"0.25" = 0.7,"0.4" = 0.9))+
   scale_x_discrete(labels = c("0.1" = "10%","0.25" = "25%","0.4" = "40%"))+
   stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), method = "kruskal.test", label = "p.signif", hide.ns = TRUE, label.y = 0.63) +
-  facet_nested(metric ~  selection_strength,scales = "free_y", labeller=labeller(metric=c("Hyb_proportion"="Hybrid proportions"), selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
+  facet_nested(metric ~  selection_strength,scales = "free_y") +
   labs(x = "Introduction Intensity", y = "Hybrid proportions") +
   guides(color = "none", alpha = "none") +
   #theme_fig+
@@ -2274,8 +2368,9 @@ NW_t100_main <-  ggplot(subset(dt_long,metric%in%c("NW")&selection_type=="Wori >
   scale_x_discrete(labels = c("0.1" = "10%","0.25" = "25%","0.4" = "40%"))+
   
   stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), method = "kruskal.test"  ,  label = "p.signif", hide.ns = TRUE, label.y = 63) +
-  facet_nested(metric ~  selection_strength,scales = "free_y", labeller=labeller(metric=c("Hyb_proportion"="Hybrid proportions"),  selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
-  labs(x = "Introduction Intensity", y = "Productivity (N x W)") +
+  facet_nested(metric ~  selection_strength,scales = "free_y", labeller=labeller(metric=c("Hyb_proportion"="Hybrid proportions"), 
+                                                                                 )) +
+  labs(x = "Introduction Intensity", y = "RSP") +
   guides(color = "none", alpha = "none") +
   #theme_fig+
   theme(
@@ -2373,7 +2468,6 @@ NW_t100_supp <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type%in% c("We
   stat_compare_means(aes(group = interaction(configuration, proportion_orientalis)), method = "kruskal.test",  label = "p.signif", hide.ns = TRUE, label.y = 70) +
   facet_nested(metric ~ selection_type + selection_strength,scales = "free_y", 
                labeller=labeller(metric=c("Hyb_proportion"="Hybrid proportions"), 
-                                 selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"),
                                  selection_type = as_labeller(c(
                                    "Neutral" = "Neutral",
                                    "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
@@ -2382,7 +2476,7 @@ NW_t100_supp <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type%in% c("We
                                  ), label_parsed)
                )
   )+
-  labs(x = "Introduction Intensity", y = "Productivity (N x W)") +
+  labs(x = "Introduction Intensity", y = "RSP") +
   guides(color = "none", alpha = "none") +
   #theme_fig+
   theme(
@@ -2403,11 +2497,9 @@ NW_t100_supp <- ggplot(subset(dt_long,metric%in%c("NW")&selection_type%in% c("We
 NW_t100_supp
 
 
-######## FINAL FIGURE 3 ############
+######## FINAL FIGURE 4 ############
 
-## MAIN
-
-fig3_main <- (
+fig4_main <- (
     (hybprop_trend_main + theme(plot.margin = margin(b = 0))) /
     (hybprop_t100_main + theme(strip.text.x = element_blank(), strip.text.y = element_blank(),plot.margin = margin(t = 0, b = 5))) /
     (NW_trend_main + theme(strip.text.x = element_blank(),plot.margin = margin(b = 0))) /
@@ -2419,11 +2511,11 @@ fig3_main <- (
     legend.position = "right",
     plot.tag = element_text(size = 14, face = "bold")
   )
-fig3_main
+fig4_main
 
 ggsave(
-  filename = file.path(fig_path, "Figure3_2.png"),
-  plot = fig3_main, 
+  filename = file.path(fig_path, "Figure4.png"),
+  plot = fig4_main, 
   width =10,
   height = 10,
   units = "in", 
@@ -2431,8 +2523,8 @@ ggsave(
 )
 
 ggsave(
-  filename = file.path(fig_path, "Figure3_2.pdf"),
-  plot = fig3_main, 
+  filename = file.path(fig_path, "Figure4.pdf"),
+  plot = fig4_main, 
   width =10,
   height =10,
   units = "in", 
@@ -2500,11 +2592,8 @@ grid_plot <- ggplot(subset(dt, age_class == 3& year==100 & configuration != "No 
   scale_fill_viridis_c(option = "viridis", direction = -1) +
   facet_nested(
     proportion_orientalis + configuration ~ selection_type + selection_strength , 
-    labeller = labeller(selection_strength = c(
-      "low" = "Low",
-      "mid" = "Intermediate",
-      "high" = "High"
-    ),proportion_orientalis = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),
+    labeller = labeller(selection_strength = c("low"="Low\nselection", "mid"="Intermediate \nselection", "high"="High\nselection"),
+                        proportion_orientalis = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),
     selection_type = as_labeller(c(
       "Neutral" = "Neutral",
       "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
@@ -2538,7 +2627,7 @@ ggsave(
   filename = file.path(fig_path, "FigureS7.png"),
   plot = grid_plot,   
   width =12,
-  height = 10,
+  height = 11,
   units = "in",
   dpi = 600
 )
@@ -2547,14 +2636,14 @@ ggsave(
   filename = file.path(fig_path, "FigureS7.pdf"),
   plot = grid_plot,
   width =12,
-  height = 10,
+  height = 11,
   units = "in",
   device = cairo_pdf
 )
 
 
 
-######## FIGURE 4a           (pareto optimization trends) ##########
+######## FIGURE 5a           (pareto optimization trends) ##########
 
 dt <- readRDS(file.path(res_path, "Final_dataset_replicate_level.RDS"))
 cost_table <- fread(file.path(res_path,"Cost_design_table.csv"))
@@ -2650,7 +2739,7 @@ pareto_A_main <- ggplot() +
             aes(x = year,
                 y = med_NW),
             color = "black",
-            linewidth = 1) +
+            linewidth = 1.3) +
   # non-neutral best strategies
   geom_line(
     data = subset(non_neutral, selection_type == "Wori > Wf1 > Weu"),
@@ -2673,10 +2762,17 @@ pareto_A_main <- ggplot() +
   scale_linewidth_manual(values = c( "0.1" = 0.4,"0.25" = 0.8, "0.4" = 1.2),labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%"),name = "Introduction Intensity" )+
   scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
-  facet_nested( ~ selection_strength, labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"))) +
+  facet_nested( ~ selection_type +selection_strength, labeller = labeller(
+    selection_strength = c("low"="Low\nselection", "mid"="Intermediate \nselection", "high"="High\nselection"),
+    selection_type = as_labeller(c(
+      "Neutral" = "Neutral",
+      "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
+      "Weu > Wf1 > Wori" = "W[Eu]~'>'~W[F1]~'>'~W[Ori]",
+      "Wf1 > Weu = Wori" = "W[F1]~'>'~W[Eu]~'='~W[Ori]"
+    ), label_parsed))) +
   labs(
     x = "Year",
-    y = "Productivity (N x W)"
+    y = "RSP"
   )+
   theme_fig+
   theme(panel.spacing.x = unit(4, "pt"),
@@ -2718,7 +2814,7 @@ pareto_A_supp <-ggplot() +
   #geom_vline(xintercept = c(100, 500),  linetype= "dashed", color = "black")+
   
   facet_nested( ~ selection_type + selection_strength, scales = "free_y", 
-                labeller = labeller( selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"),
+                labeller = labeller( selection_strength = c("low"="Low\nselection", "mid"="Intermediate \nselection", "high"="High\nselection"),
                                      selection_type = as_labeller(c(
                                        "Neutral" = "Neutral",
                                        "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
@@ -2733,7 +2829,7 @@ pareto_A_supp <-ggplot() +
   scale_color_manual(values = config_palette, name = "Configuration") +
   labs(
     x = "Year",
-    y = "Productivity (N x W)"
+    y = "RSP"
   )+
   theme_fig +
   theme(  ggh4x.facet.nestline = element_line(size = 1),
@@ -2774,7 +2870,7 @@ pareto_B_main <- ggplot(best_sub, aes(x = med_cost, y = med_NW)) +
   #geom_line(data = best_sub, aes(group = interaction(selection_type, selection_strength)),color = "red") +
   #geom_text(data =best_sub, aes(label = proportion_orientalis), vjust = -0.8) +
   
-  ## point for no introduction --?
+  ## point for no introduction 
   geom_point(data = subset(dt_merged_summary,configuration=="No introduction"& year ==100),
              aes(x = year,
                  y = med_NW),
@@ -2789,10 +2885,10 @@ pareto_B_main <- ggplot(best_sub, aes(x = med_cost, y = med_NW)) +
   )+
   scale_shape_manual( name = "Introduction Intensity", values = c(1, 10, 16),  labels = c("0.1" = "10%", "0.25" = "25%", "0.4" = "40%") ) +
   
-  labs(y = "Productivity (N x W)",
+  labs(y = "RSP",
        x = "Estimated cost") +
   facet_nested(year ~  selection_strength, scales = "free_y", 
-               labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"),
+               labeller = labeller(selection_strength = c("low"="Low\nselection", "mid"="Intermediate \nselection", "high"="High\nselection"),
                                    year = c("100"="t = 100", "500"="t = 500"))) +
   #theme_fig+
   theme(
@@ -2834,7 +2930,7 @@ pareto_B_supp <-  ggplot(dt_sub2, aes(x = med_cost, y = med_NW)) +
     name = "Hybrid proportion",
     breaks = legend_vals,
     labels = scales::percent_format(accuracy = 1),
-    range = c(2, 10)
+    range = c(1, 10)
   )+
   scale_shape_manual(
     name = "Introduction Intensity",
@@ -2842,10 +2938,10 @@ pareto_B_supp <-  ggplot(dt_sub2, aes(x = med_cost, y = med_NW)) +
     #labels = scales::percent_format(accuracy = 1)
   ) +
   
-  labs(y = "Productivity (N x W)",
+  labs(y = "RSP",
        x = "Estimated cost") +
   facet_nested(year ~ selection_type + selection_strength, scales = "free_y",    
-               labeller = labeller(selection_strength = c("low"="Low", "mid"="Intermediate", "high"="High"),year = c("100"="t = 100", "500"="t = 500"),
+               labeller = labeller(selection_strength =  c("low"="Low\nselection", "mid"="Intermediate \nselection", "high"="High\nselection"),year = c("100"="t = 100", "500"="t = 500"),
                                    selection_type = as_labeller(c(
                                      "Neutral" = "Neutral",
                                      "Wori > Wf1 > Weu" = "W[Ori]~'>'~W[F1]~'>'~W[Eu]",
@@ -2877,50 +2973,50 @@ pareto_B_supp <-  ggplot(dt_sub2, aes(x = med_cost, y = med_NW)) +
 
 
 
-######## FINAL FIGURE 4      (pareto optimization) #############
+######## FINAL FIGURE 5      (pareto optimization) #############
 
-  pareto_A_leg <- pareto_A_main +
-    theme(
-      legend.position = c(1.02, 0.5),
-      legend.justification = c(0, 0.5),
-      plot.margin = margin(b = 10, r = 90)
-    )
-  
-  pareto_B_leg <- pareto_B_main +
-    theme(
-      strip.text.x = element_blank(),
-      legend.position = c(1.02, 0.5),
-      legend.justification = c(0, 0.5),
-      plot.margin = margin(r = 80)
-    )
-  
-  pareto_main <- (pareto_A_leg / pareto_B_leg) +
-    plot_layout(heights = c(0.8, 1.2)) +
-    plot_annotation(tag_levels = "A") &
-    theme(
-      plot.tag = element_text(size = 14, face = "bold")
-    )
-  
-  
-  
-  ggsave(
-    filename = file.path(fig_path, "Figure4_2.png"),
-    plot = pareto_main, 
-    width =10,
-    height = 8,
-    units = "in", 
-    dpi = 600
+pareto_A_leg <- pareto_A_main +
+  theme(
+    legend.position = c(1.02, 0.5),
+    legend.justification = c(0, 0.5),
+    plot.margin = margin(b = 10, r = 90)
+  )
+
+pareto_B_leg <- pareto_B_main +
+  theme(
+    strip.text.x = element_blank(),
+    legend.position = c(1.02, 0.5),
+    legend.justification = c(0, 0.5),
+    plot.margin = margin(r = 80)
+  )
+
+pareto_main <- (pareto_A_leg / pareto_B_leg) +
+  plot_layout(heights = c(0.8, 1.2)) +
+  plot_annotation(tag_levels = "A") &
+  theme(
+    plot.tag = element_text(size = 14, face = "bold")
   )
   
-  ggsave(
-    filename = file.path(fig_path, "Figure4_2.pdf"),
-    plot = pareto_main, 
-    width =10,
-    height =8,
-    units = "in", 
-    device = cairo_pdf
-  )
   
+  
+ggsave(
+  filename = file.path(fig_path, "Figure5.png"),
+  plot = pareto_main, 
+  width =10,
+  height = 8,
+  units = "in", 
+  dpi = 600
+)
+
+ggsave(
+  filename = file.path(fig_path, "Figure5.pdf"),
+  plot = pareto_main, 
+  width =10,
+  height =8,
+  units = "in", 
+  device = cairo_pdf
+)
+
 
 
 ######## FINAL FIGURE S8 (pareto optimizaion) #############
@@ -2952,7 +3048,7 @@ pareto_B_supp <-  ggplot(dt_sub2, aes(x = med_cost, y = med_NW)) +
   
   
   ggsave(
-    filename = file.path(fig_path, "FigureS8_2.png"),
+    filename = file.path(fig_path, "FigureS8.png"),
     plot = pareto_supp, 
     width =13,
     height = 8,
@@ -2961,7 +3057,7 @@ pareto_B_supp <-  ggplot(dt_sub2, aes(x = med_cost, y = med_NW)) +
   )
   
   ggsave(
-    filename = file.path(fig_path, "FigureS8_2.pdf"),
+    filename = file.path(fig_path, "FigureS8.pdf"),
     plot = pareto_supp, 
     width =13,
     height =8,
